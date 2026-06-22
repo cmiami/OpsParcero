@@ -10,8 +10,20 @@
 
 ## Where we are right now
 
-- ✅ **Phase 0 (Foundation) essentially complete** — research done (135 failure modes across 6 products + design/UX/arch/storybook briefs), impeccable v3.7.1 installed + hook enabled, brand tokens confirmed, `CLAUDE.md` / `PRODUCT.md` / `DESIGN.md` written.
-- 👉 **Next:** finish the **Phase 1 specification doc set** (most docs pending), then **Phase 2 scaffold + design system/Storybook**, then feature build phases.
+- ✅ **Phase 0 (Foundation) complete** — research done (135 failure modes across 6 products + design/UX/arch/storybook briefs), impeccable v3.7.1 installed + hook enabled, brand tokens confirmed, `CLAUDE.md` / `PRODUCT.md` / `DESIGN.md` / `README.md` written, **repo on GitHub (`cmiami/OpsParcero`, pushed to `main`)**.
+- 🟡 **Phase 1 (Specification) in progress** — spec doc set being authored to `docs/`.
+- 👉 **Next:** finish specs → set up GitHub burn-down (milestones + issues) → **Phase 2 scaffold + design system/Storybook** → **BCDR vertical slice**.
+
+## Build decisions (locked 2026-06-22)
+
+1. **Vertical slice first** — build app shell + design system, then **Datto BCDR end-to-end** (triage → asset detail → remediate → chain → save playbook → apply-always), then replicate to the other products.
+2. **Functional client-side engine** — real Zustand + localStorage; the action/chain/playbook/apply-always engine genuinely works (simulated runner), not faked.
+3. **Lead product = Datto BCDR** (richest failure surface for the remediation/automation showcase).
+4. **Autonomous long swarm** — parallel agents (worktree-isolated where they touch shared files) burn down the numbered list; I surface blockers/decisions and verify at meaningful checkpoints.
+
+## How progress is tracked on GitHub
+
+Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn-down list. **Tracking = a GitHub Milestone per phase + one issue per item.** Completing an item = a commit to `main` whose message closes its issue (`Closes #<n>`); PRs only when a diff is worth review. Milestone progress bars are the live "where are we." This `ROADMAP.md` is the human-readable mirror; GitHub is the system of record.
 
 ---
 
@@ -28,6 +40,8 @@
 - [x] Author `CLAUDE.md` (non-negotiable mandates: tokens-only, Storybook-first, impeccable-always)
 - [x] Author `PRODUCT.md` (impeccable strategic context)
 - [x] Author `DESIGN.md` (impeccable visual context, seeded with confirmed tokens)
+- [x] Author `README.md`; repo hygiene (`.gitignore`, portable hook in committed `.claude/settings.json`)
+- [x] Foundation pushed to GitHub `cmiami/OpsParcero` (`main`)
 
 ## Phase 1 — Specification (spec-level, pre-build)  `[~]`
 
@@ -107,4 +121,4 @@
 
 ## Changelog
 
-- 2026-06-22 — Phase 0 completed (research, impeccable v3.7.1 + hook, CLAUDE/PRODUCT/DESIGN). Phase 1 spec authoring started.
+- 2026-06-22 — Phase 0 completed (research, impeccable v3.7.1 + hook, CLAUDE/PRODUCT/DESIGN, README, repo on GitHub). Build decisions locked (vertical slice / functional engine / BCDR / autonomous swarm). GitHub burn-down = milestones + issue per item. Phase 1 spec authoring in progress.

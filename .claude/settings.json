@@ -1,5 +1,5 @@
 {
-  "description": "Impeccable design detector: runs after Edit/Write/MultiEdit on UI files and surfaces findings as system reminders.",
+  "description": "Impeccable design detector: runs after Edit/Write/MultiEdit on UI files and surfaces findings as system reminders. Shared/committed so it travels to clones and git worktrees.",
   "hooks": {
     "PostToolUse": [
       {

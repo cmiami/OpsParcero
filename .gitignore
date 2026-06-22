@@ -10,6 +10,25 @@ node_modules/
 dist/
 build/
 .cache/
+.next/
+out/
+storybook-static/
+*.tsbuildinfo
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# Claude / impeccable — machine-local only (shared config IS committed so it travels to clones & worktrees)
+.claude/settings.local.json
+.impeccable/config.local.json
+.impeccable/critiques/
 
 # Logs & temp
 *.log
@@ -20,3 +39,4 @@ tmp/
 .impeccable/sessions/
 .impeccable/cache/
 .impeccable/*.log
+.impeccable/hook.cache.json

@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
 import type { AuditLogEntry, AuditVerb } from "@/types";
 import { getAuditLog, getUser } from "@/mock/query";
+import { useActivity } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 import { MonoLabel } from "@/components/atoms/mono-label";
 import { SearchField } from "@/components/molecules/search-field";
 import {
@@ -199,7 +201,14 @@ export function AuditLog({
   error,
   className,
 }: AuditLogProps) {
-  const source = React.useMemo(() => entries ?? getAuditLog(), [entries]);
+  // Merge the runtime audit entries (this session's applies) on top of the seed,
+  // unless the caller supplied explicit `entries` (stories do).
+  const hydrated = useHasHydrated(useActivity);
+  const storeAudit = useActivity((s) => s.audit);
+  const source = React.useMemo(
+    () => entries ?? [...(hydrated ? storeAudit : []), ...getAuditLog()],
+    [entries, storeAudit, hydrated],
+  );
   const [actor, setActor] = React.useState<string>("all");
   const [search, setSearch] = React.useState("");
 

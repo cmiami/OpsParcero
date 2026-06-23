@@ -25,6 +25,8 @@ import type {
   ActionScope,
 } from "@/types";
 import { getActionRuns } from "@/mock/query";
+import { useActivity } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 import { ACTION_BY_ID } from "@/mock/reference";
 import { MonoLabel } from "@/components/atoms/mono-label";
 import { DataTable } from "./data-table";
@@ -252,10 +254,15 @@ export function RunHistoryTable({
   error,
   className,
 }: RunHistoryTableProps) {
+  // Merge the runtime activity store (what the user just applied) on top of the
+  // seeded history — unless the caller passed an explicit `runs` (stories do).
+  const hydrated = useHasHydrated(useActivity);
+  const storeRuns = useActivity((s) => s.runs);
   const rows = React.useMemo<RunRow[]>(() => {
-    const source = runs ?? getActionRuns();
+    const source =
+      runs ?? [...(hydrated ? storeRuns : []), ...getActionRuns()];
     return source.map(toRow);
-  }, [runs]);
+  }, [runs, storeRuns, hydrated]);
 
   return (
     <DataTable<RunRow>

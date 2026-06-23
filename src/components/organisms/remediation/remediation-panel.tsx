@@ -25,12 +25,18 @@ import { AiInsightCard } from "@/components/molecules/ai-insight-card";
 import { getIssues, getActionsForFailureMode } from "@/mock/query";
 import { simulateRun, type RunnerOutcome } from "@/mock/runner";
 import { useActionCart } from "@/stores/action-cart";
+import { usePolicies } from "@/stores/automation-policies";
+import {
+  recordSimulatedRun,
+  buildAutomationPolicy,
+} from "@/lib/activity-record";
 import type {
   Issue,
   ProtectedAsset,
   FailureMode,
   RemediationAction,
   ActionScope,
+  AssetId,
   EntityRef,
 } from "@/types";
 import { toast } from "sonner";
@@ -113,9 +119,25 @@ export function RemediationPanel({
   const [outcome, setOutcome] = React.useState<RunnerOutcome | null>(null);
 
   const verbatimError = issue.detail || failureMode?.description || issue.problem;
-  const targets: EntityRef[] = asset
+  // "once" acts on the focus asset; "all-matching"/"always" act on every impacted
+  // asset — so the displayed count and the dispatched target set agree on ASSET
+  // identity (matchingAssetCount, never the looser occurrenceCount).
+  const focusTarget: EntityRef[] = asset
     ? [{ kind: "asset", id: asset.id, label: asset.displayName }]
     : issue.impactedAssetIds.slice(0, 1).map((id) => ({ kind: "asset" as const, id }));
+  const matchingAssetCount = matchCount ?? issue.impactedAssetIds.length;
+
+  // Plain closure (only called inside event handlers) — resolves the target set
+  // for a scope: "once" → the focus asset; "all-matching"/"always" → every
+  // impacted asset.
+  const targetsForScope = (s: ActionScope): EntityRef[] => {
+    if (s === "once") return focusTarget;
+    const all = issue.impactedAssetIds.map((id) => ({
+      kind: "asset" as const,
+      id,
+    }));
+    return all.length ? all : focusTarget;
+  };
 
   const executing = phase === "executing";
 
@@ -123,10 +145,11 @@ export function RemediationPanel({
     if (!primaryAction) return;
     setPhase("executing");
     setOutcome(null);
+    const runTargets = targetsForScope(scope);
     // Simulated latency: runtime-only randomness inside a handler is allowed.
     window.setTimeout(
       () => {
-        const result = simulateRun(primaryAction, targets, scope, {}, { dryRun });
+        const result = simulateRun(primaryAction, runTargets, scope, {}, { dryRun });
         setOutcome(result);
         const ok =
           result.state === "succeeded" ||
@@ -134,6 +157,26 @@ export function RemediationPanel({
           result.preview === true ||
           result.awaitingApproval === true;
         setPhase(ok ? "success" : "failure");
+
+        // Persist a durable ActionRun + AuditLogEntry for any real (non-preview)
+        // dispatch, healing the targeted assets when the run resolves them — so
+        // Run history, Audit, and the fleet asset-state reflect this apply.
+        if (!result.preview) {
+          recordSimulatedRun({
+            actionId: primaryAction.id,
+            actionLabel: primaryAction.label,
+            targets: runTargets,
+            scope,
+            outcome: result,
+            heal: result.healsAsset
+              ? {
+                  assetIds: runTargets.map((t) => t.id as AssetId),
+                  status: result.healedStatus ?? "protected",
+                }
+              : undefined,
+          });
+        }
+
         if (result.awaitingApproval) {
           toast.warning("Approval required", { description: result.resultSummary });
         } else if (result.preview) {
@@ -153,15 +196,25 @@ export function RemediationPanel({
   }
 
   function applyAlways() {
+    if (!primaryAction) return;
     setScope("always");
     setDefaultScope("always");
-    toast("Graduate to a policy", {
-      description: `"${issue.title}" will be set to fix automatically going forward.`,
+    // Create a standing policy the Policies page reads from the store.
+    usePolicies.getState().addPolicy(
+      buildAutomationPolicy({
+        failureModeId: issue.failureModeId,
+        category: issue.category,
+        actionId: primaryAction.id,
+        productBucket: issue.productBucket,
+      }),
+    );
+    toast.success("Auto-remediation policy created", {
+      description: `"${issue.title}" will now be fixed automatically. See Automation → Policies.`,
     });
   }
 
   function saveAsPlaybook() {
-    targets.forEach((t) => addTarget(t.id));
+    targetsForScope(scope).forEach((t) => addTarget(t.id));
     actions.forEach((a) => addAction(a.id));
     toast.success("Loaded into Action Cart", {
       description: `${actions.length} step${actions.length === 1 ? "" : "s"} ready to save as a playbook.`,
@@ -266,12 +319,12 @@ export function RemediationPanel({
         <ApplyScopeControl
           value={scope}
           onChange={setScope}
-          matchCount={matchCount ?? issue.occurrenceCount}
+          matchCount={matchingAssetCount}
           disabled={executing}
         />
         <p aria-live="polite" className="sr-only">
           {scope === "all-matching"
-            ? `Will affect ${matchCount ?? issue.occurrenceCount} matching assets.`
+            ? `Will affect ${matchingAssetCount} matching assets.`
             : scope === "always"
               ? "Will create a standing policy."
               : "Will affect this asset only."}
@@ -341,7 +394,7 @@ export function RemediationPanel({
             <PlayCircle aria-hidden className="size-4" />
           )}
           {scope === "all-matching"
-            ? `Apply to ${matchCount ?? issue.occurrenceCount}`
+            ? `Apply to ${matchingAssetCount}`
             : "Apply once"}
         </Button>
         <Button

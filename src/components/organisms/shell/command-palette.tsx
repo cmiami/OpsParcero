@@ -135,7 +135,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <CommandItem
               key={issue.id}
               value={`issue ${issue.title} ${issue.detail}`}
-              onSelect={() => go(`/resolution/${issue.id}`)}
+              onSelect={() => go(`/resolution?issue=${issue.id}`)}
             >
               <LifeBuoy className="text-muted-foreground" aria-hidden />
               <span className="truncate">{issue.title}</span>
@@ -151,7 +151,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <CommandItem
               key={pb.id}
               value={`playbook ${pb.name} ${pb.description}`}
-              onSelect={() => go(`/automation/playbooks/${pb.id}`)}
+              onSelect={() => go(`/automation/playbooks?pb=${pb.id}`)}
             >
               <Workflow className="text-muted-foreground" aria-hidden />
               <span className="truncate font-medium">{pb.name}</span>

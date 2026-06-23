@@ -17,6 +17,7 @@ import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { FixTranscriptView } from "@/components/organisms/fix/fix-transcript-view";
 import { FIX_STATE_META } from "@/components/organisms/fix/fix-state-meta";
 import { getFixClientSync, TERMINAL_STATES } from "@/lib/fix-client";
+import { recordAgentRun } from "@/lib/activity-record";
 import type {
   FixClient,
   FixSessionEvent,
@@ -292,11 +293,31 @@ export function GuidedFixPanel({
     approve: (stepId: string, d: "approve" | "reject") => Promise<void>;
     abort: () => Promise<void>;
   } | null>(null);
+  // Guards the one-time activity record per terminal run.
+  const recordedRef = React.useRef(false);
+
+  // On a terminal, non-dry, healed run, persist the run + heal the asset so the
+  // panel's "recorded" promise holds and the asset's state reflects the fix.
+  React.useEffect(() => {
+    if (run.phase !== "done" || recordedRef.current) return;
+    recordedRef.current = true;
+    if (run.healed && !dryRun) {
+      recordAgentRun({
+        assetId: asset.id,
+        actionLabel: issue ? `Guided fix — ${issue.title}` : "Guided fix",
+        scope,
+        state: "succeeded",
+        summary: run.resultSummary ?? "The issue was resolved.",
+        heal: { status: "protected" },
+      });
+    }
+  }, [run.phase, run.healed, run.resultSummary, dryRun, scope, asset.id, issue]);
 
   const running = run.phase === "running";
 
   const startRun = React.useCallback(async () => {
     dispatch({ type: "start" });
+    recordedRef.current = false;
     try {
       const models = await fixClient.listModels();
       const first = models[0];

@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/dialog";
 import { GuidedFixPanel } from "@/components/organisms/fix/guided-fix-panel";
 import { AiFixConsole } from "@/components/organisms/fix/ai-fix-console";
+import { useActivity } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 
 export function AssetDetailView() {
   const params = useParams<{ assetId: string }>();
@@ -47,6 +49,9 @@ export function AssetDetailView() {
   const [fixOpen, setFixOpen] = React.useState<null | "guided" | "ai">(null);
   const id = params.assetId as AssetId;
   const asset = getAsset(id);
+  // A fix applied this session may have healed this asset — reflect it.
+  const hydrated = useHasHydrated(useActivity);
+  const override = useActivity((s) => s.assetOverrides[id]);
 
   if (!asset) {
     return (
@@ -67,6 +72,7 @@ export function AssetDetailView() {
     );
   }
 
+  const status = hydrated && override ? override.status : asset.status;
   const client = getClient(asset.clientId);
   const alerts = getAlertsForAsset(id);
   const points = getRecoveryPoints(id);
@@ -83,7 +89,7 @@ export function AssetDetailView() {
           <ArrowLeft className="size-3.5" aria-hidden /> Fleet
         </button>
         <div className="flex flex-wrap items-center gap-3">
-          <StatusBadge state={asset.status} size="md" />
+          <StatusBadge state={status} size="md" />
           <h1 className="font-display text-xl font-bold tracking-tight">
             {asset.displayName}
           </h1>

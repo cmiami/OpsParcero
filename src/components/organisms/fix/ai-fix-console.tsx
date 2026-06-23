@@ -35,6 +35,7 @@ import type {
   FixPlan,
 } from "@/lib/fix-client";
 import { FixAbortError } from "@/lib/fix-client";
+import { recordAgentRun } from "@/lib/activity-record";
 import type { ProtectedAsset, Issue } from "@/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,6 +177,8 @@ export function AiFixConsole({
 
   const handleRef = React.useRef<FixSessionHandle | null>(null);
   const aliveRef = React.useRef(true);
+  // Guards the one-time activity record per terminal run.
+  const recordedRef = React.useRef(false);
 
   React.useEffect(() => {
     aliveRef.current = true;
@@ -227,6 +230,7 @@ export function AiFixConsole({
   const handleRun = React.useCallback(async () => {
     if (running || !selectedModel) return;
     dispatch({ kind: "reset" });
+    recordedRef.current = false;
     setRunning(true);
     const handle = await fixClient.createSession({
       assetId: asset.id,
@@ -264,6 +268,27 @@ export function AiFixConsole({
   const failureLabel = issue
     ? issue.failureModeId ?? issue.category
     : asset.kind;
+
+  // On terminal success, persist the run + heal the asset, so the console's
+  // "recorded in Run history and Audit" claim is true (record once per run).
+  React.useEffect(() => {
+    if (!model.finished || recordedRef.current) return;
+    recordedRef.current = true;
+    if (succeeded) {
+      recordAgentRun({
+        assetId: asset.id,
+        actionLabel: issue ? `AI fix — ${issue.title}` : "AI autonomous fix",
+        scope: "once",
+        state: "succeeded",
+        summary:
+          [...model.turns].reverse().find((t) => t.kind === "verification")
+            ?.text ??
+          "The AI agent applied the fix and verification confirmed the heal.",
+        by: { kind: "ai", refId: selectedModel?.model ?? "ai-agent" },
+        heal: { status: "protected" },
+      });
+    }
+  }, [model.finished, succeeded, asset.id, issue, selectedModel, model.turns]);
 
   return (
     <section

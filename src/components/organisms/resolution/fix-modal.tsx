@@ -26,7 +26,12 @@ import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { FIX_META } from "@/lib/status";
 import { getActionsForFailureMode } from "@/mock/query";
 import { simulateRun } from "@/mock/runner";
-import type { ActionScope, EntityRef, Issue } from "@/types";
+import {
+  recordSimulatedRun,
+  buildAutomationPolicy,
+} from "@/lib/activity-record";
+import { usePolicies } from "@/stores/automation-policies";
+import type { ActionScope, AssetId, EntityRef, Issue } from "@/types";
 
 export interface FixModalProps {
   /** The issue being remediated. */
@@ -114,27 +119,54 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
     }
 
     setRunning(true);
-    const targets: EntityRef[] = issue.impactedAssetIds.map((id) => ({
-      kind: "asset",
-      id,
-    }));
+    // Scope decides the target set: "once" acts on a single asset; "all-matching"
+    // and "always" act on every impacted asset (count + targets agree).
+    const targetIds: AssetId[] =
+      scope === "once"
+        ? issue.impactedAssetIds.slice(0, 1)
+        : issue.impactedAssetIds;
+    const targets: EntityRef[] = targetIds.map((id) => ({ kind: "asset", id }));
     // Simulate against the deterministic runner; runtime randomness lives here,
     // inside an event handler, never at module scope (M6).
     const outcome = simulateRun(action, targets, scope, {}, { approved: true });
 
     // Where the apply landed — the once → all-matching → always scope spine.
+    const appliedCount = targetIds.length;
     const where =
       scope === "always"
         ? "this category, now and going forward"
         : scope === "all-matching"
-          ? `${matchCount} matching ${matchCount === 1 ? "asset" : "assets"}`
+          ? `${appliedCount} matching ${appliedCount === 1 ? "asset" : "assets"}`
           : "1 asset";
 
+    // Persist a durable ActionRun + AuditLogEntry for the dispatch, and heal the
+    // targeted assets when the run resolves them — so Run history, Audit, and the
+    // fleet asset-state reflect what just happened (not the frozen seed).
+    recordSimulatedRun({
+      actionId: action.id,
+      actionLabel: action.label,
+      targets,
+      scope,
+      outcome,
+      heal: outcome.healsAsset
+        ? { assetIds: targetIds, status: outcome.healedStatus ?? "protected" }
+        : undefined,
+    });
+
     if (alwaysCategory || scope === "always") {
+      // Create a standing policy that the Policies page reads from the store.
+      usePolicies.getState().addPolicy(
+        buildAutomationPolicy({
+          failureModeId: issue.failureModeId,
+          category: issue.category,
+          actionId: action.id,
+          productBucket: issue.productBucket,
+        }),
+      );
       setResult({
         tone: "warning",
         title: "Auto-remediation policy created",
-        detail: `Future "${issue.category}" failures will be fixed automatically. ${outcome.resultSummary}`,
+        detail: `Future "${issue.category}" failures will be fixed automatically. ${outcome.resultSummary} See Automation → Policies.`,
       });
     } else if (outcome.healsAsset) {
       setResult({

@@ -281,7 +281,9 @@ export function GuidedFixPanel({
   );
   const [run, dispatch] = React.useReducer(reducer, INITIAL);
   const [scope, setScope] = React.useState<ActionScope>("once");
-  const [dryRun, setDryRun] = React.useState(true);
+  // Real-with-gates by default (preview-before-execute + approval gates protect);
+  // dry-run is the explicit opt-in for preview-only.
+  const [dryRun, setDryRun] = React.useState(false);
   const [deciding, setDeciding] = React.useState(false);
 
   // The active session handle for the current run (for approve/abort).
@@ -304,6 +306,7 @@ export function GuidedFixPanel({
         mode: "guided",
         model: { provider: first.provider, model: first.id },
         scope,
+        dryRun,
       });
       sessionRef.current = {
         id: handle.id,
@@ -318,7 +321,7 @@ export function GuidedFixPanel({
         err instanceof Error ? err.message : "The run could not complete.";
       dispatch({ type: "error", message });
     }
-  }, [asset.id, issue?.id, scope, fixClient]);
+  }, [asset.id, issue?.id, scope, dryRun, fixClient]);
 
   const decide = React.useCallback(
     async (decision: "approve" | "reject") => {

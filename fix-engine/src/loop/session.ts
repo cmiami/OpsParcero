@@ -213,6 +213,7 @@ export async function runSession(
 
   const budget = { ...DEFAULT_BUDGET[req.mode], ...req.budget };
   const scope = req.scope ?? "once";
+  const dryRun = req.dryRun ?? false;
 
   // Derive the asset-correct tools (diagnostics + the single best remediation)
   // and the ordered plan-call sequence the provider will be steered through.
@@ -300,7 +301,15 @@ export async function runSession(
 
     if (calls.length === 0) {
       // The model is done. Outcome from what happened.
-      setState(healed ? "succeeded" : anyWrite ? "partial" : "escalated");
+      setState(
+        dryRun && anyWrite
+          ? "succeeded" // dry-run preview completed — nothing mutated
+          : healed
+            ? "succeeded"
+            : anyWrite
+              ? "partial"
+              : "escalated",
+      );
       break;
     }
 
@@ -313,11 +322,55 @@ export async function runSession(
         messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: "ERROR: unknown tool" });
         continue;
       }
-      const step = session.plan?.steps.find((s) => s.toolName === call.name);
-      const gated =
-        (step?.requiresApproval ?? handler.spec.requiresApproval) ||
-        (req.mode === "guided" && step?.actor === "you");
 
+      // Scope / applicability enforcement — the agent may only run a tool that
+      // declares it applies to THIS asset's kind AND product type.
+      const applies =
+        handler.spec.appliesToKinds.includes(asset.kind) &&
+        handler.spec.productTypes.includes(asset.productType);
+      if (!applies) {
+        push({
+          kind: "observation",
+          text: `Tool "${call.name}" does not apply to ${asset.kind}/${asset.productType} — refused.`,
+        });
+        messages.push({
+          role: "tool",
+          toolCallId: call.id,
+          name: call.name,
+          content: `ERROR: tool not applicable to asset kind=${asset.kind} product=${asset.productType}`,
+        });
+        continue;
+      }
+
+      const isRead = handler.spec.risk === "read";
+      const step = session.plan?.steps.find((s) => s.toolName === call.name);
+      setState(isRead ? (anyWrite ? "verifying" : "triaging") : "executing");
+      budgeter.toolUsed();
+      session.usage.toolCalls += 1;
+      push({ kind: "tool_call", toolCall: { id: call.id, name: call.name, input: call.input } });
+
+      const ctx: ToolContext = { asset, issue, dryRun, scope, emit: () => {} };
+
+      if (isRead) {
+        const result = await handler.run(call.input, ctx);
+        push({ kind: "tool_result", toolResult: result });
+        messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: result.output });
+        continue;
+      }
+
+      // ── Write tool ──
+      // 1) PREVIEW (dry-run) first so the diff / blast-radius is on the record
+      //    BEFORE any approval decision (approvers approve evidence, not intent).
+      const preview = await handler.preview(call.input, { ...ctx, dryRun: true });
+      push({ kind: "observation", text: `Dry-run preview: ${preview.summary}`, toolResult: preview });
+
+      // 2) Gate AFTER the preview. Destructive + over-threshold + guided "you"
+      //    steps require approval. Dry-run sessions never mutate, so no gate.
+      const gated =
+        !dryRun &&
+        ((step?.requiresApproval ?? handler.spec.requiresApproval) ||
+          handler.spec.risk === "destructive" ||
+          (req.mode === "guided" && step?.actor === "you"));
       if (gated) {
         setState("awaiting-approval");
         const planStep: FixPlanStep = step ?? {
@@ -325,71 +378,60 @@ export async function runSession(
           intent: handler.spec.description,
           toolName: call.name,
           input: call.input,
-          actor: "we",
+          actor: req.mode === "guided" ? "you" : "we",
           risk: handler.spec.risk,
           requiresApproval: true,
         };
         const decision = await approve(planStep);
-        push({ kind: "approval", text: `Approval for "${call.name}": ${decision}` });
+        push({ kind: "approval", text: `Approval for "${call.name}" (preview shown above): ${decision}` });
         if (decision === "reject") {
-          push({ kind: "status", text: "Approval rejected — halting." });
+          push({ kind: "status", text: "Approval rejected — halting (nothing was changed)." });
           setState("halted");
-          messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: "REJECTED by approver" });
+          messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: "REJECTED by approver — not executed" });
           break;
         }
       }
 
-      const isRead = handler.spec.risk === "read";
-      setState(isRead ? (anyWrite ? "verifying" : "triaging") : "executing");
-      budgeter.toolUsed();
-      session.usage.toolCalls += 1;
-      push({ kind: "tool_call", toolCall: { id: call.id, name: call.name, input: call.input } });
+      // 3) Execute — UNLESS this is a dry-run session (then the preview IS the
+      //    result and nothing is mutated/healed).
+      anyWrite = true;
+      const result = dryRun ? preview : await handler.run(call.input, ctx);
+      if (!dryRun && result.healed) healed = true;
 
-      const ctx: ToolContext = { asset, issue, dryRun: false, scope, emit: () => {} };
-
-      // Dry-run preview first for any write (zero mutation), then execute.
-      let result: ToolResult;
-      if (!isRead) {
-        const preview = await handler.preview(call.input, { ...ctx, dryRun: true });
-        push({ kind: "observation", text: `dry-run: ${preview.summary}`, toolResult: preview });
-        result = await handler.run(call.input, ctx);
-        anyWrite = true;
-        if (result.healed) healed = true;
-        // Attribute the run to the AI agent.
-        const auditId = mk("aud");
-        const runId = mk("act") as unknown as ActionRunId;
-        const run: ActionRun = {
-          id: runId,
-          actionId: (handler.spec.actionId ?? (`ai:${call.name}` as unknown)) as ActionRun["actionId"],
-          triggeredBy: { kind: "ai", refId: session.id },
-          scope,
-          targetRefs: [{ kind: "asset", id: asset.id, label: asset.displayName }],
-          paramsUsed: (call.input ?? {}) as Record<string, unknown>,
-          state: result.ok ? "succeeded" : "failed",
-          dryRun: false,
-          startedAt: session.startedAt,
-          finishedAt: clock.now(),
-          resultSummary: result.summary,
-          auditLogEntryIds: [auditId as unknown as AuditLogEntry["id"]],
-        };
-        actionRuns.push(run);
-        actionRunIds.push(runId);
-        auditLog.push({
-          id: auditId as unknown as AuditLogEntry["id"],
-          at: clock.now(),
-          actor: { kind: "ai", refId: session.id },
-          verb: "ran-action",
-          subjectRef: { kind: "asset", id: asset.id, label: asset.displayName },
-          scope,
-          outcome: result.ok ? "succeeded" : "failed",
-          detail: result.summary,
-        });
-        push({ kind: "verification", text: result.summary, toolResult: result });
-      } else {
-        result = await handler.run(call.input, ctx);
-        push({ kind: "tool_result", toolResult: result });
-      }
-
+      const auditId = mk("aud");
+      const runId = mk("act") as unknown as ActionRunId;
+      const runState = !result.ok ? "failed" : "succeeded";
+      const run: ActionRun = {
+        id: runId,
+        actionId: (handler.spec.actionId ?? (`ai:${call.name}` as unknown)) as ActionRun["actionId"],
+        triggeredBy: { kind: "ai", refId: session.id },
+        scope,
+        targetRefs: [{ kind: "asset", id: asset.id, label: asset.displayName }],
+        paramsUsed: (call.input ?? {}) as Record<string, unknown>,
+        state: runState,
+        dryRun,
+        startedAt: session.startedAt,
+        finishedAt: clock.now(),
+        resultSummary: dryRun ? `[dry-run] ${result.summary}` : result.summary,
+        auditLogEntryIds: [auditId as unknown as AuditLogEntry["id"]],
+      };
+      actionRuns.push(run);
+      actionRunIds.push(runId);
+      auditLog.push({
+        id: auditId as unknown as AuditLogEntry["id"],
+        at: clock.now(),
+        actor: { kind: "ai", refId: session.id },
+        verb: "ran-action",
+        subjectRef: { kind: "asset", id: asset.id, label: asset.displayName },
+        scope,
+        outcome: runState,
+        detail: dryRun ? `[dry-run] ${result.summary}` : result.summary,
+      });
+      push({
+        kind: dryRun ? "observation" : "verification",
+        text: dryRun ? `[dry-run] ${result.summary}` : result.summary,
+        toolResult: result,
+      });
       messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: result.output });
     }
   }

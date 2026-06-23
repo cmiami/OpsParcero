@@ -72,6 +72,7 @@ interface CreateSessionBody {
   model?: { provider?: ProviderId; model?: string };
   triageModel?: { provider?: ProviderId; model?: string };
   scope?: ActionScope;
+  dryRun?: boolean;
   budget?: RunSessionRequest["budget"];
 }
 interface ApproveBody {
@@ -179,6 +180,7 @@ app.post("/sessions", async (c) => {
     model,
     triageModel,
     scope,
+    dryRun: body.dryRun ?? false,
     budget: body.budget,
   };
 

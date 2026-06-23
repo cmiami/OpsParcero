@@ -115,6 +115,8 @@ export interface RunSessionRequest {
   triageModel?: FixModelRef;
   scope?: ActionScope;
   budget?: Partial<FixBudget>;
+  /** Preview only: compute every diff but never execute / mutate / heal. */
+  dryRun?: boolean;
 }
 
 /** Streamed to the front-end (SSE live) or yielded by the in-browser sim path. */

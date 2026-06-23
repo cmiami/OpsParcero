@@ -13,7 +13,7 @@ exports[`fix-engine M2 — catalog + backends, end-to-end > (a) resolves a BCDR 
 [model] Evidence confirms the classified failure. Plan: apply reset_vss_writers (dry-run first), then re-verify protection.
 [status:executing] → executing
 [tool_call] tool=reset_vss_writers
-[observation] ok=true healed=false dry-run: [dry-run] Reset VSS writers on ACME-SQL01 — writers re-registered Stable, agent service restarted.
+[observation] ok=true healed=false Dry-run preview: [dry-run] Reset VSS writers on ACME-SQL01 — writers re-registered Stable, agent service restarted.
 [verification] ok=true healed=true Reset VSS writers on ACME-SQL01 — writers re-registered Stable, agent service restarted.
 [model] Remediation applied. Verifying the asset is healthy again with get_vss_writers.
 [status:verifying] → verifying

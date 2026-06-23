@@ -268,6 +268,7 @@ async function cmdFix(opts: FixOpts): Promise<number> {
         mode: opts.mode,
         model: modelRef,
         scope: opts.scope,
+        dryRun: opts.dryRun,
         budget,
       },
       {

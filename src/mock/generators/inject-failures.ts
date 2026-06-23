@@ -60,6 +60,46 @@ function modeKinds(mode: FailureMode): Set<AssetKind> {
   return kinds;
 }
 
+/**
+ * The OS / SaaS seat-family a mode is intrinsically about, inferred from its
+ * identity (productType is coarse — `saas-protect` covers both M365 and Google —
+ * so seat family lives in the asset's tags). Used to keep an OS- or provider-
+ * specific failure from landing on a mismatched asset (a macOS issue on a Windows
+ * endpoint, a SharePoint/Graph issue on a Google-Drive seat). Returns null when
+ * the mode is family-agnostic.
+ */
+function modeFamily(
+  mode: FailureMode,
+): "macos" | "linux" | "m365" | "google" | "salesforce" | null {
+  const h = `${mode.id} ${mode.title ?? ""} ${mode.description ?? ""}`.toLowerCase();
+  if (/\bmac\s?os\b|\bmacos\b/.test(h)) return "macos";
+  if (/\blinux\b/.test(h)) return "linux";
+  if (/salesforce|sfdc/.test(h)) return "salesforce";
+  if (/m365|microsoft 365|sharepoint|onedrive|\bteams\b|exchange|outlook|graph/.test(h))
+    return "m365";
+  if (/google|gmail|gdrive|g\s?suite|workspace/.test(h)) return "google";
+  return null;
+}
+
+/** Whether an asset is a coherent host for a family-specific mode (via its tags/kind). */
+function assetMatchesFamily(asset: ProtectedAsset, mode: FailureMode): boolean {
+  const fam = modeFamily(mode);
+  if (!fam) return true;
+  const tags = asset.tags ?? [];
+  switch (fam) {
+    case "macos":
+      return tags.includes("macos");
+    case "linux":
+      return tags.includes("linux");
+    case "salesforce":
+      return asset.kind === "salesforce-org";
+    case "m365":
+      return tags.includes("m365");
+    case "google":
+      return tags.includes("google");
+  }
+}
+
 /** Map cosmetic / severity → the visible asset status the mode forces. */
 function statusForMode(mode: FailureMode): { status: AssetStatus; isCosmetic: boolean } {
   if (mode.cosmeticByDefault) return { status: "warning", isCosmetic: true };
@@ -239,16 +279,30 @@ export function injectFailures(
     const { status, isCosmetic } = statusForMode(mode);
     const source = sourceFor(mode);
 
-    const tierA = assets.filter(
-      (a) =>
-        productTypeToBucket(a.productType) === bucket &&
-        (kinds.size === 0 || kinds.has(a.kind)) &&
-        isHealthy(a),
+    // Placement tiers, most-coherent first: right bucket + applicable kind +
+    // matching OS/seat family → right bucket + kind → right bucket → any healthy
+    // (so a rare mode can always land its guaranteed first instance). The family
+    // tier eliminates the cross-injections a reviewer would catch on screen
+    // (a macOS issue on a Windows endpoint, a SharePoint/Graph issue on a Google
+    // seat). The only residual is a couple of Salesforce-restore modes that can
+    // overflow to a mailbox seat when no healthy salesforce-org remains — the
+    // guaranteed-first-instance fallback, accepted for this POC seed.
+    const inBucket = (a: ProtectedAsset) =>
+      productTypeToBucket(a.productType) === bucket && isHealthy(a);
+    const ofKind = (a: ProtectedAsset) =>
+      kinds.size === 0 || kinds.has(a.kind);
+    const tierIdeal = assets.filter(
+      (a) => inBucket(a) && ofKind(a) && assetMatchesFamily(a, mode),
     );
-    const tierB = tierA.length
-      ? tierA
-      : assets.filter((a) => productTypeToBucket(a.productType) === bucket && isHealthy(a));
-    const pool = tierB.length ? tierB : assets.filter(isHealthy);
+    const tierKind = assets.filter((a) => inBucket(a) && ofKind(a));
+    const tierBucket = assets.filter(inBucket);
+    const pool = tierIdeal.length
+      ? tierIdeal
+      : tierKind.length
+        ? tierKind
+        : tierBucket.length
+          ? tierBucket
+          : assets.filter(isHealthy);
     if (pool.length === 0) return null;
 
     const asset = pool[int(r, 0, pool.length - 1)];

@@ -19,6 +19,10 @@
   --primary-accent: #1565c0;      /* active nav, links, selected row */
   --primary-tint: #eef5ff;        /* active / selected background */
 
+  /* — Topbar (fixed Kaseya blue — does NOT flip in dark, like the white nav) — */
+  --topbar: #0e67f5;
+  --topbar-foreground: #ffffff;
+
   /* — AI-assist (purple — the ONLY place purple appears) — */
   --ai: #6a1b9a;
   --ai-accent: #ab47bc;
@@ -31,8 +35,8 @@
   --surface: #ffffff;
   --subtle: #f8f9fc;              /* stat bar / muted surface */
   --muted: #f8f9fc;
-  --muted-foreground: #607185;
-  --faint-foreground: #8a9bb0;    /* labels / captions */
+  --muted-foreground: #586a7e;    /* AA on white + severity tints */
+  --faint-foreground: #5f6f84;    /* labels / captions — AA (≥4.5:1 on surfaces) */
   --border: #e2e8f0;              /* hairline */
   --input: #e2e8f0;
   --ring: #0e67f5;
@@ -68,7 +72,7 @@
   --fix-guided: #1565c0;          /* Guided fix (blue) */
   --fix-guided-tint: #eef5ff;
   --fix-guided-foreground: #ffffff;
-  --fix-insights: #e65100;        /* Insights only (orange) */
+  --fix-insights: #c2410c;        /* Insights only (orange) */
   --fix-insights-tint: #fff3e0;
   --fix-insights-foreground: #ffffff;
   --fix-unknown: #9e9e9e;         /* Unknown (gray) */
@@ -79,7 +83,7 @@
   --critical: #c62828;
   --critical-tint: #ffebee;
   --critical-foreground: #ffffff;
-  --warning: #e65100;
+  --warning: #c2410c;
   --warning-tint: #fff3e0;
   --warning-foreground: #ffffff;
   --success: #2e7d32;
@@ -89,26 +93,26 @@
   /* — Asset health states (fleet rollup; dot + icon + label) — */
   --status-protected: #2e7d32;
   --status-protected-tint: #e8f5e9;
-  --status-warning: #e65100;
+  --status-warning: #c2410c;
   --status-warning-tint: #fff3e0;
   --status-failed: #c62828;
   --status-failed-tint: #ffebee;
-  --status-paused: #9e9e9e;
+  --status-paused: #63666e;
   --status-paused-tint: #f1f1f1;
-  --status-syncing: #1976d2;
+  --status-syncing: #1565c0;
   --status-syncing-tint: #e3f2fd;
-  --status-offline: #607185;
+  --status-offline: #586a7e;
   --status-offline-tint: #eef1f5;
 
   /* — Product accents (chips / charts only) — */
   --product-saas: #1976d2;
-  --product-bcdr: #e65100;
+  --product-bcdr: #c2410c;
   --product-endpoint: #2e7d32;
 
   /* — Charts — */
   --chart-1: #0e67f5;             /* primary blue */
   --chart-2: #2e7d32;             /* green */
-  --chart-3: #e65100;             /* orange */
+  --chart-3: #c2410c;             /* orange */
   --chart-4: #6a1b9a;             /* purple */
   --chart-5: #1976d2;             /* product blue */
 
@@ -126,7 +130,7 @@
 .dark {
   /* slate canvas — portal dark is slate, not teal/carbon */
   --primary: #3b82f6;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #0a1322;   /* dark text on the lifted dark-mode blue (AA) */
   --primary-strong: #2563eb;
   --primary-accent: #60a5fa;
   --primary-tint: #16263f;
@@ -142,7 +146,7 @@
   --subtle: #172033;
   --muted: #1e293b;
   --muted-foreground: #94a3b8;
-  --faint-foreground: #64748b;
+  --faint-foreground: #93a2b6;
   --border: #334155;
   --input: #334155;
   --ring: #3b82f6;
@@ -182,7 +186,7 @@
   --fix-unknown-tint: #2a2e35;
   --fix-unknown-foreground: #14161a;
 
-  --critical: #ef5350;
+  --critical: #fb7185;
   --critical-tint: #3b1a1c;
   --critical-foreground: #1a0d0d;
   --warning: #fb8c00;
@@ -196,7 +200,7 @@
   --status-protected-tint: #163020;
   --status-warning: #fb8c00;
   --status-warning-tint: #3a2814;
-  --status-failed: #ef5350;
+  --status-failed: #fb7185;
   --status-failed-tint: #3b1a1c;
   --status-paused: #94a3b8;
   --status-paused-tint: #2a2e35;
@@ -250,6 +254,8 @@
   --color-primary-strong: var(--primary-strong);
   --color-primary-accent: var(--primary-accent);
   --color-primary-tint: var(--primary-tint);
+  --color-topbar: var(--topbar);
+  --color-topbar-foreground: var(--topbar-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

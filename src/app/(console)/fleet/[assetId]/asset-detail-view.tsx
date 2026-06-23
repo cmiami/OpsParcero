@@ -112,7 +112,7 @@ export function AssetDetailView() {
           <TabsContent value="overview">
             <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
               <RemediationPanel asset={asset} issue={issue} />
-              <AssetTimeline failureFocused />
+              <AssetTimeline />
             </div>
           </TabsContent>
 

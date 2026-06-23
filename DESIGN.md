@@ -13,23 +13,23 @@ colors:
   surface: "#FFFFFF"          # cards / panels
   subtle: "#F8F9FC"           # stat bar / muted surface
   ink: "#1A2332"              # primary text
-  muted-fg: "#607185"         # secondary text
-  faint-fg: "#8A9BB0"         # labels / captions
+  muted-fg: "#586A7E"         # secondary text
+  faint-fg: "#5F6F84"         # labels / captions
   border: "#E2E8F0"           # hairline borders
   nav-fg: "#455A64"           # nav item text
   nav-hover: "#F0F4F8"        # nav hover bg
   fix-endtoend: "#2E7D32"     # End-to-end fix (fully automatable)
   fix-guided: "#1565C0"       # Guided fix (We + You steps)
-  fix-insights: "#E65100"     # Insights only (not controllable / external)
+  fix-insights: "#C2410C"     # Insights only (not controllable / external)
   fix-unknown: "#9E9E9E"      # Unknown classification
   critical: "#C62828"         # critical severity
   critical-tint: "#FFEBEE"
-  warning: "#E65100"          # warning severity
+  warning: "#C2410C"          # warning severity
   warning-tint: "#FFF3E0"
   success: "#2E7D32"          # resolved / healthy
   success-tint: "#E8F5E9"
   product-saas: "#1976D2"     # product accent — SaaS
-  product-bcdr: "#E65100"     # product accent — BCDR
+  product-bcdr: "#C2410C"     # product accent — BCDR
   product-endpoint: "#2E7D32" # product accent — Endpoint v2
   dark-bg: "#0F172A"          # dark canvas (slate)
   dark-surface: "#1E293B"     # dark raised surface
@@ -138,8 +138,9 @@ This is the canonical visual reference; tokens are normative, match them exactly
 
 - **Primary — Kaseya blue `#0E67F5`**: topbar, primary/fix buttons, focus. Hover `#0D47A1`. **`#1565C0`** for active nav, links, selected rows; **`#EEF5FF`** as the active/selected tint.
 - **AI-assist — purple `#6A1B9A` / `#AB47BC`** on tint `#F3E5F5`: the *only* place purple appears. Used for AI insight surfaces and the AI button (sparkle glyph). Never mixed silently with deterministic content.
-- **Neutrals:** canvas/surface `#FFFFFF`, subtle surface (stat bar) `#F8F9FC`, ink `#1A2332`, muted text `#607185`, faint labels `#8A9BB0`, hairline border `#E2E8F0`. Nav text `#455A64`, nav hover `#F0F4F8`.
-- **Dark mode:** slate — canvas `#0F172A`, surface `#1E293B`, border `#334155`, ink `#E2E8F0`. (Portal dark is slate, not teal.)
+- **Neutrals:** canvas/surface `#FFFFFF`, subtle surface (stat bar) `#F8F9FC`, ink `#1A2332`, muted text `#586A7E`, faint labels `#5F6F84`, hairline border `#E2E8F0`. Nav text `#455A64`, nav hover `#F0F4F8`.
+- **Dark mode:** slate — canvas `#0F172A`, surface `#1E293B`, border `#334155`, ink `#E2E8F0`. (Portal dark is slate, not teal.) The **topbar uses a fixed `--topbar` (`#0E67F5`) that does NOT flip** (like the white nav), and dark-mode `--primary-foreground` is dark ink (`#0A1322`) so primary buttons stay AA on the lifted dark blue.
+- **WCAG 2.2 AA tuning (verified with axe across every screen, light + dark):** the deep orange (warning / Insights / BCDR accent) is `#C2410C` (not `#E65100`) and faint/muted/paused/offline/syncing text colors are darkened so 10px labels and status-on-tint chips clear 4.5:1. globals.css is the source of truth.
 
 **Fix classification (the load-bearing semantic — see `00-vision` §model):**
 
@@ -147,10 +148,10 @@ This is the canonical visual reference; tokens are normative, match them exactly
 |---|---|---|---|
 | `full` | End-to-end fix | green `#2E7D32` | fully automatable, one-click |
 | `partial` | Guided fix | blue `#1565C0` | some steps automated (We), some manual (You) |
-| `external`/`manual` | Insights only | orange `#E65100` | not controllable (vendor/infra) |
+| `external`/`manual` | Insights only | orange `#C2410C` | not controllable (vendor/infra) |
 | `unknown` | Insights only | gray `#9E9E9E` | root cause unknown |
 
-**Severity & status (never color-only — always dot + icon + label):** Critical `#C62828` on `#FFEBEE`; Warning `#E65100` on `#FFF3E0`; Resolved/healthy `#2E7D32` on `#E8F5E9`. **Product accents** (chips/charts): SaaS `#1976D2`, BCDR `#E65100`, Endpoint v2 `#2E7D32`.
+**Severity & status (never color-only — always dot + icon + label):** Critical `#C62828` on `#FFEBEE`; Warning `#C2410C` on `#FFF3E0`; Resolved/healthy `#2E7D32` on `#E8F5E9`. **Product accents** (chips/charts): SaaS `#1976D2`, BCDR `#C2410C`, Endpoint v2 `#2E7D32`.
 
 ## Typography
 
@@ -158,7 +159,7 @@ Kaseya brand families: **Figtree** (body/UI/tables) + **Plus Jakarta Sans** (dis
 
 - **Body/UI/tables:** Figtree **13px**/400 (dense tables to 12px). Closest fallback: Inter / system-ui.
 - **Headings:** Plus Jakarta Sans — page title 24/700, section 15/700, card title 13/700.
-- **Labels/eyebrows:** 10px/700 uppercase, `letter-spacing 0.07em`, color faint `#8A9BB0` (stat names, table headers, section labels).
+- **Labels/eyebrows:** 10px/700 uppercase, `letter-spacing 0.07em`, color faint `#5F6F84` (stat names, table headers, section labels).
 - **Mono:** IDs, hostnames, error codes, ports, sizes (`ui-monospace, SFMono-Regular, Menlo…`).
 
 Fixed px scale (product UI at consistent DPI), tight ratio. One family for headings, the other for body — never two near-identical sans.

@@ -35,34 +35,38 @@ export function AiInsightCard({ insight, className }: AiInsightCardProps) {
       </div>
 
       <dl className="flex flex-col gap-3">
-        <div className="flex items-start gap-2">
-          <Search aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ai" />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
-              Root cause
-            </dt>
-            <dd className="text-sm text-card-foreground">{insight.rootCause}</dd>
-          </div>
+        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+          <Search
+            aria-hidden
+            className="row-span-2 mt-0.5 size-3.5 shrink-0 text-ai"
+          />
+          <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
+            Root cause
+          </dt>
+          <dd className="min-w-0 text-sm text-card-foreground">
+            {insight.rootCause}
+          </dd>
         </div>
 
-        <div className="flex items-start gap-2">
-          <Lightbulb aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ai" />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
-              Recommendation
-            </dt>
-            <dd className="text-sm text-card-foreground">
-              {insight.recommendation}
-            </dd>
-          </div>
+        <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+          <Lightbulb
+            aria-hidden
+            className="row-span-2 mt-0.5 size-3.5 shrink-0 text-ai"
+          />
+          <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
+            Recommendation
+          </dt>
+          <dd className="min-w-0 text-sm text-card-foreground">
+            {insight.recommendation}
+          </dd>
         </div>
-
-        {insight.classificationRationale && (
-          <p className="text-xs italic text-muted-foreground">
-            {insight.classificationRationale}
-          </p>
-        )}
       </dl>
+
+      {insight.classificationRationale && (
+        <p className="text-xs italic text-muted-foreground">
+          {insight.classificationRationale}
+        </p>
+      )}
     </section>
   );
 }

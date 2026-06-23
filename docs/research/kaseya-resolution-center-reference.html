@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Kaseya — Resolution Center</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#fff;color:#1a2332;display:flex;height:100vh;overflow:hidden;font-size:13px}
+
+/* NAV */
+.nav{width:218px;background:#fff;display:flex;flex-direction:column;flex-shrink:0;height:100vh;overflow-y:auto;border-right:1px solid #e2e8f0}
+.nav-sec{padding:5px 0}
+.nav-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;color:#8A9BB0;padding:10px 14px 3px;text-transform:uppercase}
+.nav-i{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:12.5px;color:#455A64;cursor:pointer;border-left:3px solid transparent;transition:background .11s}
+.nav-i:hover{background:#f0f4f8;color:#1a2332}
+.nav-i.active{background:#EEF5FF;color:#1565C0;border-left-color:#1565C0;font-weight:600}
+.nav-i svg{width:14px;height:14px;flex-shrink:0;stroke:currentColor;stroke-width:1.8;fill:none}
+.nav-recent{padding:2px 14px 8px}
+.nav-rlbl{font-size:9px;font-weight:700;letter-spacing:.1em;color:#8A9BB0;padding:10px 0 5px;text-transform:uppercase}
+.nav-ri{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#455A64;padding:3px 0;cursor:pointer}
+.nav-ri:hover{color:#1a2332}
+.nav-ri-box{width:11px;height:11px;border:1.5px solid #c0ccd8;border-radius:2px;flex-shrink:0}
+
+/* RIGHT */
+.right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#fff}
+
+/* TOPBAR */
+.topbar{background:#0E67F5;height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0}
+.topbar-r{display:flex;align-items:center;gap:7px}
+.tbtn{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.22);color:#fff;padding:5px 12px;border-radius:5px;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .12s;white-space:nowrap}
+.tbtn:hover{background:rgba(255,255,255,.22)}
+.tbtn svg{width:13px;height:13px;stroke:currentColor;stroke-width:2;fill:none}
+.avatar{width:27px;height:27px;border-radius:50%;background:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* STATS BAR */
+.stat-bar{background:#f8f9fc;border-bottom:1px solid #e8ecf3;display:flex;align-items:stretch;flex-shrink:0;overflow-x:auto;min-height:44px;width:100%}
+.stat-item{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 16px;border-right:1px solid #e2e8f0;min-width:0;flex:1}
+.stat-item:last-child{border-right:none}
+.stat-name{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9BB0;margin-bottom:2px;white-space:nowrap}
+.stat-val{font-size:15px;font-weight:800;line-height:1}
+.stat-delta{font-size:9.5px;font-weight:700;margin-top:1px}
+.stat-item.red .stat-val,.stat-item.red .stat-delta{color:#C62828}
+.stat-item.grn .stat-val,.stat-item.grn .stat-delta{color:#2E7D32}
+.stat-item.blu .stat-val,.stat-item.blu .stat-delta{color:#1565C0}
+
+/* CONTENT WRAP */
+.content-wrap{flex:1;display:flex;overflow:hidden;position:relative}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 20px;background:#fff;transition:margin-right .22s}
+
+/* SIDE PANEL — slides in from right, does NOT push content */
+.side-panel{position:absolute;top:0;right:0;bottom:0;width:320px;background:#fff;border-left:1px solid #e2e8f0;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s;z-index:50;box-shadow:-4px 0 16px rgba(0,0,0,.08)}
+.side-panel.open{transform:translateX(0)}
+.sp-header{padding:13px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sp-title{font-size:13px;font-weight:700;color:#1a2332}
+.sp-close{width:24px;height:24px;border-radius:4px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#607185;font-size:14px;line-height:1}
+.sp-close:hover{background:#f4f7fa}
+.sp-body{flex:1;overflow-y:auto;padding:12px 16px}
+.sp-count{font-size:11px;color:#8A9BB0;margin-bottom:10px}
+.sp-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;margin-bottom:4px;border:1px solid #f0f4f8}
+.sp-item-ico{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sp-item-ico svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none}
+.sp-item-name{font-size:12px;font-weight:500;color:#1a2332}
+.sp-item-sub{font-size:10.5px;color:#8A9BB0;margin-top:1px}
+
+/* SUMMARY CARDS */
+.scards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;width:100%}
+.sc{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px;transition:box-shadow .14s}
+.sc:hover{box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.sc-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8A9BB0;margin-bottom:5px}
+.sc-cnt{font-size:32px;font-weight:800;line-height:1;letter-spacing:-.5px;cursor:pointer;display:inline-block}
+.sc-cnt:hover{opacity:.75}
+.sc-sub{font-size:10.5px;color:#8A9BB0;margin-top:4px}
+.sc.red{border-top:3px solid #D32F2F}.sc.red .sc-cnt{color:#C62828}
+.sc.amb{border-top:3px solid #E65100}
+.sc.blu{border-top:3px solid #1565C0}.sc.blu .sc-cnt{color:#1565C0}
+.sc.grn{border-top:3px solid #2E7D32}.sc.grn .sc-cnt{color:#1B5E20}
+
+/* CHARTS */
+.charts-row{margin-bottom:14px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.ccrd{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:12px 14px;min-width:0;overflow:hidden}
+.ccrd-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8A9BB0;margin-bottom:10px}
+.fix-legend{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.fix-leg-item{display:flex;align-items:center;gap:6px;font-size:10px;color:#455A64}
+.fix-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* FILTERS */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.sec-hdr h2{font-size:13px;font-weight:700;color:#1a2332}
+.filter-groups{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filter-group{display:flex;align-items:center;gap:5px}
+.filter-group-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9BB0}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{padding:3px 9px;border-radius:14px;border:1px solid #D1D9E6;font-size:10.5px;cursor:pointer;background:#fff;color:#607185;transition:all .12s;white-space:nowrap}
+.chip:hover{border-color:#90A4AE}
+.chip.on{background:#1565C0;color:#fff;border-color:#1565C0}
+
+/* CATEGORY GROUP */
+.cat-group{background:#fff;border:1px solid #E2E8F0;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.cat-hdr{display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;transition:background .11s;user-select:none}
+.cat-hdr:hover{background:#F8FAFE}
+.cat-hdr.open{background:#EEF5FF;border-bottom:1px solid #D0E2FF}
+.cat-chev{flex-shrink:0;transition:transform .17s;color:#B0BEC5;display:flex;align-items:center}
+.cat-chev svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.5;fill:none}
+.cat-chev.open{transform:rotate(90deg)}
+.cat-ico{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cat-info{flex:1;min-width:0}
+.cat-name{font-size:13px;font-weight:600;color:#1a2332}
+.cat-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cat-badge{padding:2px 9px;border-radius:10px;font-size:10.5px;font-weight:700}
+.crit-badge{background:#FFEBEE;color:#C62828;padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:700}
+.spark{display:flex;align-items:flex-end;gap:2px;height:18px}
+.spark span{width:4px;border-radius:1px 1px 0 0;min-height:2px;background:#D0E2FF}
+
+/* FIX TYPE BADGE */
+.fix-type{display:inline-flex;padding:1px 7px;border-radius:8px;font-size:9px;font-weight:700}
+
+/* ISSUE TABLE */
+.issues-col-hdr{display:grid;grid-template-columns:2fr 0.6fr 70px 50px 1fr;padding:5px 13px 5px 46px;background:#F0F6FF;border-bottom:1px solid #D8E8FF;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8A9BB0;align-items:center}
+.irow{display:grid;grid-template-columns:2fr 0.6fr 70px 50px 1fr;padding:8px 13px 8px 46px;border-bottom:1px solid #F1F5F9;align-items:center;cursor:pointer;transition:background .1s}
+.irow:last-child{border-bottom:none}
+.irow:hover{background:#F8FAFE}
+.irow.exp{background:#EAF2FF;border-bottom:none}
+.in{font-size:12px;font-weight:500;color:#1a2332}
+.id2{font-size:10.5px;color:#9AABB8;margin-top:1px}
+.bdg{display:inline-flex;padding:1px 7px;border-radius:9px;font-size:9.5px;font-weight:700}
+.bdg.cr{background:#FFEBEE;color:#C62828}
+.bdg.wa{background:#FFF3E0;color:#E65100}
+.cnt-btn{font-size:15px;font-weight:800;cursor:pointer;border:none;background:none;padding:0;text-decoration:underline dotted;transition:opacity .12s}
+.cnt-btn:hover{opacity:.7}
+.acell{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.btn-fix{background:#0E67F5;color:#fff;border:none;padding:4px 9px;border-radius:5px;font-size:10.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-weight:600;transition:background .12s;white-space:nowrap}
+.btn-fix:hover{background:#0D47A1}
+.btn-ai{background:#F3E5F5;color:#6A1B9A;border:1px solid #CE93D8;padding:4px 9px;border-radius:5px;font-size:10.5px;cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:600;transition:all .12s;white-space:nowrap}
+.btn-ai:hover{background:#EDD6F5}
+
+/* DETAIL / INSIGHT PANEL */
+.det{padding:13px 13px 13px 46px;border-bottom:1px solid #e2e8f0}
+.det.det-full{background:#EEF5FF;border-left:3px solid #0E67F5}
+.det.det-guided{background:#FAFAFA;border-left:3px solid #FF9800}
+.det.det-insights{background:#F8F0FF;border-left:3px solid #AB47BC}
+.det.det-manual{background:#FFF8F0;border-left:3px solid #E65100}
+.det-problem{font-size:11.5px;font-weight:600;color:#4A148C;margin-bottom:8px;display:flex;align-items:flex-start;gap:7px;line-height:1.5}
+.det-steps-lbl{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#7B1FA2;margin-bottom:6px}
+.det-steps{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.det-step{display:flex;gap:8px;font-size:11.5px;color:#455A64;line-height:1.5;align-items:flex-start;padding:6px 8px;border-radius:6px;margin-bottom:2px}
+.det-step.auto-step{background:#EEF5FF;border:1px solid #BBDEFB}
+.det-step.auto-step .sn{background:#0E67F5;flex-shrink:0}
+.det-step.manual-step{background:#FFF3E0;border:1px solid #FFCC80}
+.det-step.manual-step .sn{background:#E65100;flex-shrink:0}
+.det-step.manual-step{color:#3E2723}
+.det-step.plain-step{background:#F8F9FC;border:1px solid #e2e8f0}
+.det-step.plain-step .sn{background:#607185;flex-shrink:0}
+.steps-divider{display:flex;align-items:center;gap:8px;margin:10px 0 6px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.steps-divider-line{flex:1;height:1px}
+.steps-we-divider .steps-divider-line{background:#BBDEFB}
+.steps-you-divider .steps-divider-line{background:#FFCC80}
+.steps-you-lbl{color:#E65100;white-space:nowrap;display:flex;align-items:center;gap:4px;padding:3px 8px;background:#FFF3E0;border:1px solid #FFCC80;border-radius:10px}
+.steps-we-lbl{color:#0E67F5;white-space:nowrap;display:flex;align-items:center;gap:4px;padding:3px 8px;background:#EEF5FF;border:1px solid #BBDEFB;border-radius:10px}
+.guided-summary{display:flex;gap:8px;margin-bottom:10px;padding:8px 10px;background:#F8F9FC;border-radius:6px;border:1px solid #e2e8f0;font-size:11px}
+.guided-sum-block{display:flex;align-items:center;gap:5px}
+.guided-sum-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sn{width:17px;height:17px;border-radius:50%;background:#AB47BC;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.always-btn{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #90CAF9;color:#1565C0;padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;transition:all .12s}
+.always-btn:hover{background:#E3F2FD}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,20,55,.5);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal{background:#fff;border-radius:10px;padding:22px 24px;width:440px;max-width:94vw;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal h3{font-size:14.5px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:7px;color:#1a2332}
+.modal p{font-size:12px;color:#607185;line-height:1.65;margin-bottom:16px;white-space:pre-line}
+.modal-acts{display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}
+.mb{padding:6px 15px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;transition:all .12s}
+.mb.pri{background:#0E67F5;color:#fff;border:none}.mb.pri:hover{background:#0D47A1}
+.mb.sec{background:#fff;color:#607185;border:1px solid #D1D9E6}
+.mb.once{background:#fff;color:#1565C0;border:1px solid #90CAF9}.mb.once:hover{background:#E3F2FD}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1B5E20;color:#fff;padding:8px 17px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:6px;z-index:300;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.toast svg{width:13px;height:13px;stroke:#fff;stroke-width:2.5;fill:none}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div style="padding:14px 14px 10px;border-bottom:1px solid #e2e8f0">
+    <div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:#8A9BB0;text-transform:uppercase;margin-bottom:8px">Tenant</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:28px;height:28px;border-radius:50%;background:#7C3AED;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">K</div>
+      <div><div style="font-size:12px;font-weight:600;color:#1a2332">Kaseya Solutions</div><div style="font-size:10.5px;color:#8A9BB0">Administrator</div></div>
+    </div>
+  </div>
+  <div class="nav-sec">
+    <div class="nav-lbl">Views</div>
+    <div class="nav-i"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</div>
+    <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>Organizations</div>
+    <div class="nav-i"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Assets</div>
+    <div class="nav-i active"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Resolution Center</div>
+  </div>
+  <div class="nav-sec">
+    <div class="nav-lbl">Reports</div>
+    <div class="nav-i"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Analytics</div>
+    <div class="nav-i"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>Alerts</div>
+    <div class="nav-i"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</div>
+  </div>
+  <div class="nav-recent">
+    <div class="nav-rlbl">Recent Organizations</div>
+    <div class="nav-ri"><div class="nav-ri-box"></div>Spanning Demo Company</div>
+    <div class="nav-ri"><div class="nav-ri-box"></div>Back The Rack Up</div>
+    <div class="nav-ri"><div class="nav-ri-box"></div>Norwalk FIPS</div>
+    <div class="nav-ri"><div class="nav-ri-box"></div>BAC</div>
+  </div>
+</nav>
+
+<!-- RIGHT -->
+<div class="right">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:0">
+      <div style="display:flex;align-items:center;gap:10px;padding-right:20px;margin-right:20px;border-right:1px solid rgba(255,255,255,.2)">
+        <div style="width:34px;height:34px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8"><polygon points="10,2 18,10 10,18 2,10"/><circle cx="10" cy="10" r="2" fill="#fff" stroke="none"/></svg>
+        </div>
+        <div><div style="font-size:14px;font-weight:700;color:#fff;line-height:1.2">Kaseya</div><div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:1px">Cyber Resilience</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;color:#fff">
+        <svg style="width:16px;height:16px;stroke:#fff;stroke-width:2;fill:none;opacity:.85" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Resolution Center
+      </div>
+    </div>
+    <div class="topbar-r">
+      <button class="tbtn" onclick="runScan()"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>Scan now</button>
+      <button class="tbtn" onclick="autoResolveAll()"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>End-to-end fix all</button>
+      <button class="tbtn" style="padding:5px 9px"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></button>
+      <div class="avatar">A</div>
+    </div>
+  </div>
+
+  <!-- STATS BAR -->
+  <div class="stat-bar" id="statbar"></div>
+
+  <div class="content-wrap">
+    <div class="content">
+
+      <!-- SUMMARY CARDS -->
+      <div class="scards">
+        <div class="sc amb" style="cursor:default">
+          <div class="sc-lbl">Top problem of the day</div>
+          <div style="font-size:13px;font-weight:700;color:#C62828;margin:4px 0 2px;line-height:1.3">M365 backup throttling</div>
+          <div class="sc-sub">128 instances &middot; SaaS &middot; Auto-fixable</div>
+        </div>
+        <div class="sc" style="border-top:3px solid #1a2332">
+          <div class="sc-lbl">Open issues</div>
+          <div class="sc-cnt" id="sc-open-card" onclick="openPanel('all')" style="color:#1a2332;cursor:pointer">0</div>
+          <div class="sc-sub">across all products</div>
+        </div>
+        <div class="sc red">
+          <div class="sc-lbl">Critical issues</div>
+          <div class="sc-cnt" id="sc-crit" onclick="openPanel('critical')">0</div>
+          <div class="sc-sub">↑ 14 since yesterday</div>
+        </div>
+        <div class="sc blu">
+          <div class="sc-lbl">End-to-end fixable</div>
+          <div class="sc-cnt" id="sc-auto" onclick="openEndToEndModal()" style="cursor:pointer">0</div>
+          <div class="sc-sub" id="sc-auto-sub">issues we can fully automate</div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div class="charts-row">
+
+        <!-- Row 1: Trend line with side legend -->
+        <div class="ccrd" style="padding:10px 14px">
+          <div style="display:flex;align-items:stretch;gap:14px">
+            <div style="flex:1;min-width:0">
+              <div class="ccrd-t" style="margin-bottom:6px">Issue trend — last 14 days</div>
+              <div style="position:relative;height:90px"><canvas id="trendChart"></canvas></div>
+            </div>
+            <div style="display:flex;flex-direction:column;justify-content:center;gap:10px;flex-shrink:0;padding-left:10px;border-left:1px solid #f0f4f8">
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px">
+                <div style="width:20px;height:2px;background:#0E67F5;border-radius:2px;flex-shrink:0"></div>
+                <span style="color:#455A64">Open issues</span>
+                <span style="margin-left:4px;font-weight:800;color:#0E67F5;font-size:14px">468</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;font-size:11px">
+                <div style="width:20px;height:2px;background:#2E7D32;border-radius:2px;flex-shrink:0;border-top:2px dashed #2E7D32;height:0"></div>
+                <span style="color:#455A64">Resolved</span>
+                <span style="margin-left:4px;font-weight:800;color:#2E7D32;font-size:14px">155</span>
+              </div>
+              <div style="margin-top:4px;padding-top:8px;border-top:1px solid #f0f4f8">
+                <div style="font-size:9.5px;color:#8A9BB0;margin-bottom:3px">Peak open</div>
+                <div style="font-size:13px;font-weight:800;color:#C62828">500</div>
+                <div style="font-size:9.5px;color:#8A9BB0;margin-top:4px;margin-bottom:3px">Avg resolved/day</div>
+                <div style="font-size:13px;font-weight:800;color:#2E7D32">11</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Three charts side by side -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;min-width:0">
+
+          <!-- By product -->
+          <div class="ccrd">
+            <div class="ccrd-t">By product</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="position:relative;width:80px;height:80px;flex-shrink:0"><canvas id="prodDonut"></canvas></div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;flex:1">
+                <div style="display:flex;align-items:center;gap:6px;color:#455A64"><span style="width:9px;height:9px;border-radius:50%;background:#1976D2;display:inline-block;flex-shrink:0"></span>SaaS<span style="margin-left:auto;font-weight:800;color:#1a2332" id="prod-saas">214</span></div>
+                <div style="display:flex;align-items:center;gap:6px;color:#455A64"><span style="width:9px;height:9px;border-radius:50%;background:#E65100;display:inline-block;flex-shrink:0"></span>BCDR<span style="margin-left:auto;font-weight:800;color:#1a2332" id="prod-bcdr">183</span></div>
+                <div style="display:flex;align-items:center;gap:6px;color:#455A64"><span style="width:9px;height:9px;border-radius:50%;background:#2E7D32;display:inline-block;flex-shrink:0"></span>Endpoint<span style="margin-left:auto;font-weight:800;color:#1a2332" id="prod-ep">71</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- By category -->
+          <div class="ccrd">
+            <div class="ccrd-t">By category</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="position:relative;width:80px;height:80px;flex-shrink:0"><canvas id="catPie"></canvas></div>
+              <div id="pie-leg" style="display:flex;flex-direction:column;gap:4px;font-size:10px;flex:1"></div>
+            </div>
+          </div>
+
+          <!-- Fix classification -->
+          <div class="ccrd">
+            <div class="ccrd-t">Fix classification</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="position:relative;width:80px;height:80px;flex-shrink:0"><canvas id="fixTypeChart"></canvas></div>
+              <div class="fix-legend" style="margin-top:0;flex:1">
+                <div class="fix-leg-item"><div class="fix-dot" style="background:#2E7D32"></div>End-to-end<span style="margin-left:auto;font-weight:700">189</span></div>
+                <div class="fix-leg-item"><div class="fix-dot" style="background:#1565C0"></div>Guided fix<span style="margin-left:auto;font-weight:700">142</span></div>
+                <div class="fix-leg-item"><div class="fix-dot" style="background:#E65100"></div>Not controllable<span style="margin-left:auto;font-weight:700">87</span></div>
+                <div class="fix-leg-item"><div class="fix-dot" style="background:#9E9E9E"></div>Unknown<span style="margin-left:auto;font-weight:700">50</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- OPEN ISSUES + FILTERS -->
+      <div class="sec-hdr">
+        <h2>Open issues &mdash; <span id="open-count">0</span></h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="drop-product" onchange="setDropFilter()" style="padding:5px 10px;border:1px solid #D1D9E6;border-radius:6px;font-size:11.5px;color:#455A64;background:#fff;cursor:pointer;outline:none">
+            <option value="all">All products</option>
+            <option value="saas">SaaS</option>
+            <option value="bcdr">BCDR</option>
+            <option value="ep">Endpoint v2</option>
+          </select>
+          <select id="drop-sev" onchange="setDropFilter()" style="padding:5px 10px;border:1px solid #D1D9E6;border-radius:6px;font-size:11.5px;color:#455A64;background:#fff;cursor:pointer;outline:none">
+            <option value="all">All severities</option>
+            <option value="critical">Critical only</option>
+            <option value="warning">Warning only</option>
+          </select>
+          <select id="drop-action" onchange="setDropFilter()" style="padding:5px 10px;border:1px solid #D1D9E6;border-radius:6px;font-size:11.5px;color:#455A64;background:#fff;cursor:pointer;outline:none">
+            <option value="all">All action types</option>
+            <option value="auto">End-to-end fix</option>
+            <option value="guided">Guided fix</option>
+            <option value="insights">Insights only</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="groups"></div>
+    </div>
+
+    <!-- SIDE PANEL — overlay, not permanent -->
+    <div class="side-panel" id="sidePanel">
+      <div class="sp-header">
+        <div class="sp-title" id="sp-title">Impacted assets</div>
+        <button class="sp-close" onclick="closePanel()">✕</button>
+      </div>
+      <div class="sp-body" id="sp-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Fix Modal -->
+<div class="overlay" id="bulk-overlay" style="display:none" onclick="if(event.target===this)closeBulkModal()">
+  <div class="modal" style="width:500px;max-height:80vh;display:flex;flex-direction:column">
+    <h3 style="margin-bottom:4px;flex-shrink:0">
+      <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:#0E67F5;stroke-width:2;fill:none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span id="bulk-title">End-to-end fix</span>
+    </h3>
+    <p style="font-size:12px;color:#607185;margin-bottom:12px;flex-shrink:0">The following issues in this category can be fully automated. Review and approve below.</p>
+    <div id="bulk-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:14px;padding-right:2px"></div>
+    <div style="background:#EEF5FF;border:1px solid #BBDEFB;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11.5px;color:#1565C0;flex-shrink:0">
+      <strong>What happens next:</strong> All selected issues will be automatically resolved using their configured fix actions. You can set any issue to always auto-fix so you never need to approve again.
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center;flex-shrink:0">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#607185;cursor:pointer">
+        <input type="checkbox" id="bulk-always" style="cursor:pointer"> Always fix this category automatically
+      </label>
+      <div style="display:flex;gap:7px">
+        <button class="mb sec" onclick="closeBulkModal()">Cancel</button>
+        <button class="mb pri" id="bulk-confirm-btn">
+          <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;stroke-width:2;fill:none;display:inline;vertical-align:middle;margin-right:4px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Fix all selected
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- End-to-end fix approval modal -->
+<div class="overlay" id="e2e-overlay" style="display:none" onclick="if(event.target===this)closeE2EModal()">
+  <div class="modal" style="width:520px;max-height:85vh;display:flex;flex-direction:column">
+    <h3 style="margin-bottom:4px;flex-shrink:0">
+      <svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:#0E67F5;stroke-width:2;fill:none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      End-to-end fix — approve all
+    </h3>
+    <p style="font-size:12px;color:#607185;margin-bottom:14px;flex-shrink:0">The following issues can be fully resolved automatically. Review and approve to apply fixes across all affected assets.</p>
+    <div id="e2e-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;padding-right:2px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;border-top:1px solid #e2e8f0;padding-top:14px">
+      <button class="mb sec" onclick="closeE2EModal()">Cancel</button>
+      <button class="mb once" onclick="approveE2E('once')">Fix all once</button>
+      <button class="mb pri" onclick="approveE2E('always')">Always fix these types</button>
+    </div>
+  </div>
+</div>
+
+<!-- Outage Modal -->
+<div class="overlay" id="outage-overlay" style="display:none" onclick="if(event.target===this)closeOutageModal()">
+  <div class="modal" style="width:480px">
+    <h3 style="color:#C62828">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:#C62828;stroke-width:2;fill:none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Active Service Outage
+    </h3>
+    <div style="background:#FFF5F5;border:1px solid #FFCDD2;border-radius:8px;padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#C62828;flex-shrink:0;animation:pulse 1.5s infinite"></div>
+        <div style="font-size:13px;font-weight:700;color:#C62828">Data Center East-1 — Partial Outage</div>
+      </div>
+      <div style="font-size:12px;color:#607185;line-height:1.6;margin-bottom:8px">Kaseya's East-1 data center is experiencing a partial network disruption affecting backup connectivity for assets in the US-East region. SaaS backup jobs and BCDR offsite sync may be delayed or failing.</div>
+      <div style="display:flex;gap:16px;font-size:11px">
+        <div><span style="color:#8A9BB0">Status:</span> <span style="font-weight:700;color:#C62828">Investigating</span></div>
+        <div><span style="color:#8A9BB0">Started:</span> <span style="font-weight:600;color:#1a2332">Today, 09:14 AM</span></div>
+        <div><span style="color:#8A9BB0">Duration:</span> <span style="font-weight:600;color:#1a2332">~2h 20m</span></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9BB0;margin-bottom:8px">Are you impacted?</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#FFF5F5;border:1px solid #FFCDD2;border-radius:6px">
+          <svg style="width:14px;height:14px;stroke:#C62828;stroke-width:2;fill:none;flex-shrink:0" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <div style="flex:1"><div style="font-size:12px;font-weight:500;color:#1a2332">3 SaaS backup jobs failing</div><div style="font-size:10.5px;color:#8A9BB0">autotestuser, autoassign, ellie.wisel</div></div>
+          <span style="background:#FFEBEE;color:#C62828;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px">Impacted</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#FFF5F5;border:1px solid #FFCDD2;border-radius:6px">
+          <svg style="width:14px;height:14px;stroke:#C62828;stroke-width:2;fill:none;flex-shrink:0" viewBox="0 0 24 24"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+          <div style="flex:1"><div style="font-size:12px;font-weight:500;color:#1a2332">2 BCDR offsite syncs delayed</div><div style="font-size:10.5px;color:#8A9BB0">btru-erp2, NOR-FIPS-FS</div></div>
+          <span style="background:#FFEBEE;color:#C62828;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px">Impacted</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F1F8F2;border:1px solid #C8E6C9;border-radius:6px">
+          <svg style="width:14px;height:14px;stroke:#2E7D32;stroke-width:2;fill:none;flex-shrink:0" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <div style="flex:1"><div style="font-size:12px;font-weight:500;color:#1a2332">Endpoint Backup v2</div><div style="font-size:10.5px;color:#8A9BB0">All endpoint backups running normally</div></div>
+          <span style="background:#E8F5E9;color:#2E7D32;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px">Not affected</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#8A9BB0;margin-bottom:14px">Kaseya engineers are actively investigating. Affected backup jobs will be automatically retried once connectivity is restored. No data loss is expected.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <a href="#" style="font-size:11.5px;color:#0E67F5;text-decoration:none;font-weight:500" onclick="closeOutageModal();return false">View Kaseya status page →</a>
+      <button class="mb sec" onclick="closeOutageModal()">Close</button>
+    </div>
+  </div>
+</div>
+<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}</style>
+
+<!-- Modal -->
+<div class="overlay" id="overlay" style="display:none">
+  <div class="modal" style="width:460px">
+    <h3 style="margin-bottom:12px"><svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:#0E67F5;stroke-width:2;fill:none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span id="m-title">Auto-resolve</span></h3>
+    <!-- What will happen summary -->
+    <div id="m-summary" style="background:#EEF5FF;border:1px solid #BBDEFB;border-radius:8px;padding:12px 14px;margin-bottom:14px;display:none">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#1565C0;margin-bottom:8px">What will happen</div>
+      <div id="m-steps-list" style="display:flex;flex-direction:column;gap:5px"></div>
+    </div>
+    <p id="m-body" style="margin-bottom:14px"></p>
+    <div class="modal-acts">
+      <button class="mb sec" onclick="closeModal()">Cancel</button>
+      <button class="mb once" id="m-once">Fix this once</button>
+      <button class="mb pri" id="m-always">Always fix this type</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><span id="tmsg"></span></div>
+
+<script>
+// ── SPARKLES ──────────────────────────────────────────────────────────
+const SPK = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.5L13.5 9L20 10.5L13.5 12L12 18.5L10.5 12L4 10.5L10.5 9Z"/><path d="M19 2L19.8 4.8L22.5 5.5L19.8 6.2L19 9L18.2 6.2L15.5 5.5L18.2 4.8Z"/><path d="M5 16L5.6 18L7.5 18.5L5.6 19L5 21L4.4 19L2.5 18.5L4.4 18Z"/></svg>`;
+const SPK_P = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#AB47BC"><path d="M12 2.5L13.5 9L20 10.5L13.5 12L12 18.5L10.5 12L4 10.5L10.5 9Z"/><path d="M19 2L19.8 4.8L22.5 5.5L19.8 6.2L19 9L18.2 6.2L15.5 5.5L18.2 4.8Z"/><path d="M5 16L5.6 18L7.5 18.5L5.6 19L5 21L4.4 19L2.5 18.5L4.4 18Z"/></svg>`;
+
+// ── STATS BAR ─────────────────────────────────────────────────────────
+(()=>{
+  const b=document.getElementById('statbar');
+  // Group 1: Resolved totals
+  b.innerHTML+=`
+    <div class="stat-item grn" style="border-right:2px solid #c8e6c9;flex:1.2">
+      <div class="stat-name">Resolved today</div>
+      <div class="stat-val">106 <span style="font-size:11px">▲</span></div>
+      <div class="stat-delta">↑23 vs yesterday</div>
+    </div>
+    <div class="stat-item grn" style="border-right:2px solid #c8e6c9;flex:1.2">
+      <div class="stat-name">Resolved this month</div>
+      <div class="stat-val">1,204 <span style="font-size:11px">▲</span></div>
+      <div class="stat-delta">↑18% vs last month</div>
+    </div>`;
+  // Group 2: Per-product breakdown with arrows
+  const products=[
+    {name:'SaaS',today:47,todayDir:'▲',todayClr:'#2E7D32'},
+    {name:'BCDR',today:38,todayDir:'▼',todayClr:'#C62828'},
+    {name:'Endpoint',today:21,todayDir:'▲',todayClr:'#2E7D32'},
+  ];
+  products.forEach((p,i)=>{
+    const sep = i<products.length-1 ? 'border-right:1px solid #e2e8f0;flex:1' : 'border-right:2px solid #c8e6c9;flex:1';
+    b.innerHTML+=`<div class="stat-item" style="${sep}">
+      <div class="stat-name" style="color:#1565C0;font-weight:700">${p.name}</div>
+      <div style="font-size:16px;font-weight:800;color:${p.todayClr};line-height:1;margin-top:3px">${p.todayDir} ${p.today}</div>
+      <div style="font-size:8.5px;color:#8A9BB0;margin-top:2px">resolved today</div>
+    </div>`;
+  });
+  // Outage item
+  b.innerHTML+=`<div class="stat-item" id="outage-item" onclick="openOutageModal()" style="cursor:pointer;border-left:3px solid #C62828;background:#fff8f8;flex:0 0 auto;min-width:130px;border-right:none">
+    <div class="stat-name" style="color:#C62828">⚠ Active outage</div>
+    <div class="stat-val" style="color:#C62828;font-size:13px">1 impacting you</div>
+    <div class="stat-delta" style="color:#C62828">click to view</div>
+  </div>`;
+})();
+
+// ── DATA ──────────────────────────────────────────────────────────────
+// fixType: full | partial | external | unknown
+const CATS=[
+ {id:'backup-fail',name:'Backup failures',color:'#C62828',bg:'#FFEBEE',
+  trend:[42,55,48,62,58,70,64,78,72,80,85,76,82,92],
+  issues:[
+   {id:1,name:'M365 Exchange backup incomplete — items skipped',detail:'API throttling · Spanning Demo Co.',product:'SaaS',sev:'wa',auto:true,count:128,fixType:'partial',stepsAuto:2,
+    fix:'Retry incremental backup job',
+    problem:'Microsoft 365 API rate-limiting is throttling Spanning\'s backup requests, causing items to be skipped during the backup window. This typically happens during peak business hours when API quotas are consumed by other M365 services.',
+    steps:['Check M365 Service Health dashboard (admin.microsoft.com) for active throttling or degradation notices','Verify the Spanning service account has full mailbox access and impersonation rights in Exchange Admin Center','Navigate to Spanning Dashboard → select the affected user → click Backup Now to trigger an on-demand backup','Monitor the job completion % — it should reach 100%. If throttling persists, open Spanning Admin → Settings and shift the scheduled backup window to 1–3 AM','Review the next backup report to confirm all items were captured'],
+    ai:'M365 API throttling during peak business hours is the root cause. Shifting the Spanning backup window to off-peak hours (1–3 AM) reduces throttling by ~85% for this tenant size. This fix type is guided — Microsoft controls the API limits, but you can mitigate by adjusting the schedule.',
+    assets:[{name:'autopurchase@spanning.com',type:'mail'},{name:'autoassign@spanning.com',type:'mail'},{name:'ellie.wisel@spanning.com',type:'mail'},{name:'axel.resnik@spanning.com',type:'mail'},{name:'ian.malcolm@spanning.com',type:'mail'}]},
+   {id:2,name:'Endpoint agent not sending backups — missed windows',detail:'Service crash · multiple endpoints',product:'Endpoint v2',sev:'cr',auto:true,count:83,fixType:'full',
+    fix:'Restart endpoint backup agent service',
+    problem:'The Kaseya Endpoint Backup agent service has crashed on multiple endpoints, causing all backup jobs to be silently missed. The service crash is correlated with low disk space events on the system drive.',
+    steps:['On each affected endpoint, open Services (services.msc) and locate "Kaseya Endpoint Backup"','If the service is stopped, right-click → Start. If it fails to start, proceed to next step','Check available disk space on C:\\ — if under 5 GB, run Disk Cleanup or clear temp files','Confirm the agent version is ≥ 9.5.0.14 in VSA → Managed Endpoints — upgrade if needed','Trigger a manual backup from the Endpoint Backup v2 portal to verify connectivity','Set a low-disk-space alert in VSA to prevent recurrence (threshold: 10 GB)'],
+    ai:'Agent crashes on these endpoints consistently correlate with low disk space events. A pre-backup disk cleanup script resolves 70% of recurring agent failures. This is a full end-to-end auto-fix — we can restart the service and trigger a backup automatically.',
+    assets:[{name:'btru-fs1',type:'pc'},{name:'btru-erp1',type:'pc'},{name:'btru-hv2022',type:'pc'},{name:'NOR-FIPS-APP',type:'pc'},{name:'btru-dwp2',type:'pc'}]},
+   {id:3,name:'Backup job failed — VSS snapshot error',detail:'3 consecutive failures · btru-dwp2',product:'BCDR',sev:'cr',auto:true,count:47,fixType:'full',
+    fix:'Run diff-merge + retry backup',
+    problem:'Windows Volume Shadow Copy Service (VSS) is failing to create a consistent snapshot on btru-dwp2. This is likely caused by a recent Windows Update that changed partition layout or VSS writer state.',
+    steps:['Run a differential merge on the device: BCDR device panel → Select Device → Force Diff Merge','Once diff-merge completes (5–20 min), restart the VSS service on the endpoint: run net stop vss then net start vss','Retry the backup job manually from the BCDR device panel','Monitor the next screenshot verification — it should pass after a clean backup','If VSS errors persist, check VSS writer status on the endpoint: run vssadmin list writers and look for failed writers'],
+    ai:'VSS snapshot failures on this agent follow Windows Update cycles in 78% of cases. A scheduled diff-merge after each Patch Tuesday window prevents recurrence. This is a full end-to-end auto-fix.',
+    assets:[{name:'btru-dwp2',type:'pc'},{name:'btru-dr-ubt',type:'pc'},{name:'NOR-FIPS-FS',type:'pc'}]},
+   {id:4,name:'Google Drive backup stalled — long-running job',detail:'Backend delay · Spanning Demo Co.',product:'SaaS',sev:'wa',auto:true,count:34,fixType:'external',
+    fix:'Force on-demand re-backup',
+    problem:'Google Drive backup jobs are stalling mid-run for users in this tenant. The root cause is a known intermittent issue with Spanning\'s US-region backend that causes long-running jobs to hang rather than fail cleanly.',
+    steps:['Navigate to Spanning Admin → Users and filter by "Backup Stalled" status','For each stalled user, click the user name → Actions → Backup Now','Monitor the new job in the activity log — it should complete within 30 minutes','If stalling recurs on the next scheduled run, open a Spanning support ticket referencing the US-region backend delay','Spanning\'s upcoming release includes a fix for this — check the Spanning status page for the release ETA'],
+    ai:"This is classified as 'Not controllable' — Spanning's backend infrastructure is the root cause. The workaround (forcing on-demand backup) resolves the symptom, but the permanent fix requires a Spanning platform update.",
+    assets:[{name:'autotestuser@spanning.com',type:'mail'},{name:'autoassign@spanning.com',type:'mail'},{name:'axel.resnik@spanning.com',type:'mail'}]},
+   {id:5,name:'Salesforce backup job timed out',detail:'Large org · sf-org-prod',product:'SaaS',sev:'wa',auto:false,count:12,fixType:'partial',stepsAuto:2,
+    problem:'The Salesforce backup is timing out before completion because the sf-org-prod organization has grown beyond 50GB, exceeding Spanning\'s default backup timeout threshold.',
+    steps:['Log into Salesforce Setup → System Overview and verify current data storage usage','Check current API limits — if at 80%+, coordinate with the Salesforce admin to reduce API consumption during backup window','Contact Spanning Support and request an extended backup timeout for this org (reference org ID and size)','Once timeout is extended, trigger an on-demand backup from Spanning Admin → Salesforce','Monitor the backup to completion and set up a storage growth alert in Salesforce'],
+    ai:'Salesforce orgs over 50GB consistently hit default timeout thresholds. This is a guided fix — Spanning support must adjust the timeout on their backend. Request this proactively when org size approaches 40GB.',
+    assets:[{name:'sf-org-prod',type:'cloud'}]},
+   {id:6,name:'Backup driver file corrupt — Driver.dll missing',detail:'Agent path error · NOR-FIPS-APP',product:'Endpoint v2',sev:'cr',auto:false,count:3,fixType:'unknown',
+    problem:'The Kaseya Endpoint Backup agent on NOR-FIPS-APP cannot load because Driver.dll is missing or corrupt from the agent installation directory. The cause is unknown — possible antivirus quarantine or failed update.',
+    steps:['Check antivirus quarantine logs on NOR-FIPS-APP for any Kaseya files quarantined in the past 48 hours','Navigate to C:\\Program Files (x86)\\Kaseya\\[agent folder] and confirm Driver.dll is missing','Rename any corrupt Driver.dll to Driver.OLD.dll as a backup','Copy a clean Driver.dll from a healthy agent running the same OS version and Kaseya version','Verify the agent service account has Local Admin + Backup Operators group membership','Start the Kaseya Endpoint Backup service and run a test backup'],
+    ai:'Unknown root cause — could be AV quarantine, partial upgrade, or file system corruption. Check AV logs first as this resolves 60% of Driver.dll missing cases.',
+    assets:[{name:'NOR-FIPS-APP',type:'pc'}]},
+  ]},
+ {id:'verify-fail',name:'Verification failures',color:'#E65100',bg:'#FFF3E0',
+  trend:[18,22,19,28,24,30,26,32,28,35,38,33,36,40],
+  issues:[
+   {id:7,name:'Screenshot verification failed — BOOTMGR missing',detail:'Filesystem corruption · btru-dr-ubt',product:'BCDR',sev:'cr',auto:true,count:29,fixType:'full',
+    fix:'Run diff-merge & force screenshot re-test',
+    problem:'Screenshot verification is failing because the virtual boot environment cannot find BOOTMGR — the Windows boot manager. This typically happens after OS patches change the partition layout, breaking the backup\'s boot configuration.',
+    steps:['In Configure Agent Settings for btru-dr-ubt, confirm the boot/system volume is included in backup scope','Change the storage controller type to SATA (under Configure Agent Settings → Virtualization)','Force a new backup with the updated settings and wait for completion','Re-run screenshot verification from the BCDR device panel','If BOOTMGR is still missing, check if a recent Windows Update changed the EFI partition — a diff-merge will capture the updated layout'],
+    ai:'BOOTMGR errors after OS patches resolve in 87% of cases with a diff-merge + SATA controller change. This is a full end-to-end auto-fix.',
+    assets:[{name:'btru-dr-ubt',type:'pc'},{name:'btru-erp1',type:'pc'}]},
+   {id:8,name:'Screenshot verification — blue screen stop 0x7B',detail:'Inaccessible boot device · btru-erp1',product:'BCDR',sev:'cr',auto:true,count:11,fixType:'full',
+    fix:'Change storage controller and retry virtualization',
+    problem:'The backup\'s virtual boot environment is blue-screening with stop code 0x7B (INACCESSIBLE_BOOT_DEVICE). This means the virtual machine cannot access its boot disk, almost always due to a storage controller mismatch.',
+    steps:['Open Configure Agent Settings for btru-erp1 in the BCDR device panel','Navigate to the Virtualization tab and change the storage controller to SATA for Windows Vista+ (or IDE for older Windows)','Save the settings and trigger a new screenshot verification','If Group Policy is preventing device installation, temporarily disable the relevant GPO and retry','Verify the screenshot shows a successful Windows desktop — the stop 0x7B should be resolved'],
+    ai:'Stop 0x7B is caused by storage controller mismatches in 92% of cases — changing to SATA resolves it. Full end-to-end auto-fix available.',
+    assets:[{name:'btru-erp1',type:'pc'},{name:'btru-hv2022',type:'pc'}]},
+   {id:9,name:'Screenshot verification — device not ready (SCSI error)',detail:'Boot timeout · NOR-FIPS-FS',product:'BCDR',sev:'wa',auto:true,count:8,fixType:'partial',stepsAuto:2,
+    fix:'Retry virtualization with extended boot timeout',
+    problem:'The virtual machine during screenshot verification is reporting a SCSI device not ready error during boot, causing the verification to time out before the OS loads.',
+    steps:['Create a local virtualization in SIRIS for NOR-FIPS-FS to observe the full verbose boot error','Allow the virtualization additional boot time (5–10 minutes) before concluding it has failed','If the error persists, change the storage controller type in Configure Agent Settings','After the next successful backup, re-run screenshot verification to confirm the fix'],
+    ai:'SCSI not-ready errors during verification are intermittent storage controller timing issues. The guided fix resolves ~75% of cases — the remainder require hardware-level investigation.',
+    assets:[{name:'NOR-FIPS-FS',type:'pc'}]},
+   {id:10,name:'Verification failure — Active Directory BSOD',detail:'NTDS writer issue · domain controller',product:'BCDR',sev:'wa',auto:false,count:5,fixType:'unknown',
+    problem:'The domain controller backup is blue-screening during screenshot verification. This is caused by the Active Directory NTDS VSS writer being included in the backup scope, which requires special DSRM date handling during virtualization.',
+    steps:['In Configure Agent Settings → VSS Writer Exclusion, confirm the NTDS writer is NOT excluded (it should be included)','Check VSS writer state on the server: run vssadmin list writers and confirm NTDS shows as Stable','For the 2e2 error during offsite virtualization, boot the virtual machine into DSRM (Directory Services Restore Mode)','Change the system date inside DSRM to match the exact date and time of the backup restore point being tested','Reboot out of DSRM — AD should now boot successfully and the screenshot should pass'],
+    ai:'AD BSOD during verification is a DSRM date mismatch in ~95% of cases. The cause is complex — classified as unknown until confirmed. This requires manual intervention.',
+    assets:[{name:'dc01.norwalkfips.local',type:'pc'},{name:'dc02.norwalkfips.local',type:'pc'}]},
+  ]},
+ {id:'auth-token',name:'Auth & token errors',color:'#6A1B9A',bg:'#F3E5F5',
+  trend:[5,7,6,9,8,10,9,12,10,13,12,14,13,15],
+  issues:[
+   {id:14,name:'Google Drive — OAuth token expired',detail:'Re-authorization required · multiple users',product:'SaaS',sev:'cr',auto:true,count:61,fixType:'partial',stepsAuto:2,
+    fix:'Re-authorize OAuth token for affected users',
+    problem:'OAuth access tokens for multiple Google Drive users have expired. Spanning holds OAuth tokens that grant backup access — these expire after 90 days of inactivity or when a user changes their Google password. Without a valid token, backups silently stop.',
+    steps:['Navigate to Spanning Admin → Manage Users and filter by "Auth Error" status','For each affected user, click Re-authorize — a unique OAuth consent link will be generated','Share the link with each user (or complete it as an admin if you have delegated access)','Each user must open the link and click Allow to grant Spanning full Drive access','Return to Spanning Admin and verify the Auth Status changes to green for each user','Trigger an on-demand backup for each re-authorized user to capture any data missed during the outage'],
+    ai:'OAuth token expiry is preventable. Enable auto-reauth reminders in Spanning Admin → Settings → Notifications and set a 75-day reminder threshold. This is a guided fix — user action is required for consent.',
+    assets:[{name:'autotestuser@spanning.com',type:'mail'},{name:'autoassign@spanning.com',type:'mail'},{name:'ellie.wisel@spanning.com',type:'mail'},{name:'axel.resnik@spanning.com',type:'mail'}]},
+   {id:15,name:'M365 OAuth token revoked — backup paused',detail:'Admin consent required · Back The Rack Up',product:'SaaS',sev:'cr',auto:false,count:18,fixType:'external',
+    problem:'The Microsoft 365 admin consent for the Spanning Backup enterprise application has been revoked in Azure Active Directory. This immediately pauses all M365 backups (Exchange, OneDrive, SharePoint) for the entire Back The Rack Up tenant.',
+    steps:['Log into Microsoft 365 Admin Center → Azure Active Directory → Enterprise Applications','Search for "Spanning Backup" in the application list and open it','Navigate to Permissions → Grant admin consent for [tenant name]','A Microsoft consent screen will appear — sign in as a Global Admin and click Accept','Return to Spanning Admin and trigger re-authorization for the Back The Rack Up tenant','Verify backup resumes on the next scheduled run — check the activity log after 30 minutes'],
+    ai:'M365 admin consent revocations happen after security policy changes, admin role turnover, or conditional access policy updates. Set up a dedicated service account with permanent Global Admin rights to prevent future revocations.',
+    assets:[{name:'Back The Rack Up (full tenant)',type:'cloud'}]},
+   {id:16,name:'Salesforce backup — re-index required after token refresh',detail:'Data access lost · sf-org-prod',product:'SaaS',sev:'wa',auto:false,count:4,fixType:'partial',stepsAuto:2,
+    problem:'After a Salesforce OAuth token was refreshed, Spanning lost its indexed mapping of the org\'s object metadata. The backup is running but may not be capturing all objects correctly until a full re-index completes.',
+    steps:['Log into Spanning Admin → Salesforce → select sf-org-prod','Click Settings → Re-index Now to start a full metadata re-index','Monitor re-index progress in the activity log — this takes 1–3 hours for large orgs','During re-indexing, backups will continue running but may have reduced accuracy','Once re-index shows 100%, trigger an on-demand backup to confirm full data capture'],
+    ai:'Re-index events after token refresh are preventable by enabling persistent token storage in Spanning Salesforce settings. This avoids the token invalidation trigger entirely.',
+    assets:[{name:'sf-org-prod',type:'cloud'}]},
+   {id:17,name:'Google Contacts backup stopped — scope disabled',detail:'Permission removed · autoassign@spanning',product:'SaaS',sev:'wa',auto:true,count:9,fixType:'full',
+    fix:'Re-enable scope and force on-demand backup',
+    problem:'Google Contacts backup has stopped for this user because the Contacts API scope was disabled — either by a Google Workspace admin policy change or a user who removed Spanning\'s permissions during a Google account review.',
+    steps:['Navigate to Spanning Admin → Manage Users → find autoassign@spanning','Check the Backup Scope column — confirm Google Contacts scope shows as Disabled or Error','Click Re-authorize for this user and have them complete the Google OAuth consent, specifically approving Contacts scope','Return to Spanning Admin and confirm Contacts scope shows as Enabled','Run an on-demand backup and verify Contacts appear in the next restore point'],
+    ai:'Contacts scope disabling is usually caused by users clicking "Remove Access" during Google account permission reviews. Educating users about Spanning\'s required permissions reduces recurrence.',
+    assets:[{name:'autoassign@spanning.com',type:'mail'}]},
+  ]},
+ {id:'agent-offline',name:'Agent offline / connectivity',color:'#1565C0',bg:'#E3F2FD',
+  trend:[8,10,9,12,10,14,11,15,13,16,14,17,15,18],
+  issues:[
+   {id:12,name:'Host appears up but network error -255',detail:'Agent upgrade may have failed · multiple hosts',product:'BCDR',sev:'wa',auto:true,count:36,fixType:'full',
+    fix:'Retry agent upgrade and restart service',
+    problem:'Multiple BCDR-protected hosts are reporting network error -255 after a recent agent upgrade attempt. The agent process is running but cannot communicate with the BCDR appliance, indicating the upgrade completed partially and left the agent in an inconsistent state.',
+    steps:['In the BCDR device panel, check the last agent upgrade log for each affected host','For hosts where upgrade failed, navigate to Device Management → Push Agent Update','Wait for the re-push to complete (usually 5–10 minutes per host)','Verify the agent service restarts automatically after the update push','Confirm backup connectivity by checking the agent heartbeat — it should turn green within 5 minutes','Trigger a test backup on one host to confirm end-to-end connectivity is restored'],
+    ai:'Error -255 after upgrades is a known partial-upgrade residue issue. A one-time agent re-push resolves all affected hosts simultaneously. This is a full end-to-end auto-fix.',
+    assets:[{name:'btru-erp2',type:'pc'},{name:'btru-fs1',type:'pc'},{name:'NOR-FIPS-FS',type:'pc'},{name:'btru-hv2022',type:'pc'}]},
+   {id:11,name:'Agent offline — no check-in detected',detail:'Last seen 6h+ ago · btru-erp2',product:'BCDR',sev:'cr',auto:false,count:22,fixType:'manual',
+    problem:'The Datto Windows Agent on btru-erp2 has not checked in for over 6 hours. The device appears to be powered on (ICMP ping responds) but the backup agent is not communicating, suggesting the agent service crashed or a firewall rule is blocking the backup port.',
+    steps:['Ping btru-erp2 to confirm the device is reachable on the network','RDP or physically access the machine and open Services (services.msc)','Locate "Datto Windows Agent" — if stopped, start it. If it crashes on start, check the Windows Event Log for errors','Verify outbound port 25566 is not blocked by firewall — test with: Test-NetConnection -ComputerName [BCDR IP] -Port 25566','If the service starts successfully, check the BCDR device panel — the agent should check in within 2 minutes','If the service repeatedly crashes, re-install the Datto agent from the device management panel'],
+    ai:'Offline agents at this org often follow scheduled maintenance reboots where the agent service is not set to auto-restart. Enabling the agent service Start Type as "Automatic (Delayed Start)" prevents this.',
+    assets:[{name:'btru-erp2',type:'pc'},{name:'btru-dwp2',type:'pc'}]},
+   {id:13,name:'Could not contact client after 5 attempts',detail:'DNS / routing issue · multiple hosts',product:'BCDR',sev:'wa',auto:false,count:14,fixType:'external',
+    problem:'The BCDR appliance has failed 5 consecutive attempts to reach protected client machines. This is typically caused by a DNS record becoming stale after an IP change, a VLAN routing change, or a firewall rule update.',
+    steps:['From the BCDR appliance CLI, ping each affected client IP to test basic reachability','Check if the client IP addresses have changed — compare BCDR device config IPs vs current DNS/DHCP records','If IPs have changed, update the device configuration in the BCDR panel with the new IPs','Check firewall/VLAN routing rules for any recent changes that might block BCDR-to-client traffic on port 25566','Once routing is confirmed, trigger a manual backup from the BCDR panel to verify connectivity is restored'],
+    ai:'This is classified as not controllable — the root cause is infrastructure routing or DNS changes outside of backup software control. Keeping BCDR device configurations synchronized with DHCP changes prevents recurrence.',
+    assets:[{name:'btru-dr-ubt',type:'pc'},{name:'NOR-FIPS-APP',type:'pc'}]},
+  ]},
+ {id:'storage-policy',name:'Storage & policy issues',color:'#2E7D32',bg:'#E8F5E9',
+  trend:[10,12,11,14,13,16,14,18,16,19,18,20,19,22],
+  issues:[
+   {id:20,name:'Backup policy — no retention rule configured',detail:'Unlimited retention active · multiple assets',product:'Endpoint v2',sev:'wa',auto:true,count:78,fixType:'full',
+    fix:'Apply default 30-day retention policy',
+    problem:'Multiple Endpoint Backup v2 assets have no retention policy applied, meaning backups are stored indefinitely. This will cause storage to grow unbounded and may cause backup jobs to slow or fail when storage is exhausted.',
+    steps:['Navigate to Endpoint Backup v2 → Policies in the Kaseya portal','Click Create Policy or open the existing default policy if one exists','Set the retention period to 30 days (recommended baseline for most environments)','Under Applies To, add all affected assets — or apply to All Assets for blanket coverage','Save the policy and confirm each asset shows "Policy Applied" in the asset view within 5 minutes'],
+    ai:'Unlimited retention is the default for new Endpoint v2 deployments. Applying a 30-day policy is an end-to-end auto-fix — no user action needed.',
+    assets:[{name:'btru-hv2022',type:'pc'},{name:'btru-fs1',type:'pc'},{name:'NOR-FIPS-APP',type:'pc'},{name:'btru-erp1',type:'pc'}]},
+   {id:18,name:'Offsite sync overdue — threshold exceeded',detail:'Last sync 72h+ ago · multiple devices',product:'BCDR',sev:'wa',auto:true,count:45,fixType:'full',
+    fix:'Trigger forced offsite sync',
+    problem:'Offsite synchronization to Datto Cloud has not completed within the configured 2-day threshold for multiple devices. Local backups are current but recovery from the cloud would restore to a point 3+ days old, increasing RPO risk.',
+    steps:['Check network bandwidth utilization during the configured sync window in the BCDR device dashboard','Verify the Datto Cloud offsite target is reachable and shows "Connected" in the device panel','For each affected device, navigate to Device → Offsite Sync → Force Sync Now','Monitor sync progress — depending on data volume this may take 2–12 hours','Once complete, adjust the sync schedule to start at 2 AM to avoid bandwidth contention with business hours traffic'],
+    ai:'Chronic sync delays on these devices correlate with daytime bandwidth saturation. Shifting the sync window to 2–4 AM resolves ~90% of threshold violations. Full auto-fix available.',
+    assets:[{name:'NOR-FIPS-FS',type:'pc'},{name:'btru-erp2',type:'pc'},{name:'btru-dr-ubt',type:'pc'}]},
+   {id:19,name:'Local storage at 88%+ — threshold exceeded',detail:'Under 40 GB remaining · btru-erp1',product:'BCDR',sev:'wa',auto:false,count:33,fixType:'manual',
+    problem:'Local storage on btru-erp1\'s BCDR appliance has reached 88%, leaving only ~40 GB free. At the current backup rate and retention policy, the appliance will reach 95% capacity within approximately 6 days, after which new backups will fail.',
+    steps:['Review the current retention policy for btru-erp1 — if set to keep more than 30 days, shorten it','From the device panel, navigate to Storage → Recovery Points and delete the oldest recovery points to free space','Estimate expected data growth: current usage ÷ current retention = daily growth rate','Calculate whether storage expansion is needed: if daily growth > 2 GB, plan for additional storage','Add additional local storage via the appliance management interface or request hardware expansion','Set a storage alert threshold at 70% to get earlier warnings going forward'],
+    ai:'At current backup frequency this device reaches 95% capacity in ~6 days. Pruning recovery points older than 30 days frees approximately 60 GB. This requires manual decision-making on retention — classified as not controllable without policy change.',
+    assets:[{name:'btru-erp1',type:'pc'}]},
+   {id:21,name:'Change journal wrapped — backup running slow',detail:'Journal overflow · btru-hv2022',product:'BCDR',sev:'wa',auto:false,count:17,fixType:'manual',
+    problem:'The NTFS change journal on btru-hv2022 has wrapped (overflowed), meaning the backup agent cannot determine exactly which files changed since the last backup. The agent must fall back to a full file scan, dramatically increasing backup time and CPU load.',
+    steps:['This condition does not cause data loss — backups still complete, just more slowly','To fix: increase the NTFS change journal size on the affected volume','Open an elevated command prompt on btru-hv2022 and run: fsutil usn createjournal m=0x10000000 a=0x800000 C:','This sets the journal to 256MB with 8MB allocation delta — adjust the volume letter as needed','Monitor backup duration on the next 2–3 backup jobs — it should return to normal baseline','Reference Kaseya KB: "Journal Wrapping or Journal Overflow Error" for additional guidance'],
+    ai:'Journal wrapping on high-write volumes is common for database servers or virtualization hosts with many small file operations. Increasing the journal to 256–512MB+ prevents this permanently.',
+    assets:[{name:'btru-hv2022',type:'pc'}]},
+   {id:22,name:'Incomplete backup — fatal error received from client',detail:'Data not fully received · btru-fs1',product:'BCDR',sev:'cr',auto:false,count:1,fixType:'unknown',
+    problem:'A backup job on btru-fs1 terminated with a fatal client-side error before completion. The cause is unknown and requires investigation of the endpoint event logs to determine whether a reboot, VSS failure, or application error caused the interruption.',
+    steps:['Check the Windows System Event Log on btru-fs1 for any critical errors or unexpected reboots during the backup window','Open the BCDR device panel → backup log for this job and note the exact fatal error message and timestamp','Verify btru-fs1 is reachable and the Datto Windows Agent service is running','Re-run the backup manually from the BCDR panel and monitor for the same error','If the error recurs, capture the full backup log and open a support case with Kaseya BCDR support'],
+    ai:'Single-instance fatal backup errors are often caused by mid-backup reboots from Windows Update or VSS writer failures. Check System Event Log first — this resolves the unknown classification in most cases.',
+    assets:[{name:'btru-fs1',type:'pc'}]},
+  ]},
+ {id:'compliance',name:'Compliance & coverage gaps',color:'#7B1FA2',bg:'#F3E5F5',
+  trend:[3,4,3,5,4,6,5,7,6,8,7,9,8,10],
+  issues:[
+   {id:30,name:'Unprotected assets detected — no backup assigned',detail:'New assets without backup coverage',product:'Endpoint v2',sev:'cr',auto:false,count:14,fixType:'partial',stepsAuto:3,
+    problem:'14 endpoints have been added to the environment but have not been assigned to any backup policy. These assets have zero backup coverage and any data loss event would be unrecoverable.',
+    steps:['Navigate to Endpoint Backup v2 → Assets and filter by "No Policy Assigned"','Review the list of unprotected assets and confirm they are production machines that require backup','Select all unprotected assets and click Assign Policy → choose the appropriate retention policy','Verify each asset shows a green "Protected" status within 15 minutes','Trigger an initial on-demand backup for each newly protected asset to establish a baseline restore point'],
+    ai:'Unprotected assets are the highest-risk compliance gap. Enabling automatic policy assignment for new assets in Endpoint v2 settings prevents future gaps when new devices are added.',
+    assets:[{name:'new-ws-001',type:'pc'},{name:'new-ws-002',type:'pc'},{name:'new-ws-003',type:'pc'},{name:'new-ws-004',type:'pc'},{name:'new-ws-005',type:'pc'}]},
+   {id:31,name:'Backup SLA breach — RPO exceeded for critical assets',detail:'Recovery Point Objective missed · 3 assets',product:'BCDR',sev:'cr',auto:false,count:3,fixType:'manual',stepsAuto:0,
+    problem:'Three critical assets have not had a successful backup in over 24 hours, breaching the organization\'s defined Recovery Point Objective (RPO). In the event of a failure, data from the past 24+ hours would be unrecoverable.',
+    steps:['Identify the 3 assets breaching RPO in the BCDR device panel — they will show a red status indicator','Investigate why the last backup failed for each asset (check agent status, VSS, storage, network)','Resolve the underlying backup failure first using the appropriate fix from this Resolution Center','Once backup is running again, trigger an immediate on-demand backup to reduce the data-at-risk window','Review and tighten the backup schedule if RPO requirements are < 24 hours — consider hourly backups for critical assets'],
+    ai:'RPO breaches on critical assets require immediate attention. Consider enabling backup frequency alerts in the BCDR device panel so breaches are caught within 2 hours rather than 24.',
+    assets:[{name:'btru-erp1',type:'pc'},{name:'dc01.norwalkfips.local',type:'pc'},{name:'btru-fs1',type:'pc'}]},
+   {id:32,name:'Google Workspace admin account not backed up',detail:'Admin account excluded from scope · Spanning Demo Co.',product:'SaaS',sev:'wa',auto:true,count:7,fixType:'full',
+    fix:'Add admin accounts to backup scope',
+    problem:'Google Workspace admin accounts at Spanning Demo Company are not included in the Spanning backup scope. Admin accounts often contain critical org-wide settings, Drive files, and email that are just as important to protect as regular user accounts.',
+    steps:['Navigate to Spanning Admin → Manage Users','Filter by Role: Admin and confirm admin accounts show "Not Protected" status','Select all unprotected admin accounts and click Enable Backup','Confirm each account shows "Protected" and a backup schedule is assigned','Trigger an initial on-demand backup for each admin account'],
+    ai:'Admin accounts are frequently overlooked in initial Spanning deployments. Enabling backup for all admin accounts is a full auto-fix — no user action needed.',
+    assets:[{name:'admin@spanningdemo.com',type:'mail'},{name:'it-admin@spanningdemo.com',type:'mail'},{name:'backup-admin@spanningdemo.com',type:'mail'}]},
+  ]},
+ {id:'performance',name:'Performance & capacity',color:'#0277BD',bg:'#E1F5FE',
+  trend:[6,8,7,10,9,12,11,14,12,15,13,16,14,17],
+  issues:[
+   {id:40,name:'Backup window exceeded — jobs running into business hours',detail:'Overlap detected · btru-hv2022, btru-erp1',product:'BCDR',sev:'wa',auto:false,count:8,fixType:'partial',stepsAuto:2,
+    problem:'Full backup jobs on btru-hv2022 and btru-erp1 are taking longer than their scheduled window allows, running into business hours and impacting network performance and server load for users.',
+    steps:['Review backup job duration history for both assets in the BCDR device panel','Calculate average backup duration and compare against the available backup window (typically 10 PM – 6 AM)','Reduce backup scope if possible — exclude temp directories, page files, and non-critical data','Enable WAN throttling in the BCDR settings to limit bandwidth during business hours if offsite sync is the bottleneck','Consider staggering backup start times: start btru-erp1 at 10 PM and btru-hv2022 at 1 AM to avoid overlap','If jobs consistently exceed 6 hours, evaluate upgrading local storage to SSD or increasing network bandwidth'],
+    ai:'Backup window overruns are often caused by incremental backup growth (data change rate increasing over time) rather than hardware limits. Profiling the data change rate helps right-size the backup window.',
+    assets:[{name:'btru-hv2022',type:'pc'},{name:'btru-erp1',type:'pc'}]},
+   {id:41,name:'High CPU usage during backup — impacting production workloads',detail:'CPU spike > 80% detected · btru-erp2',product:'BCDR',sev:'wa',auto:true,count:19,fixType:'full',
+    fix:'Enable CPU throttling for backup agent',
+    problem:'The Datto Windows Agent on btru-erp2 is consuming over 80% CPU during backup jobs, causing noticeable slowdowns for production applications running on the same server. The agent is not currently configured with CPU throttling.',
+    steps:['In the BCDR device panel, navigate to Configure Agent Settings for btru-erp2','Locate the CPU Throttling option and set a maximum CPU usage of 30–40% during backup hours','Save the settings — the agent will apply throttling on the next backup job','Monitor the next backup: confirm CPU stays below the threshold and backup still completes within the window','If backup duration increases too much with throttling, consider scheduling backups outside of peak business hours instead'],
+    ai:'CPU throttling resolves production impact in 95% of cases with minimal effect on backup duration. This is a full end-to-end auto-fix — we can apply the throttling setting automatically.',
+    assets:[{name:'btru-erp2',type:'pc'}]},
+   {id:42,name:'Deduplication ratio degraded — storage growing faster than expected',detail:'Dedup ratio dropped from 4:1 to 1.8:1 · NOR-FIPS-FS',product:'BCDR',sev:'wa',auto:false,count:11,fixType:'unknown',
+    problem:'The deduplication ratio on NOR-FIPS-FS has dropped significantly from 4:1 to 1.8:1, meaning storage is being consumed at more than twice the expected rate. This could be caused by a change in data patterns, encrypted data being added, or a deduplication database issue.',
+    steps:['Check if any new applications were deployed on NOR-FIPS-FS that write encrypted or compressed data (databases, VMs, media files) — these deduplicate poorly','Review the file types consuming the most storage in the BCDR device panel','If large encrypted or media files are identified, consider excluding them from backup scope if they are backed up elsewhere','Run a deduplication database integrity check from the BCDR appliance management interface','If the dedup database is corrupted, contact Kaseya BCDR support for a dedup database rebuild procedure'],
+    ai:'Dedup ratio degradation is most commonly caused by the addition of encrypted files (TDE databases, BitLocker drives, media files). Identifying and optionally excluding these file types restores normal dedup performance.',
+    assets:[{name:'NOR-FIPS-FS',type:'pc'}]},
+  ]},
+];
+
+const FIX_LABELS={full:'End-to-end fix',partial:'Guided fix',manual:'Insights only',external:'Insights only',unknown:'Insights only'};
+const FIX_COLORS={full:'#2E7D32',partial:'#1565C0',manual:'#E65100',external:'#E65100',unknown:'#9E9E9E'};
+
+let expandedCat=null,expandedIssue=null,pendingId=null;
+let fProduct='all',fSev='all',fAction='all';
+let resolved=new Set();
+
+// ── STATS BAR ─────────────────────────────────────────────────────────
+// stats bar built above
+
+// ── CHARTS ─────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  new Chart(document.getElementById('trendChart').getContext('2d'),{type:'line',
+    data:{
+      labels:['Jun 28','Jun 29','Jun 30','Jul 1','Jul 2','Jul 3','Jul 4','Jul 5','Jul 6','Jul 7','Jul 8','Jul 9','Jul 10','Jul 11'],
+      datasets:[
+        {label:'Open issues',
+         data:[320,410,348,445,372,488,415,502,438,519,468,510,472,468],
+         borderColor:'#0E67F5',backgroundColor:'rgba(14,103,245,.06)',
+         borderWidth:2,pointRadius:3,pointHoverRadius:5,
+         pointBackgroundColor:'#0E67F5',fill:true,tension:0.15},
+        {label:'Resolved',
+         data:[80,62,108,78,124,88,138,95,148,82,155,110,142,155],
+         borderColor:'#2E7D32',backgroundColor:'transparent',
+         borderWidth:2,pointRadius:3,pointHoverRadius:5,
+         pointBackgroundColor:'#2E7D32',fill:false,tension:0.15,
+         borderDash:[5,4]}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+               tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}`}}},
+      scales:{
+        x:{ticks:{font:{size:8},maxRotation:45,color:'#9AABB8'},grid:{display:false},border:{display:false}},
+        y:{ticks:{font:{size:8},color:'#9AABB8',maxTicksLimit:5},grid:{color:'#F5F7FA'},border:{display:false}}
+      }}
+  });
+
+  const sc=[...CATS].sort((a,b)=>b.issues.reduce((s,i)=>s+i.count,0)-a.issues.reduce((s,i)=>s+i.count,0));
+  const cd=sc.map(c=>c.issues.reduce((s,i)=>s+i.count,0));
+  new Chart(document.getElementById('catPie').getContext('2d'),{type:'doughnut',
+    data:{labels:sc.map(c=>c.name.split(' ')[0]),datasets:[{data:cd,backgroundColor:sc.map(c=>c.color),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'52%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw}}}}
+  });
+  const leg=document.getElementById('pie-leg');
+  sc.forEach((c,i)=>{leg.innerHTML+=`<div style="display:flex;align-items:center;gap:4px;color:#455A64"><span style="width:7px;height:7px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span><span style="max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name.split(' ').slice(0,2).join(' ')}</span><span style="margin-left:auto;font-weight:800;color:#1a2332">${cd[i]}</span></div>`;});
+
+  new Chart(document.getElementById('prodDonut').getContext('2d'),{type:'doughnut',
+    data:{labels:['SaaS','BCDR','Endpoint v2'],datasets:[{data:[214,183,71],backgroundColor:['#1976D2','#E65100','#2E7D32'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'52%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw}}}}
+  });
+  new Chart(document.getElementById('fixTypeChart').getContext('2d'),{type:'doughnut',
+    data:{labels:['End-to-end fix','Guided fix','Not controllable','Unknown'],datasets:[{data:[189,142,87,50],backgroundColor:['#2E7D32','#1565C0','#E65100','#9E9E9E'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'52%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw}}}}
+  });
+  render();
+});
+
+// ── FILTERS ─────────────────────────────────────────────────────────────
+function setDropFilter(){
+  fProduct=document.getElementById('drop-product').value;
+  fSev=document.getElementById('drop-sev').value;
+  fAction=document.getElementById('drop-action').value;
+  expandedIssue=null;
+  render();
+}
+
+function issueVisible(i){
+  if(resolved.has(i.id)) return false;
+  if(fProduct==='saas'&&i.product!=='SaaS') return false;
+  if(fProduct==='bcdr'&&i.product!=='BCDR') return false;
+  if(fProduct==='ep'&&i.product!=='Endpoint v2') return false;
+  if(fSev==='critical'&&i.sev!=='cr') return false;
+  if(fSev==='warning'&&i.sev!=='wa') return false;
+  if(fAction==='auto'&&i.fixType!=='full') return false;
+  if(fAction==='guided'&&i.fixType!=='partial') return false;
+  if(fAction==='insights'&&(i.fixType==='full'||i.fixType==='partial')) return false;
+  return true;
+}
+
+// ── SIDE PANEL ─────────────────────────────────────────────────────────
+const TYPE_ICO={
+  pc:`<svg viewBox="0 0 24 24" style="stroke:#1565C0"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+  mail:`<svg viewBox="0 0 24 24" style="stroke:#6A1B9A"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
+  cloud:`<svg viewBox="0 0 24 24" style="stroke:#E65100"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>`
+};
+const TYPE_BG={pc:'#E3F2FD',mail:'#F3E5F5',cloud:'#FFF3E0'};
+const TYPE_LBL={pc:'Device / endpoint',mail:'SaaS account',cloud:'Cloud service'};
+
+function openPanel(type){
+  const panel=document.getElementById('sidePanel');
+  const body=document.getElementById('sp-body');
+  const title=document.getElementById('sp-title');
+  panel.classList.add('open');
+
+  if(type==='resolved'){
+    title.textContent='Resolved this week';
+    body.innerHTML=`<div class="sp-count">1,204 issues resolved across all products</div>
+      ${[{p:'SaaS',n:512,c:'#1976D2'},{p:'BCDR',n:441,c:'#E65100'},{p:'Endpoint v2',n:251,c:'#2E7D32'}].map(r=>`
+      <div class="sp-item"><div class="sp-item-ico" style="background:${TYPE_BG.cloud}">${TYPE_ICO.cloud}</div>
+      <div><div class="sp-item-name">${r.p}</div><div class="sp-item-sub" style="font-weight:700;color:${r.c}">${r.n} resolved</div></div></div>`).join('')}`;
+    return;
+  }
+  const allI=CATS.flatMap(c=>c.issues).filter(i=>!resolved.has(i.id));
+  const filtered=type==='critical'?allI.filter(i=>i.sev==='cr'):allI.filter(i=>i.auto);
+  // dedupe assets
+  const seen=new Set();
+  const assets=filtered.flatMap(i=>i.assets).filter(a=>{if(seen.has(a.name))return false;seen.add(a.name);return true;});
+  title.textContent=type==='critical'?`Critical — ${assets.length} impacted assets`:`Auto-resolvable — ${assets.length} impacted assets`;
+  body.innerHTML=`<div class="sp-count">${assets.length} unique assets affected</div>`+
+    assets.map(a=>`<div class="sp-item"><div class="sp-item-ico" style="background:${TYPE_BG[a.type]||TYPE_BG.pc}">${TYPE_ICO[a.type]||TYPE_ICO.pc}</div>
+    <div><div class="sp-item-name">${a.name}</div><div class="sp-item-sub">${TYPE_LBL[a.type]||TYPE_LBL.pc}</div></div></div>`).join('');
+}
+
+function openIssuePanel(issueId){
+  const issue=CATS.flatMap(c=>c.issues).find(i=>i.id===issueId);
+  if(!issue) return;
+  document.getElementById('sp-title').textContent=`${issue.assets.length} impacted asset${issue.assets.length>1?'s':''}`;
+  document.getElementById('sp-body').innerHTML=
+    `<div class="sp-count" style="font-size:12px;color:#455A64;margin-bottom:10px"><span style="font-weight:800;color:#C62828">${issue.count.toLocaleString()}</span> total occurrences &middot; <span style="font-weight:800;color:#1a2332">${issue.assets.length}</span> impacted asset${issue.assets.length>1?'s':''}</div>`+
+    issue.assets.map(a=>`<div class="sp-item"><div class="sp-item-ico" style="background:${TYPE_BG[a.type]||TYPE_BG.pc}">${TYPE_ICO[a.type]||TYPE_ICO.pc}</div>
+    <div><div class="sp-item-name">${a.name}</div><div class="sp-item-sub">${TYPE_LBL[a.type]||TYPE_LBL.pc}</div></div></div>`).join('');
+  document.getElementById('sidePanel').classList.add('open');
+}
+
+function closePanel(){document.getElementById('sidePanel').classList.remove('open')}
+
+// close panel when clicking outside it
+document.addEventListener('click',e=>{
+  const panel=document.getElementById('sidePanel');
+  if(panel.classList.contains('open')&&!panel.contains(e.target)&&!e.target.closest('.cnt-btn')&&!e.target.closest('.sc-cnt')){
+    closePanel();
+  }
+});
+
+// ── CAT ICONS ─────────────────────────────────────────────────────────
+function ico(name,color){
+  const s={
+    db:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>`,
+    mon:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
+    key:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>`,
+    wifi:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55"/><path d="M5 12.55a10.94 10.94 0 015.17-2.39"/><path d="M8.53 16.11a6 6 0 016.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`,
+    hd:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>`,
+    shield:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    cpu:`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>`,
+  };
+  return s[name]||s.db;
+}
+const CAT_ICONS=['db','mon','key','wifi','hd','shield','cpu'];
+
+// ── RENDER ─────────────────────────────────────────────────────────────
+function render(){
+  const allI=CATS.flatMap(c=>c.issues).filter(i=>!resolved.has(i.id));
+  const openTotal=allI.reduce((s,i)=>s+i.count,0);
+  const critTotal=allI.filter(i=>i.sev==='cr').reduce((s,i)=>s+i.count,0);
+  const autoTotal=allI.filter(i=>i.auto).reduce((s,i)=>s+i.count,0);
+
+  document.getElementById('open-count').textContent=openTotal.toLocaleString();
+  document.getElementById('sc-crit').textContent=critTotal.toLocaleString();
+  document.getElementById('sc-auto').textContent=autoTotal.toLocaleString();
+  const openCardEl=document.getElementById('sc-open-card');
+  if(openCardEl) openCardEl.textContent=openTotal.toLocaleString();
+
+  let html='';
+  CATS.forEach((cat,ci)=>{
+    const vis=cat.issues.filter(i=>issueVisible(i));
+    if(!vis.length) return;
+    const sorted=[...vis].sort((a,b)=>b.count-a.count);
+    const isOpen=expandedCat===cat.id;
+    const critCnt=vis.filter(i=>i.sev==='cr').reduce((s,i)=>s+i.count,0);
+    const totalCnt=vis.reduce((s,i)=>s+i.count,0);
+    const autoCnt=vis.filter(i=>i.auto).length;
+
+    html+=`<div class="cat-group">
+      <div class="cat-hdr${isOpen?' open':''}" onclick="toggleCat('${cat.id}')">
+        <div class="cat-chev${isOpen?' open':''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        <div class="cat-ico" style="background:${cat.bg}">${ico(CAT_ICONS[ci],cat.color)}</div>
+        <div class="cat-info"><div class="cat-name">${cat.name}</div></div>
+        <div class="cat-right">
+          <div class="spark">${cat.trend.slice(-7).map((v,i,a)=>`<span style="height:${Math.round(v/Math.max(...a)*100)}%;${i===a.length-1?'background:'+cat.color:''}"></span>`).join('')}</div>
+          <div class="cat-badge" style="background:${cat.bg};color:${cat.color}">${totalCnt.toLocaleString()} issues</div>
+          ${critCnt?`<div class="crit-badge">${critCnt.toLocaleString()} critical</div>`:''}
+          <div onclick="event.stopPropagation()" style="display:flex;gap:5px">
+            ${autoCnt?`<button class="btn-fix" onclick="bulkFix('${cat.id}')">${SPK}End-to-end fix</button>`:''}
+          </div>
+        </div>
+      </div>`;
+
+    if(isOpen){
+      html+=`<div><div class="issues-col-hdr"><div>Issue</div><div>Product</div><div>Severity</div><div>Count</div><div>Fix &amp; Actions</div></div>`;
+      sorted.forEach(issue=>{
+        const exp=expandedIssue===issue.id;
+        const fc=FIX_COLORS[issue.fixType]||'#9E9E9E';
+        const fl=FIX_LABELS[issue.fixType]||'Unknown';
+        html+=`<div class="irow${exp?' exp':''}" onclick="toggleIssue(${issue.id})">
+          <div><div class="in">${issue.name}</div><div class="id2">${issue.detail}</div></div>
+          <div style="font-size:10.5px;color:#607185">${issue.product}</div>
+          <div>${issue.sev==='cr'?'<span class="bdg cr">CRITICAL</span>':'<span class="bdg wa">WARNING</span>'}</div>
+          <div><button class="cnt-btn" style="color:${issue.sev==='cr'?'#C62828':'#E65100'}" onclick="openIssuePanel(${issue.id});event.stopPropagation()">${issue.count.toLocaleString()}</button></div>
+          <div class="acell" onclick="event.stopPropagation()" style="flex-wrap:nowrap;gap:4px">
+            ${issue.fixType==='full'
+              ? `<button class="btn-fix" onclick="openModal(${issue.id});event.stopPropagation()">${SPK}End-to-end fix</button>`
+              : issue.fixType==='partial'
+              ? `<button class="btn-fix" style="background:#FF6F00" onclick="toggleIssue(${issue.id});event.stopPropagation()">${SPK}Guided fix</button>`
+              : `<button class="btn-ai" style="font-size:10px;padding:4px 7px" onclick="showInsight(${issue.id});event.stopPropagation()">${SPK_P}Insights only</button>`}
+          </div>
+        </div>`;
+        if(exp && issue.fixType!=='full'){
+          const detCls = issue.fixType==='partial'?'det-guided':(issue.fixType==='manual'||issue.fixType==='external')?'det-manual':'det-insights';
+          html+=`<div class="det ${detCls}">
+            <div class="det-problem">${SPK_P}<div><strong>Problem:</strong> ${issue.problem}</div></div>
+            <div class="det-steps-lbl">Steps to resolve</div>
+            <div class="det-steps">${(()=>{
+              const autoCount = issue.stepsAuto != null ? issue.stepsAuto : (issue.fixType==='full' ? issue.steps.length : 0);
+              const manualCount = issue.steps.length - autoCount;
+              // Limit to 4 steps for guided (2 auto + 2 manual)
+              const stepsToShow = issue.fixType==='partial' ? issue.steps.slice(0, Math.min(4, issue.steps.length)) : issue.steps;
+              const autoCountShow = issue.fixType==='partial' ? Math.min(autoCount, 2) : autoCount;
+              let html='';
+
+              if(issue.fixType==='full'){
+                stepsToShow.forEach((s,n)=>{
+                  html+=`<div class="det-step auto-step"><div class="sn">${n+1}</div><span>${s}</span></div>`;
+                });
+                return html;
+              }
+
+              if(issue.fixType==='partial'){
+                // Summary pill
+                html+=`<div class="guided-summary">
+                  <div class="guided-sum-block"><div class="guided-sum-dot" style="background:#0E67F5"></div><span style="color:#0E67F5;font-weight:700">${autoCountShow} step${autoCountShow>1?'s':''} we handle</span></div>
+                  <div style="width:1px;height:16px;background:#e2e8f0;margin:0 6px"></div>
+                  <div class="guided-sum-block"><div class="guided-sum-dot" style="background:#E65100"></div><span style="color:#E65100;font-weight:700">${stepsToShow.length-autoCountShow} step${(stepsToShow.length-autoCountShow)>1?'s':''} you action</span></div>
+                </div>`;
+                // Auto steps with Fix button on last auto step
+                html+=`<div class="steps-divider steps-we-divider"><div class="steps-divider-line"></div><div class="steps-we-lbl"><svg width="11" height="11" viewBox="0 0 24 24" fill="#0E67F5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Automated — we handle this</div><div class="steps-divider-line"></div></div>`;
+                for(let n=0;n<autoCountShow;n++){
+                  const isLast = n===autoCountShow-1;
+                  html+=`<div class="det-step auto-step"><div class="sn">${n+1}</div><span>${stepsToShow[n]}</span>${isLast?`<button onclick="openModal(${issue.id});event.stopPropagation()" style="margin-left:auto;flex-shrink:0;background:#0E67F5;color:#fff;border:none;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:3px">${SPK}Run these</button>`:''}
+                  </div>`;
+                }
+                // Manual steps
+                html+=`<div class="steps-divider steps-you-divider"><div class="steps-divider-line"></div><div class="steps-you-lbl"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Your action required</div><div class="steps-divider-line"></div></div>`;
+                for(let n=autoCountShow;n<stepsToShow.length;n++){
+                  html+=`<div class="det-step manual-step"><div class="sn">${n+1}</div><span>${stepsToShow[n]}</span></div>`;
+                }
+                return html;
+              }
+
+              // Not controllable / unknown — plain steps
+              stepsToShow.forEach((s,n)=>{
+                html+=`<div class="det-step plain-step"><div class="sn">${n+1}</div><span>${s}</span></div>`;
+              });
+              return html;
+            })()}</div>
+            ${issue.ai?`<div style="background:#EDE7F6;border-left:3px solid #7B1FA2;border-radius:4px;padding:8px 10px;font-size:11px;color:#4A148C;display:flex;gap:6px;line-height:1.55;margin-bottom:8px">${SPK_P}<div><strong>AI insight:</strong> ${issue.ai}</div></div>`:''}
+            ${issue.auto?`<button class="always-btn" onclick="openModal(${issue.id})">
+              <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;stroke-width:2;fill:none"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+              Auto-fix now — or always fix this type
+            </button>`:''}
+          </div>`;
+        }
+      });
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+  });
+
+  if(!html) html=`<div style="padding:28px;text-align:center;color:#9AABB8;font-size:13px">No issues match this filter.</div>`;
+  document.getElementById('groups').innerHTML=html;
+}
+
+function toggleCat(id){expandedCat=expandedCat===id?null:id;expandedIssue=null;render()}
+function toggleIssue(id){expandedIssue=expandedIssue===id?null:id;render()}
+
+function showInsight(id){
+  expandedIssue=expandedIssue===id?null:id;
+  render();
+  if(expandedIssue) setTimeout(()=>{const el=document.querySelector('.det');if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'})},80);
+}
+
+function bulkFix(catId){
+  const cat=CATS.find(c=>c.id===catId);
+  const fixable=cat.issues.filter(i=>i.fixType==='full'&&!resolved.has(i.id));
+  if(!fixable.length){showToast('No end-to-end fixable issues in this category');return;}
+  // Build category approval modal
+  const list=document.getElementById('e2e-list');
+  list.innerHTML=fixable.map(i=>`
+    <div style="border:1px solid #D0E2FF;border-radius:8px;padding:10px 12px;background:#F5F9FF">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1a2332">${i.name}</div>
+          <div style="font-size:10.5px;color:#8A9BB0;margin-top:1px">${i.detail} &middot; ${i.product}</div>
+        </div>
+        <span style="background:${i.sev==='cr'?'#FFEBEE':'#FFF3E0'};color:${i.sev==='cr'?'#C62828':'#E65100'};font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px;flex-shrink:0;white-space:nowrap">${i.sev==='cr'?'CRITICAL':'WARNING'} &middot; ${i.count} occurrences</span>
+      </div>
+      <div style="background:#EEF5FF;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9.5px;font-weight:700;color:#0E67F5;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">What we'll do</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${i.steps.slice(0,i.stepsAuto||i.steps.length).map((s,n)=>`
+            <div style="display:flex;gap:6px;font-size:11px;color:#1a2332;align-items:flex-start">
+              <div style="width:15px;height:15px;border-radius:50%;background:#0E67F5;color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${n+1}</div>
+              <span>${s}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`).join('');
+  // Store pending category
+  document.getElementById('e2e-overlay').dataset.catId=catId;
+  document.getElementById('e2e-overlay').dataset.mode='cat';
+  document.getElementById('e2e-overlay').style.display='flex';
+}
+
+function openModal(id){
+  const issue=CATS.flatMap(c=>c.issues).find(i=>i.id===id);
+  pendingId=id;
+  document.getElementById('m-title').textContent=issue.name.length>48?issue.name.slice(0,48)+'…':issue.name;
+  document.getElementById('m-body').textContent='Apply once, or automatically every time this issue type is detected?';
+  // Populate what-will-happen summary
+  const summaryEl=document.getElementById('m-summary');
+  const stepsList=document.getElementById('m-steps-list');
+  if(issue.steps && issue.steps.length){
+    const autoCount=issue.stepsAuto!=null?issue.stepsAuto:issue.steps.length;
+    const stepsToShow=issue.steps.slice(0,Math.min(autoCount,issue.steps.length));
+    stepsList.innerHTML=stepsToShow.map((s,n)=>`
+      <div style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:#1a2332;line-height:1.5">
+        <div style="width:17px;height:17px;border-radius:50%;background:#0E67F5;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">${n+1}</div>
+        <span>${s}</span>
+      </div>`).join('');
+    summaryEl.style.display='block';
+  } else {
+    summaryEl.style.display='none';
+  }
+  document.getElementById('m-once').onclick=()=>doResolve(id,'once');
+  document.getElementById('m-always').onclick=()=>doResolve(id,'always');
+  document.getElementById('overlay').style.display='flex';
+}
+function closeModal(){document.getElementById('overlay').style.display='none';pendingId=null}
+function closeBulkModal(){document.getElementById('bulk-overlay').style.display='none'}
+
+function openBulkModal(catId){
+  const cat=CATS.find(c=>c.id===catId);
+  if(!cat) return;
+  const fixable=cat.issues.filter(i=>i.fixType==='full'&&!resolved.has(i.id));
+  if(!fixable.length){showToast('No end-to-end fixable issues in this category');return;}
+  
+  document.getElementById('bulk-title').textContent=`End-to-end fix — ${cat.name}`;
+  document.getElementById('bulk-always').checked=false;
+  
+  const list=document.getElementById('bulk-list');
+  list.innerHTML=fixable.map(issue=>`
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#F8F9FC;border:1px solid #E2E8F0;border-radius:8px">
+      <input type="checkbox" checked id="bulk-cb-${issue.id}" style="margin-top:3px;cursor:pointer;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600;color:#1a2332;margin-bottom:2px">${issue.name}</div>
+        <div style="font-size:11px;color:#8A9BB0;margin-bottom:6px">${issue.detail}</div>
+        <div style="background:#EEF5FF;border-radius:5px;padding:6px 10px;font-size:11px;color:#1565C0">
+          <strong>Fix:</strong> ${issue.fix||'Automated resolution'}
+        </div>
+      </div>
+      <div style="flex-shrink:0;text-align:right">
+        <div style="font-size:16px;font-weight:800;color:${issue.sev==='cr'?'#C62828':'#E65100'}">${issue.count}</div>
+        <div style="font-size:9px;color:#8A9BB0">occurrences</div>
+      </div>
+    </div>`).join('');
+  
+  document.getElementById('bulk-confirm-btn').onclick=()=>{
+    const selected=fixable.filter(i=>document.getElementById('bulk-cb-'+i.id)?.checked);
+    selected.forEach(i=>resolved.add(i.id));
+    closeBulkModal();
+    expandedIssue=null;
+    showToast(`End-to-end fix applied to ${selected.length} issue type${selected.length>1?'s':''}`);
+    render();
+  };
+  
+  document.getElementById('bulk-overlay').style.display='flex';
+}
+function openEndToEndModal(){
+  const allI=CATS.flatMap(c=>c.issues).filter(i=>!resolved.has(i.id)&&i.fixType==='full');
+  if(!allI.length){showToast('No end-to-end fixable issues found');return;}
+  document.getElementById('e2e-overlay').dataset.mode='global';
+  document.getElementById('e2e-overlay').dataset.catId='';
+  const list=document.getElementById('e2e-list');
+  list.innerHTML=allI.map(i=>`
+    <div style="border:1px solid #D0E2FF;border-radius:8px;padding:10px 12px;background:#F5F9FF">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1a2332">${i.name}</div>
+          <div style="font-size:10.5px;color:#8A9BB0;margin-top:1px">${i.detail} &middot; ${i.product}</div>
+        </div>
+        <span style="background:${i.sev==='cr'?'#FFEBEE':'#FFF3E0'};color:${i.sev==='cr'?'#C62828':'#E65100'};font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:8px;flex-shrink:0">${i.sev==='cr'?'CRITICAL':'WARNING'} &middot; ${i.count} occurrences</span>
+      </div>
+      <div style="background:#EEF5FF;border-radius:6px;padding:8px 10px">
+        <div style="font-size:9.5px;font-weight:700;color:#0E67F5;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">What we'll do</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${i.steps.slice(0,i.stepsAuto||i.steps.length).map((s,n)=>`
+            <div style="display:flex;gap:6px;font-size:11px;color:#1a2332;align-items:flex-start">
+              <div style="width:15px;height:15px;border-radius:50%;background:#0E67F5;color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${n+1}</div>
+              <span>${s}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`).join('');
+  document.getElementById('e2e-overlay').style.display='flex';
+}
+function closeE2EModal(){document.getElementById('e2e-overlay').style.display='none'}
+function approveE2E(mode){
+  const overlay=document.getElementById('e2e-overlay');
+  const isCat=overlay.dataset.mode==='cat';
+  let issues;
+  if(isCat){
+    const cat=CATS.find(c=>c.id===overlay.dataset.catId);
+    issues=cat.issues.filter(i=>i.fixType==='full'&&!resolved.has(i.id));
+  } else {
+    issues=CATS.flatMap(c=>c.issues).filter(i=>!resolved.has(i.id)&&i.fixType==='full');
+  }
+  issues.forEach(i=>resolved.add(i.id));
+  closeE2EModal();expandedIssue=null;
+  showToast(mode==='always'
+    ?`Rules saved — always auto-fix ${issues.length} issue type${issues.length>1?'s':''}`
+    :`End-to-end fix applied to ${issues.length} issue${issues.length>1?'s':''}`);
+  render();
+}
+function openOutageModal(){document.getElementById('outage-overlay').style.display='flex'}
+function closeOutageModal(){document.getElementById('outage-overlay').style.display='none'}
+
+function doResolve(id,mode){
+  const issue=CATS.flatMap(c=>c.issues).find(i=>i.id===id);
+  closeModal();resolved.add(id);expandedIssue=null;
+  showToast(mode==='always'?`Rule saved — always auto-fix "${issue.name.slice(0,30)}…"`:`Fix applied — ${issue.count.toLocaleString()} instances resolved`);
+  render();
+}
+
+function autoResolveAll(){
+  const f=CATS.flatMap(c=>c.issues).filter(i=>i.auto&&!resolved.has(i.id));
+  f.forEach(i=>resolved.add(i.id));
+  expandedIssue=null;
+  showToast(`Auto-resolved ${f.length} issue types`);
+  render();
+}
+
+function runScan(){showToast('Scan started — results will update in ~30 seconds')}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  document.getElementById('tmsg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove('show'),3800);
+}
+</script>
+</body>
+</html>

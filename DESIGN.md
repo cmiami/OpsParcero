@@ -1,196 +1,209 @@
-<!-- SEED: pre-implementation. Re-run `/impeccable document` (scan mode) once globals.css exists to capture real extracted tokens. Tokens below are confirmed from live Kaseya/Datto CSS (see docs/research/01-design-system-research.md). -->
 ---
-name: Datto Care Center
-description: Troubleshooting-first automation console for the Datto/Kaseya data-protection stack
+name: Kaseya Resolution Center
+description: Troubleshooting-first automation module inside the Kaseya/Datto portal
 colors:
-  primary: "#199ED9"            # Datto Curious Blue — primary actions, focus, selection
-  primary-strong: "#0580C2"     # pressed/hover
-  primary-dark: "#2BA5E0"       # brighter primary for dark surfaces
-  tiber: "#002A3A"              # deep teal — app shell / sidebar canvas
-  tiber-700: "#1B434D"          # teal raised surface / nav hover
-  accent-mint: "#30DAC1"        # teal/mint accent
-  accent-mint-strong: "#10BDA4"
-  kaseya: "#5E42FF"             # Kaseya corporate purple — upsell/"Powered by Kaseya" ONLY
-  bg: "#F6F9FC"                # light page canvas
-  surface: "#FFFFFF"            # cards/panels
-  ink: "#212529"               # primary text
-  muted-fg: "#6C757D"           # secondary text
-  border: "#DEE2E6"             # hairline borders/inputs
-  dark-bg: "#0C2129"            # dark canvas (teal-black)
-  dark-surface: "#122F38"       # dark raised surface
-  success: "#28A745"            # Protected / Healthy
-  warning: "#FFC107"            # Warning / stale
-  danger: "#DC3545"             # Failed / Critical
-  info: "#17A2B8"               # informational
-  status-paused: "#6C757D"      # intentional pause (desaturated)
-  status-offline: "#343A40"     # unreachable (colder than paused)
+  primary: "#0E67F5"          # Kaseya blue — primary actions, topbar
+  primary-strong: "#0D47A1"   # hover / pressed
+  primary-accent: "#1565C0"   # active nav, links, selected row
+  primary-tint: "#EEF5FF"     # active / selected background
+  ai: "#6A1B9A"               # AI-assist text/icon (purple)
+  ai-accent: "#AB47BC"
+  ai-tint: "#F3E5F5"          # AI surfaces background
+  bg: "#FFFFFF"               # content canvas
+  surface: "#FFFFFF"          # cards / panels
+  subtle: "#F8F9FC"           # stat bar / muted surface
+  ink: "#1A2332"              # primary text
+  muted-fg: "#607185"         # secondary text
+  faint-fg: "#8A9BB0"         # labels / captions
+  border: "#E2E8F0"           # hairline borders
+  nav-fg: "#455A64"           # nav item text
+  nav-hover: "#F0F4F8"        # nav hover bg
+  fix-endtoend: "#2E7D32"     # End-to-end fix (fully automatable)
+  fix-guided: "#1565C0"       # Guided fix (We + You steps)
+  fix-insights: "#E65100"     # Insights only (not controllable / external)
+  fix-unknown: "#9E9E9E"      # Unknown classification
+  critical: "#C62828"         # critical severity
+  critical-tint: "#FFEBEE"
+  warning: "#E65100"          # warning severity
+  warning-tint: "#FFF3E0"
+  success: "#2E7D32"          # resolved / healthy
+  success-tint: "#E8F5E9"
+  product-saas: "#1976D2"     # product accent — SaaS
+  product-bcdr: "#E65100"     # product accent — BCDR
+  product-endpoint: "#2E7D32" # product accent — Endpoint v2
+  dark-bg: "#0F172A"          # dark canvas (slate)
+  dark-surface: "#1E293B"     # dark raised surface
+  dark-border: "#334155"
 typography:
   display:
     fontFamily: "Plus Jakarta Sans, Figtree, system-ui, sans-serif"
-    fontSize: "28px"
+    fontSize: "24px"
     fontWeight: 700
-    lineHeight: 1.28
+    lineHeight: 1.25
     letterSpacing: "-0.01em"
   heading:
     fontFamily: "Plus Jakarta Sans, Figtree, sans-serif"
-    fontSize: "18px"
-    fontWeight: 600
-    lineHeight: 1.44
+    fontSize: "15px"
+    fontWeight: 700
+    lineHeight: 1.4
     letterSpacing: "normal"
   body:
     fontFamily: "Figtree, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "14px"
-    fontWeight: 400
-    lineHeight: 1.43
-    letterSpacing: "normal"
-  caption:
-    fontFamily: "Figtree, sans-serif"
-    fontSize: "12px"
-    fontWeight: 500
-    lineHeight: 1.33
-    letterSpacing: "0.04em"
-  mono:
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
     fontSize: "13px"
     fontWeight: 400
-    lineHeight: 1.38
+    lineHeight: 1.5
+    letterSpacing: "normal"
+  label:
+    fontFamily: "Figtree, sans-serif"
+    fontSize: "10px"
+    fontWeight: 700
+    lineHeight: 1.3
+    letterSpacing: "0.07em"
+  mono:
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.4
     letterSpacing: "normal"
 rounded:
   sm: "4px"
-  md: "8px"
-  lg: "12px"
+  md: "6px"
+  lg: "8px"
+  xl: "10px"
   full: "9999px"
 spacing:
   xs: "4px"
   sm: "8px"
   md: "12px"
   lg: "16px"
-  xl: "24px"
+  xl: "20px"
   "2xl": "32px"
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.surface}"
     rounded: "{rounded.md}"
-    padding: "8px 14px"
-    height: "36px"
+    padding: "5px 12px"
+    height: "30px"
   button-primary-hover:
     backgroundColor: "{colors.primary-strong}"
     textColor: "{colors.surface}"
-  button-secondary:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "8px 14px"
-    height: "36px"
-  button-destructive:
-    backgroundColor: "{colors.danger}"
+  button-fix:
+    backgroundColor: "{colors.primary}"
     textColor: "{colors.surface}"
     rounded: "{rounded.md}"
-  badge-status:
-    rounded: "{rounded.full}"
-    padding: "2px 8px"
-    height: "20px"
-    typography: "{typography.caption}"
+    padding: "4px 9px"
+  button-ai:
+    backgroundColor: "{colors.ai-tint}"
+    textColor: "{colors.ai}"
+    rounded: "{rounded.md}"
+    padding: "4px 9px"
+  nav-item-active:
+    backgroundColor: "{colors.primary-tint}"
+    textColor: "{colors.primary-accent}"
   card:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "16px"
-  input:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-    padding: "8px 12px"
-    height: "36px"
+    rounded: "{rounded.lg}"
+    padding: "12px 14px"
+  badge-critical:
+    backgroundColor: "{colors.critical-tint}"
+    textColor: "{colors.critical}"
+    rounded: "{rounded.full}"
+    padding: "2px 8px"
+  badge-warning:
+    backgroundColor: "{colors.warning-tint}"
+    textColor: "{colors.warning}"
+    rounded: "{rounded.full}"
+    padding: "2px 8px"
   sidebar:
-    backgroundColor: "{colors.tiber}"
-    textColor: "#CBD7DC"
-    width: "240px"
-  table-cell:
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    padding: "8px 12px"
-    height: "40px"
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.nav-fg}"
+    width: "218px"
+  topbar:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.surface}"
+    height: "50px"
 ---
 
 ## Overview
 
-Datto Care Center reads as a **native Datto/Kaseya portal** surface: a deep Tiber-teal app shell (left nav + top omni-search bar) wrapping a light, data-dense content canvas. The personality is **trustworthy, fast, expert** — a senior engineer's troubleshooting console, not a marketing page. Design *serves* the task: triage a wall of backup alerts, understand *why* something failed, and run the fix. Density is a feature; clarity is the discipline that keeps density from becoming clutter. Visual structure comes from **hairline borders and typographic hierarchy**, not heavy shadows or decoration. Dark mode is teal-black (a subtle teal cast in every surface), never generic carbon-gray. The tool should disappear into the task; the only "delight" is the satisfaction of a clean resolution.
+The Kaseya Resolution Center is a **module inside the Kaseya/Datto portal** — a troubleshooting console where an MSP tech triages backup/DR **issues grouped by category**, understands *why* each failed, and runs the **fix**. It reads as a native portal surface: a **white left nav**, a **Kaseya-blue (`#0E67F5`) topbar**, and a light, data-dense content canvas. Personality: **trustworthy, fast, expert** — a senior engineer's console, not a marketing page. Structure comes from **hairline borders and typographic hierarchy**, not heavy shadows. Density is a feature; clarity keeps it from clutter. The only "delight" is the satisfaction of a clean resolution.
 
-This is the canonical visual reference for all agents generating screens. Tokens are normative; match them exactly. Full rationale and sourcing in `docs/research/01-design-system-research.md`; comprehensive spec in `docs/03-design-system.md`.
+This is the canonical visual reference; tokens are normative, match them exactly. Comprehensive spec: `docs/03-design-system.md`. Product model: `docs/00-vision-and-scope.md`.
 
 ## Colors
 
-**Brand strategy: Restrained** (product floor) — tinted neutrals + Datto blue as the single accent for primary actions, current selection, and focus. Color is information here, not decoration.
+**Strategy: Restrained** — neutrals + Kaseya blue as the single action accent. Color is information here (severity, fix-type, product), not decoration.
 
-- **Primary — Datto Curious Blue `#199ED9`** (HSL `199 75% 47%`): primary buttons, active nav indicator, focus rings, selected rows, syncing state, default chart series. Hover/pressed `#0580C2`. On dark surfaces lift to `#2BA5E0`.
-- **App shell — Tiber teal `#002A3A`** (`197 100% 11%`): left sidebar and dark-mode canvas base. Raised teal surfaces / nav hover `#1B434D`.
-- **Accent — Mint `#30DAC1`** (`173 71% 52%`): sparingly, for positive emphasis and secondary chart series; pops on the teal shell.
-- **Kaseya purple `#5E42FF`** is the **corporate accent only** — "Powered by Kaseya," IT Complete upsell, cross-sell banners. **Never** use it for routine product actions.
-- **Neutrals:** canvas `#F6F9FC`, surface `#FFFFFF`, ink `#212529`, muted text `#6C757D`, hairline border `#DEE2E6`. Dark: canvas `#0C2129`, surface `#122F38`.
+- **Primary — Kaseya blue `#0E67F5`**: topbar, primary/fix buttons, focus. Hover `#0D47A1`. **`#1565C0`** for active nav, links, selected rows; **`#EEF5FF`** as the active/selected tint.
+- **AI-assist — purple `#6A1B9A` / `#AB47BC`** on tint `#F3E5F5`: the *only* place purple appears. Used for AI insight surfaces and the AI button (sparkle glyph). Never mixed silently with deterministic content.
+- **Neutrals:** canvas/surface `#FFFFFF`, subtle surface (stat bar) `#F8F9FC`, ink `#1A2332`, muted text `#607185`, faint labels `#8A9BB0`, hairline border `#E2E8F0`. Nav text `#455A64`, nav hover `#F0F4F8`.
+- **Dark mode:** slate — canvas `#0F172A`, surface `#1E293B`, border `#334155`, ink `#E2E8F0`. (Portal dark is slate, not teal.)
 
-**Backup health / status semantics (never color-only — always dot + icon + label):**
+**Fix classification (the load-bearing semantic — see `00-vision` §model):**
 
-| State | Color | Icon (lucide) |
-|---|---|---|
-| Protected / Healthy | success `#28A745` | `shield-check` / `circle-check` |
-| Warning (stale, nearing quota) | warning `#FFC107` (dark text on amber) | `alert-triangle` |
-| Failed / Critical | danger `#DC3545` | `x-circle` / `octagon-alert` |
-| Paused (intentional) | desaturated `#6C757D` | `pause-circle` |
-| Syncing / In progress | primary `#199ED9` (slow spin) | `refresh-cw` / `loader` |
-| Offline / Unreachable | cold `#343A40` | `cloud-off` / `wifi-off` |
+| Fix type | Label | Color | Meaning |
+|---|---|---|---|
+| `full` | End-to-end fix | green `#2E7D32` | fully automatable, one-click |
+| `partial` | Guided fix | blue `#1565C0` | some steps automated (We), some manual (You) |
+| `external`/`manual` | Insights only | orange `#E65100` | not controllable (vendor/infra) |
+| `unknown` | Insights only | gray `#9E9E9E` | root cause unknown |
 
-Severity order for sort/rollup: **Failed > Warning > Offline > Syncing > Paused > Protected.** A fleet rollup shows the worst real child state. Verify contrast on amber (use dark foreground) and on teal-black dark surfaces.
+**Severity & status (never color-only — always dot + icon + label):** Critical `#C62828` on `#FFEBEE`; Warning `#E65100` on `#FFF3E0`; Resolved/healthy `#2E7D32` on `#E8F5E9`. **Product accents** (chips/charts): SaaS `#1976D2`, BCDR `#E65100`, Endpoint v2 `#2E7D32`.
 
 ## Typography
 
-Two confirmed brand families, both variable-weight geometric/humanist sans:
+Kaseya brand families: **Figtree** (body/UI/tables) + **Plus Jakarta Sans** (display/headings). Data-dense base.
 
-- **Display / headings — Plus Jakarta Sans.** Page titles (28/700), section titles (22/600), card headers (18/600). Fixed rem scale, not fluid (product UI at consistent DPI).
-- **Body / UI / tables — Figtree.** Default UI text and table cells **14px/400** (data density — base is 14, not 16). Dense rows 13px. Closest web-font fallback if needed: Inter.
-- **Caption / labels — Figtree 12px/500**, uppercase, `letter-spacing 0.04em` for table headers and badge labels.
-- **Mono** for IDs, IPs, sizes, timestamps, error codes (`ui-monospace, SFMono-Regular, Menlo…`).
+- **Body/UI/tables:** Figtree **13px**/400 (dense tables to 12px). Closest fallback: Inter / system-ui.
+- **Headings:** Plus Jakarta Sans — page title 24/700, section 15/700, card title 13/700.
+- **Labels/eyebrows:** 10px/700 uppercase, `letter-spacing 0.07em`, color faint `#8A9BB0` (stat names, table headers, section labels).
+- **Mono:** IDs, hostnames, error codes, ports, sizes (`ui-monospace, SFMono-Regular, Menlo…`).
 
-Tight type scale ratio (1.125–1.2). Prose capped 65–75ch; tables may run denser. One family carries headings, the other body — paired on a real contrast axis (geometric display vs humanist UI), never two near-identical sans.
+Fixed px scale (product UI at consistent DPI), tight ratio. One family for headings, the other for body — never two near-identical sans.
 
 ## Elevation
 
-Structure comes from **hairline borders, not shadows.** Soft, low-contrast elevation only where layering demands it:
+Structure via **hairline borders, not shadows.**
 
-- `elevation-0` — flat, border-defined (default for cards/tables).
-- `elevation-1` (card) — `0 1px 2px rgba(16,42,58,.06), 0 1px 3px rgba(16,42,58,.10)`.
-- `elevation-2` (dropdown/popover/toast) — `0 4px 12px rgba(16,42,58,.12)`.
-- `elevation-3` (modal/sheet) — `0 12px 32px rgba(16,42,58,.18)`.
+- `elevation-0` — flat, border-defined (default for cards/rows/tables).
+- `elevation-1` (hover card) — `0 2px 10px rgba(0,0,0,.08)`.
+- `elevation-2` (dropdown/popover/toast) — `0 4px 16px rgba(0,0,0,.10)`.
+- `elevation-3` (modal / side panel) — `0 8px 32px rgba(0,0,0,.20)` (side panel: `-4px 0 16px rgba(0,0,0,.08)`).
 
-**Dark mode:** replace shadows with border emphasis (`1px solid border`) + a faint `inset 0 1px 0 rgba(255,255,255,.03)` top highlight — shadows read poorly on teal-black. Build a semantic z-index scale (dropdown → sticky → modal-backdrop → modal → toast → tooltip); never arbitrary `9999`. Radius: 4px chips/inputs-sm, **8px default** (buttons/cards/inputs), 12px modals/popovers, full for status dots/pills.
+Build a semantic z-index scale (dropdown → sticky → side-panel → modal-backdrop → modal → toast → tooltip); never arbitrary `9999`. Radius: 4px chips/inputs, **6px buttons**, 8px cards, full for status dots/pills. Dark mode: lean on borders (`#334155`) over shadows.
 
 ## Components
 
-Every interactive component ships **all** states: default, hover, focus, active, disabled, loading, error. Skeletons (not center spinners) for loading; empty states that *teach* the interface.
+Every interactive component ships all states: default, hover, focus, active, disabled, loading, error. Skeletons for loading; empty states that teach.
 
-- **Buttons:** primary solid Datto-blue (36px / sm 32px / lg 40px, radius 8px, 600); secondary outline (1px border, muted hover); ghost (table-row & toolbar actions); destructive solid red for purge/delete; icon buttons 32×32 with 16px lucide. Focus ring 2px primary @40% + 2px offset.
-- **Tables (the core surface):** dense by default (40px row / 32px compact), cell padding `8px 12px`, body 14px. Header 12px uppercase 600 muted, sortable. Hairline row borders; hover → muted; selected → primary @8% bg + 2px left primary border. Sticky header + sticky first column; right-align numerics; mono for IDs/sizes. **Signature pattern:** inline "last 10 backups" green/red dot-strip and mini sparklines in cells. Bulk-action toolbar appears above the grid on selection.
-- **Status badge:** one `<StatusBadge state=… />` = 8px dot + icon + 12px caption + subtle-bg, driven by the status table above.
-- **Cards / KPI:** white on `#F6F9FC`, radius 8px, border or elevation-1. KPI = 28–32px Jakarta number + caption + trend delta (success/danger). **Never nest cards.**
-- **Sidebar:** Tiber-teal rail, 240px expanded / 64px collapsed, 16px lucide + 14px label, active item = teal-700 bg + 3px left blue indicator + white text. Tenant switcher top, collapse toggle bottom.
-- **Top bar:** 56–60px, breadcrumb left, full-width global omni-search (magnifying glass, `f` shortcut — Datto pattern) center, tenant selector + notifications bell + avatar right.
-- **Toasts:** bottom-right, radius 8px, elevation-2, 4px left status accent, leading icon, auto-dismiss 5s (errors persist).
-- **Forms:** 36px inputs, radius 8px, label 13px/500 above, focus ring primary, error = red border + 12px helper.
-- **Charts:** series order blue → mint → purple → amber → info; status charts always use status tokens; soft gridlines, no heavy axes.
+- **Left nav (white):** 218px, sections (Views / Reports) with 10px uppercase faint labels; item = 14px lucide + 12.5px label, `#455A64`; hover `#F0F4F8`; **active = `#EEF5FF` bg + 3px left blue (`#1565C0`) border + blue text**. Tenant switcher top; "Recent Organizations" list.
+- **Topbar (Kaseya blue `#0E67F5`):** Kaseya mark + "Resolution Center"; right side: Scan now, End-to-end fix all, notifications, avatar. White translucent buttons.
+- **Stat bar:** thin strip under topbar — Resolved today/month, per-product deltas (▲/▼), active-outage indicator (red, click → outage modal).
+- **Summary cards:** Top problem of the day · Open issues · Critical issues · End-to-end fixable. Colored top-border by role; big number; click → impacted-assets panel.
+- **Charts:** Issue trend (line, open vs resolved) · By product (donut) · By category (pie) · Fix-classification (donut). Series colored by the fix/product/status tokens; soft gridlines.
+- **Category group:** collapsible card per category — chevron, icon, name, count badge, critical badge, sparkline. Expands to the **issue table**.
+- **Issue row:** name + detail (mono asset id) · product chip · severity badge · **occurrence count** (clickable → impacted assets) · **Fix** button (blue) + **AI** button (purple) · expands to detail.
+- **Issue detail / fix panel:** plain-language problem → **"We" steps (automated, blue)** vs **"You" steps (manual, orange)** → AI insight (purple) → fix modal with **"Fix this once"** vs **"Always fix this type / category"**.
+- **Fix modal:** "What will happen" summary; once vs always actions; bulk "End-to-end fix all" with per-category always toggle.
+- **Impacted-assets side panel:** right overlay (does not push content); occurrences + unique assets typed device/SaaS-account/cloud.
+- **Outage modal:** active service outage → "Are you impacted?" affected vs unaffected assets; auto-retry note; status-page link.
+- **Tables:** dense (32–40px rows), 8px×12px cells, 13px Figtree, hairline rows, hover `#F8FAFE`, sticky header, mono ids, right-aligned numerics, bulk toolbar on selection.
+- **Buttons:** primary solid blue (30px, radius 6px); secondary outline; ghost (row/toolbar actions); AI = lavender bg + purple text + sparkle. **Toasts:** bottom-center/right, status-accented.
+- **Icons:** lucide, 14–16px, 1.8 stroke; purple only for AI/sparkle.
 
 ## Do's and Don'ts
 
 **Do**
-- Drive every color/size/radius/font from tokens (CSS variables); render the token set as Storybook Foundations stories.
-- Lead with triage: severity-sorted, worst-state rollups, real risk above cosmetic noise.
-- Pair every failure state with its remediation action(s) inline. Show the evidence (error string, chain state, dot-strip).
-- Use hairline borders for structure; keep a subtle teal cast in dark surfaces.
-- Give every state a dot + icon + label (a11y, color-blind safe, matches Datto convention).
+- Drive every color/size/radius/font from tokens; render the token set as Storybook Foundations stories.
+- Group issues by category; lead with severity + fix-type; pair every issue with its fix (We/You steps) and Fix-once/Always.
+- Reserve purple for AI-assist only; reserve Kaseya blue for actions/active.
+- Use hairline borders for structure; give every status a dot + icon + label.
 
 **Don't**
-- Hardcode any color/spacing/radius/font, or invent a one-off component outside the design system / Storybook.
-- Use Kaseya purple for routine actions (corporate-accent only).
-- Nest cards, use side-stripe borders >1px as decoration, gradient text, decorative glassmorphism, hero-metric templates, identical icon-card grids, or per-section uppercase eyebrows (impeccable absolute bans).
-- Color every imperfect state red — reserve red for real failures; desaturate intentional/paused.
-- Reinvent standard affordances (custom scrollbars, weird modals) or add decorative page-load motion. Motion conveys state only (150–250ms), with a reduced-motion alternative.
+- Hardcode any color/spacing/radius/font, or build a one-off outside the design system / Storybook.
+- Use the Datto-teal sidebar / Datto-blue primary — those are demoted to product-context accents (BCDR), not the app shell.
+- Put competitor names/branding/derived patterns anywhere in the product.
+- Nest cards, use side-stripe borders >1px as decoration, gradient text, decorative glassmorphism, hero-metric templates, identical icon-card grids, or per-section uppercase eyebrows (impeccable bans).
+- Add decorative page-load motion. Motion conveys state only (150–250ms), with a reduced-motion alternative.

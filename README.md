@@ -1,4 +1,4 @@
-# OpsParcero — Datto Care Center
+# OpsParcero — Kaseya Resolution Center
 
 A **troubleshooting-first automation console** for the Datto/Kaseya data-protection stack (Datto BCDR, Endpoint Backup v1/v2, Datto Cloud DR, SaaS Protect, Spanning). It is health-aware but not primarily a dashboard — it's where an MSP tech goes to diagnose *why* a backup failed and **fix it**, turning manual fixes into discrete remediation **actions** that can be chained, scoped (apply once / to all matching / always), saved as **playbooks**, gated by approvals, and audited.
 

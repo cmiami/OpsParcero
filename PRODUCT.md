@@ -1,7 +1,8 @@
 # Product
 
-<!-- Impeccable strategic context. Refine anytime with `/impeccable init`.
-     Working product title: "Datto Care Center" (Backup Troubleshooting & Automation Center). Rename freely. -->
+<!-- Impeccable strategic context. Product overview & model: docs/00-vision-and-scope.md.
+     Product: Kaseya Resolution Center (repo codename OpsParcero) — a Kaseya/Datto portal module.
+     Scope: SaaS (Spanning) / BCDR (incl. Recovery Launchpad: local-device or Datto-Cloud recovery) / Endpoint v2. -->
 
 ## Register
 
@@ -19,7 +20,7 @@ The job to be done: **"A backup failed (or a fleet of them did). Tell me which o
 
 ## Product Purpose
 
-Datto Care Center is a **troubleshooting-first automation console** for the Datto/Kaseya data-protection stack. It is health-aware (it rolls up fleet success/failure and last-good-backup recency) but it is **not primarily a backup dashboard** — it is the place you go *when something is wrong* to diagnose and remediate it.
+Kaseya Resolution Center is a **troubleshooting-first automation console** for the Datto/Kaseya data-protection stack. It is health-aware (it rolls up fleet success/failure and last-good-backup recency) but it is **not primarily a backup dashboard** — it is the place you go *when something is wrong* to diagnose and remediate it.
 
 The core differentiator: most backup failures across these products are self-serviceable but require a human in the loop or a manual button click today (re-run a screenshot, run a diff-merge / rebuild the backup chain, force retention to free a full storage pool, restart a wedged agent, re-authorize an expired M365/Google OAuth grant, re-seed a Spanning Salesforce connection). Care Center turns those into **discrete, parameterized remediation actions** that users can run on one asset, **chain together** into a sequence, **scope** (apply once to this asset / apply to all matching / apply always going forward as an auto-remediation policy), **save as reusable playbooks**, gate behind approvals, and review in an audit log. It is "self-healing backups with a human in the loop, when the human wants to be."
 
@@ -31,7 +32,7 @@ This build is a **front-end mock** (realistic mock data, no live backend) that f
 
 Three words: **trustworthy, fast, expert.** This is infrastructure software for people whose job is reliability; it should feel like a senior engineer's console, not a consumer app. The voice is calm and precise under pressure (it never cries wolf — it distinguishes a cosmetic warning from a data-loss risk), it shows the evidence (the actual error, the chain state, the last 10 attempts) rather than hand-waving, and it earns confidence by being correct and dense without being cluttered. Emotional goal: a tech who was dreading a wall of red alerts feels *in control* within ten seconds.
 
-It must read as a native **Datto/Kaseya portal** surface — Datto-blue primary, deep Tiber-teal app shell, the product's own status semantics — so it feels like part of the suite, not a third-party bolt-on.
+It must read as a native **Kaseya/Datto portal** surface — white left nav, Kaseya-blue primary, the fix-classification color system, purple reserved for AI-assist — so it feels like part of the suite, not a third-party bolt-on.
 
 ## Anti-references
 

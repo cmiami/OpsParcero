@@ -1,18 +1,18 @@
-# Datto Care Center — Master Roadmap
+# Kaseya Resolution Center — Master Roadmap
 
 > **This is the resume-anywhere progress tracker.** Check items off as they complete. At the start of any session: read this file, read `CLAUDE.md`, run `node .claude/skills/impeccable/scripts/context.mjs`, then continue at the first unchecked item.
 >
 > **Status legend:** `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked/needs decision
 >
-> **Working title:** Datto Care Center (Backup Troubleshooting & Automation Center). Front-end mock · shadcn/ui · Storybook design system · Kaseya/Datto tokens · impeccable-enforced.
+> **Working title:** Kaseya Resolution Center (Backup Troubleshooting & Automation Center). Front-end mock · shadcn/ui · Storybook design system · Kaseya/Datto tokens · impeccable-enforced.
 
 ---
 
 ## Where we are right now
 
-- ✅ **Phase 0 (Foundation) complete** — research done (135 failure modes across 6 products + design/UX/arch/storybook briefs), impeccable v3.7.1 installed + hook enabled, brand tokens confirmed, `CLAUDE.md` / `PRODUCT.md` / `DESIGN.md` / `README.md` written, **repo on GitHub (`cmiami/OpsParcero`, pushed to `main`)**.
-- 🟡 **Phase 1 (Specification) in progress** — spec doc set being authored to `docs/`.
-- 👉 **Next:** finish specs → set up GitHub burn-down (milestones + issues) → **Phase 2 scaffold + design system/Storybook** → **BCDR vertical slice**.
+- ✅ **Phase 0 (Foundation) complete** — research, impeccable v3.7.1 + hook (Claude + Codex), `CLAUDE.md` / `AGENTS.md` / `PRODUCT.md` / `DESIGN.md` / `README.md`, repo on GitHub (`cmiami/OpsParcero`, `main`), 7 phase milestones.
+- ✅ **Phase 1 (Specification) complete** — [`00-vision`](docs/00-vision-and-scope.md) + the `docs/` spec set define the **Kaseya Resolution Center**: issues-by-category, fix-classification (End-to-end / Guided / Insights), "We/You" steps, apply once/always, outage awareness, **Recovery Launchpad** (recovery on local device or in the Datto Cloud — Datto Cloud is a target, not a product). Scope: **SaaS / BCDR / Endpoint v2**.
+- 👉 **Next: Phase 2** — scaffold Next.js + design-system tokens (`globals.css`) + Storybook, then the **BCDR vertical slice**. Create Phase 2 issues and burn them down.
 
 ## Build decisions (locked 2026-06-22)
 
@@ -42,29 +42,30 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [x] Author `DESIGN.md` (impeccable visual context, seeded with confirmed tokens)
 - [x] Author `README.md`; repo hygiene (`.gitignore`, portable hook in committed `.claude/settings.json`)
 - [x] Foundation pushed to GitHub `cmiami/OpsParcero` (`main`)
+- [x] `AGENTS.md` (Codex mirror of CLAUDE.md) + Codex impeccable harness (`.agents/skills/impeccable`, `.codex/hooks.json`)
+- [x] Competitor mandate (M7) + scrub of product-facing docs; product reference captured (`docs/00-vision-and-scope.md` + `research/kaseya-resolution-center-reference.html`)
+- [x] GitHub phase milestones (#1–#7) created
 
-## Phase 1 — Specification (spec-level, pre-build)  `[~]`
+## Phase 1 — Specification  `[x]`
 
-> Goal: every design/architecture/data/feature decision defined before writing app code. Index: `docs/INDEX.md`.
+> Every design/architecture/data/feature decision defined before app code. Index: `docs/INDEX.md`.
 
-- [x] `docs/INDEX.md` — spec index
-- [ ] `docs/00-vision-and-scope.md` — vision, problem, goals/non-goals, scope, success metrics
-- [ ] `docs/01-personas-and-jobs.md` — personas, jobs-to-be-done, key user journeys
-- [ ] `docs/02-failure-catalog.md` — per-product failure catalog → symptoms, causes, self-serve vs human-in-loop, candidate remediation actions (the action source-of-truth)
-- [~] `docs/03-design-system.md` — canonical tokens, status system, component styling (DESIGN.md + research done; full spec pending)
-- [ ] `docs/04-information-architecture.md` — nav model, routes, page map, URL/state, saved views
-- [ ] `docs/05-domain-model.md` — entities & relationships per product (assets, jobs, recovery points, alerts, actions, playbooks…)
-- [ ] `docs/06-data-model-and-mock-data.md` — TypeScript schemas + deterministic seeded mock-data generation plan
-- [ ] `docs/07-troubleshooting-and-automation-engine.md` — **the core**: action model, chaining, scope (once/all/always), save-as-playbook, approvals, dry-run, audit log
-- [ ] `docs/08-feature-specs.md` — feature-by-feature specs (triage queue, asset detail, automation library, run history, reports…)
-- [ ] `docs/09-page-specs.md` — page-by-page, wireframe-level layout specs
-- [ ] `docs/10-component-inventory.md` — atomic component inventory mapped to shadcn primitives + custom composites
-- [ ] `docs/storybook-design-system.md` — Storybook architecture, atomic structure, 100% coverage plan, theming/addons
-- [ ] `docs/11-tech-architecture.md` — stack, folder structure, state, mock services, token/lint enforcement
-- [ ] `docs/12-content-strategy.md` — rich per-product content, runbook copy, microcopy, empty/error states
-- [ ] `docs/13-implementation-phases.md` — detailed build milestones (feeds Phase 2+ below)
-- [ ] `docs/products/*.md` — per-product deep dives (BCDR, Endpoint Backup v1/v2, Datto Cloud, SaaS Protect, Spanning)
-- [ ] **Spec review pass** — self-review the set for coverage/consistency; resolve any `[!]` decisions with the user
+- [x] `docs/00-vision-and-scope.md` — product overview & model (canonical)
+- [x] `docs/01-personas-and-jobs.md` — personas, JTBD, journeys
+- [x] `docs/02-failure-catalog.md` — failure modes → causes, self-serve vs human-in-loop, remediation actions
+- [x] `docs/03-design-system.md` — Kaseya-portal tokens, fix-classification, status, components
+- [x] `docs/04-information-architecture.md` — nav, routes, filters, impacted-assets panel, outage surface
+- [x] `docs/05-domain-model.md` — entities & relationships
+- [x] `docs/06-data-model-and-mock-data.md` — TS schemas + seeded mock-data generator
+- [x] `docs/07-troubleshooting-and-automation-engine.md` — fix-classification, We/You steps, apply once/always, audit
+- [x] `docs/08-feature-specs.md` — feature-by-feature specs
+- [x] `docs/09-page-specs.md` — page-by-page wireframes
+- [x] `docs/10-component-inventory.md` — atomic component inventory
+- [x] `docs/storybook-design-system.md` — Storybook architecture, 100% coverage, theming
+- [x] `docs/11-tech-architecture.md` — stack, folders, state, mock services, enforcement
+- [x] `docs/12-content-strategy.md` — content, runbook copy, microcopy, empty/error states
+- [x] `docs/13-implementation-phases.md` — build milestones
+- [x] `docs/products/*.md` — per-product deep dives (BCDR, Endpoint Backup, Recovery Launchpad, SaaS Protect, Spanning)
 
 ## Phase 2 — Project scaffold & design system  `[ ]`
 
@@ -87,7 +88,7 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 
 - [ ] StatusBadge, BackupHealthCell, last-10 dot-strip, FleetRollup, severity chips
 - [ ] DataTable (TanStack) with sticky header/col, bulk toolbar, saved views
-- [ ] App shell: Tiber sidebar + top omni-search bar + command palette
+- [ ] App shell: white left nav + Kaseya-blue topbar + command palette + command palette
 - [ ] ActionCart / action-chain builder, ApplyScope control (once/all/always), PlaybookStepCard
 - [ ] AssetTimeline, AlertTriageRow, RemediationPanel — each with stories
 
@@ -115,7 +116,7 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 
 ## Open decisions  `[!]`
 
-- [ ] Confirm product name (working title "Datto Care Center").
+- [ ] Confirm product name (working title "Kaseya Resolution Center").
 - [ ] Single-app Storybook (current plan) vs. monorepo `@acme/ui` package — default single-app; revisit if a second consumer appears.
 - [ ] Charts: Recharts vs Tremor for KPI tiles (default Recharts + Tremor tiles).
 

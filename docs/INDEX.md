@@ -1,4 +1,4 @@
-# Datto Care Center — Spec Index
+# Kaseya Resolution Center — Spec Index
 
 Master tracker: [`../ROADMAP.md`](../ROADMAP.md) · Operating contract: [`../CLAUDE.md`](../CLAUDE.md) · Impeccable context: [`../PRODUCT.md`](../PRODUCT.md), [`../DESIGN.md`](../DESIGN.md)
 

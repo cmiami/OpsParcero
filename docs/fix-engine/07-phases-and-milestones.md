@@ -1,7 +1,7 @@
 # Fix-Engine 07 — Phases & Milestones (the build plan)
 
 The sequenced construction schedule that turns the AI-remediation spec set into a working POC: ordered, checkbox-style milestones (M1–M5) with concrete deliverables, dependency edges, a definition-of-done per milestone, a testing strategy, risks, and explicit out-of-scope. Where the [implementation-phases](../13-implementation-phases.md) doc schedules the *app*, this doc schedules the **`fix-engine/` harness and its front-end integration**.
-Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Governed by the [fix-engine design contract](00-overview.md) (locked decisions, canonical paths, canonical interfaces).
+Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Governed by the [fix-engine design contract](00-overview-and-goals.md) (locked decisions, canonical paths, canonical interfaces).
 
 ---
 
@@ -9,21 +9,21 @@ Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Gove
 
 This is the **construction schedule for the AI-remediation harness**. It assumes the rest of the fix-engine spec set is the *what* and the *how*; this doc is the **in-what-order, what-unblocks-what, and when-is-it-done**.
 
-- [00 overview](00-overview.md) — the four locked decisions, the two product features (Guided fix / Fix with AI), canonical layout, the canonical interfaces.
-- [01 provider abstraction](01-provider-abstraction.md) — `ModelProvider`, `ChatRequest`/`ChatEvent`, the adapter normalization, the model registry.
-- [02 tools & backends](02-tools-and-backends.md) — `ToolSpec`/`ToolHandler`, the read/diagnostic tools, `ExecutionBackend` per asset class, `ScriptArtifact`, `StateDiff`.
-- [03 agent loop & session](03-agent-loop-and-session.md) — `FixSession`/`FixState` state machine, `FixBudget`, halt conditions, `FixPlan`, transcript.
-- [04 server & CLI](04-server-and-cli.md) — the local HTTP/SSE API and the `fix-engine` CLI.
-- [05 front-end integration](05-frontend-integration.md) — `FixClient`, the live-SSE vs offline-sim split, the `fix/` organisms.
-- [06 prompts & safety](06-prompts-and-safety.md) — system prompts, approval gates, scope/threshold rules.
+- [00 overview](00-overview-and-goals.md) — the four locked decisions, the two product features (Guided fix / Fix with AI), canonical layout, the canonical interfaces.
+- [01 provider abstraction](02-provider-abstraction.md) — `ModelProvider`, `ChatRequest`/`ChatEvent`, the adapter normalization, the model registry.
+- [02 tools & backends](03-tool-and-execution-model.md) — `ToolSpec`/`ToolHandler`, the read/diagnostic tools, `ExecutionBackend` per asset class, `ScriptArtifact`, `StateDiff`.
+- [03 agent loop & session](01-harness-architecture.md) — `FixSession`/`FixState` state machine, `FixBudget`, halt conditions, `FixPlan`, transcript.
+- [04 server & CLI](01-harness-architecture.md) — the local HTTP/SSE API and the `fix-engine` CLI.
+- [05 front-end integration](05-guided-fix-ux.md) — `FixClient`, the live-SSE vs offline-sim split, the `fix/` organisms.
+- [06 prompts & safety](01-harness-architecture.md) — system prompts, approval gates, scope/threshold rules.
 
 ### 0.1 Principles that shape the sequence
 
-1. **Mock provider before any real provider.** The deterministic **Mock provider** ([contract decision 3](00-overview.md)) lands in M1 so the agent loop, tools, server, and front-end are all testable and demo-able with **zero credentials and byte-identical output** before a single real adapter exists. Real providers (M3) plug into a proven loop.
+1. **Mock provider before any real provider.** The deterministic **Mock provider** ([contract decision 3](00-overview-and-goals.md)) lands in M1 so the agent loop, tools, server, and front-end are all testable and demo-able with **zero credentials and byte-identical output** before a single real adapter exists. Real providers (M3) plug into a proven loop.
 2. **Loop before tools, tools before real scripts.** The loop is built against a tiny tool surface, then the tool/backend layer is fleshed out, then the *real* script artifacts are authored. Each layer is verified against the Mock provider before the next is stacked on it.
 3. **Engine before front-end.** The harness (M1–M3) is a working CLI + local server *before* the React surfaces (M4) consume it. The front-end never reaches around `FixClient`; it talks to a finished contract.
-4. **One shared fleet, one source of truth.** The engine imports the app's `@/types` and the seeded `@/mock` fixtures as its **target fleet** ([contract layout](00-overview.md)) from M1 — the engine never redefines domain types or invents assets. The browser-side simulated path ([`lib/fix-sim`](05-frontend-integration.md)) mirrors the engine's behavior against the *same* fixtures so live and offline demos agree.
-5. **Simulated execution, real artifacts.** No milestone ever touches a real machine, credential, or product API. Tools emit real PowerShell/bash/Python/HTTP, and a **simulated** `ExecutionBackend` returns believable stdout/exit + a `StateDiff` ([contract decision 4](00-overview.md)). Dry-run/preview and approval gates are built into the loop from M1, not retrofitted.
+4. **One shared fleet, one source of truth.** The engine imports the app's `@/types` and the seeded `@/mock` fixtures as its **target fleet** ([contract layout](00-overview-and-goals.md)) from M1 — the engine never redefines domain types or invents assets. The browser-side simulated path ([`lib/fix-sim`](05-guided-fix-ux.md)) mirrors the engine's behavior against the *same* fixtures so live and offline demos agree.
+5. **Simulated execution, real artifacts.** No milestone ever touches a real machine, credential, or product API. Tools emit real PowerShell/bash/Python/HTTP, and a **simulated** `ExecutionBackend` returns believable stdout/exit + a `StateDiff` ([contract decision 4](00-overview-and-goals.md)). Dry-run/preview and approval gates are built into the loop from M1, not retrofitted.
 6. **Two registers of "done."** The **engine** is Node/TS — clean, strictly typed, deterministically tested (it is *not* bound by the token rules). The **front-end** obeys all [CLAUDE.md](../../CLAUDE.md) mandates — tokens-only, a story per component, status never color-only, **purple reserved for the AI surface**, WCAG 2.2 AA, realistic Datto/Kaseya mock data, no competitor names.
 
 ### 0.2 Milestone map
@@ -70,21 +70,21 @@ M1 core ─────────────► M2 tools+exec ─────
 | M4 | M1 (`FixClient` contract) + M2 (`ToolResult`/`StateDiff` shapes) for the **sim path**; M3 for the **live SSE path** | M5 | M3 (sim path needs no real provider) |
 | M5 | M3 + M4 | release of the POC | — |
 
-**Key insight:** the **front-end offline-sim path** ([`lib/fix-sim`](05-frontend-integration.md)) depends only on M1+M2 shapes, not on M3. So once the loop and tools exist, one track can build the live engine (M3) while another builds the React surfaces against the simulated path (M4) — they converge when the live SSE path is wired. The Mock provider is what makes this parallelism safe: both tracks test against the same deterministic transcripts.
+**Key insight:** the **front-end offline-sim path** ([`lib/fix-sim`](05-guided-fix-ux.md)) depends only on M1+M2 shapes, not on M3. So once the loop and tools exist, one track can build the live engine (M3) while another builds the React surfaces against the simulated path (M4) — they converge when the live SSE path is wired. The Mock provider is what makes this parallelism safe: both tracks test against the same deterministic transcripts.
 
 ---
 
 ## 2. M1 — Fix-engine core (provider abstraction + Mock provider + agent loop)
 
-> **Goal:** a standalone `fix-engine/` package whose **agent loop** drives a `FixSession` through the full [state machine](03-agent-loop-and-session.md) using the deterministic **Mock provider**, bounded by a `FixBudget`, emitting a `FixTranscriptTurn[]`, against the **shared seeded fleet** — with zero real providers, zero real tools, zero credentials. This is the spine everything else stacks on.
+> **Goal:** a standalone `fix-engine/` package whose **agent loop** drives a `FixSession` through the full [state machine](01-harness-architecture.md) using the deterministic **Mock provider**, bounded by a `FixBudget`, emitting a `FixTranscriptTurn[]`, against the **shared seeded fleet** — with zero real providers, zero real tools, zero credentials. This is the spine everything else stacks on.
 
 ### Tasks
 
-- **Package scaffold.** Create `fix-engine/` with its own `package.json` + `tsconfig.json` (strict), Node 20.19+/22.12+, `vitest`. Path alias so the engine imports the app's domain types and fixtures as the single source of truth — `@/types` and the `@/mock` seeded fleet — per [contract layout](00-overview.md). Do **not** redefine `AssetKind`, `ProductType`, `ProtectedAsset`, `Issue`, `ActionScope`, `RemediationActionId`, `ActionRunId`, `ISODateTime`.
+- **Package scaffold.** Create `fix-engine/` with its own `package.json` + `tsconfig.json` (strict), Node 20.19+/22.12+, `vitest`. Path alias so the engine imports the app's domain types and fixtures as the single source of truth — `@/types` and the `@/mock` seeded fleet — per [contract layout](00-overview-and-goals.md). Do **not** redefine `AssetKind`, `ProductType`, `ProtectedAsset`, `Issue`, `ActionScope`, `RemediationActionId`, `ActionRunId`, `ISODateTime`.
 - **`shared/`** — the fleet adapter: load the seeded assets/failure-modes/actions from `@/mock`, expose `getAsset(id)`, `getIssue(id)`, `listActionsFor(asset)`; a **seeded clock** (`now()`), and a namespaced **PRNG** so the Mock provider and any simulated latency are reproducible.
-- **Provider abstraction** (`providers/`) — author the [canonical interfaces](00-overview.md) exactly: `ProviderId`, `ModelInfo`, `ModelProvider`, `ChatRequest`, `ChatMessage`, `ChatEvent`. Define the `ChatEvent` stream contract (`text` / `tool_call` / `usage` / `done` / `error`) that every adapter must normalize to. (Real adapters are M3.)
+- **Provider abstraction** (`providers/`) — author the [canonical interfaces](00-overview-and-goals.md) exactly: `ProviderId`, `ModelInfo`, `ModelProvider`, `ChatRequest`, `ChatMessage`, `ChatEvent`. Define the `ChatEvent` stream contract (`text` / `tool_call` / `usage` / `done` / `error`) that every adapter must normalize to. (Real adapters are M3.)
 - **Mock provider** (`providers/mock.ts`) — a deterministic `ModelProvider` that, given a `ChatRequest` + the seeded asset/issue, returns a **scripted `ChatEvent` sequence**: a triage read-tool call, a `FixPlan` proposal, per-step `tool_call`s, and a verification turn, ending `done`. Seeded by `{assetId, issueId, model}` so the same inputs ⇒ the same transcript. Emits plausible `usage` numbers. This is the CI engine for the entire harness.
-- **Agent loop / `FixSession`** (`loop/`) — implement the [state machine](03-agent-loop-and-session.md): `triaging → planning → awaiting-approval → executing → verifying → succeeded | partial | failed | escalated | halted`. The loop calls `provider.chat()`, parses `ChatEvent`s, dispatches `tool_call`s to the tool registry (a **stub registry** in M1 — one read tool + one no-op write tool to prove dispatch), feeds `ToolResult`s back as `{role:"tool"}` messages, and appends a `FixTranscriptTurn` for every model/tool/observation/approval/verification/status event.
+- **Agent loop / `FixSession`** (`loop/`) — implement the [state machine](01-harness-architecture.md): `triaging → planning → awaiting-approval → executing → verifying → succeeded | partial | failed | escalated | halted`. The loop calls `provider.chat()`, parses `ChatEvent`s, dispatches `tool_call`s to the tool registry (a **stub registry** in M1 — one read tool + one no-op write tool to prove dispatch), feeds `ToolResult`s back as `{role:"tool"}` messages, and appends a `FixTranscriptTurn` for every model/tool/observation/approval/verification/status event.
 - **Budget & halt** (`loop/budget.ts`) — enforce `FixBudget { maxSteps, maxToolCalls, maxTokens, maxWallMs }`. Halt → `state:"halted"` on budget exhaustion, repeated identical failures, or a refused approval. Mode rules: **guided** pauses at every `you` step and every gated `we` step; **ai** runs autonomously but still stops at approval gates.
 - **Approval & dry-run hooks** — the loop transitions to `awaiting-approval` for any step whose `requiresApproval` is true, and resolves via an injectable approval callback (the server/CLI/front-end provide it; M1 tests provide an auto-approve/auto-reject stub). The loop's `preview` (dry-run) phase is wired even though tools are stubs.
 - **Run/audit emission** — on each executed step the loop writes an `ActionRun` + `AuditLogEntry` record shape ([domain-model](../05-domain-model.md)/[data-model](../06-data-model-and-mock-data.md)) so AI fixes show up in Run history / Audit exactly like manual ones. In M1 these are returned in `FixSession.result.actionRunIds`; persistence wiring is M3 (server) / M4 (app store).
@@ -117,10 +117,10 @@ M1 core ─────────────► M2 tools+exec ─────
 
 ### Tasks
 
-- **`ToolSpec`/`ToolHandler`** (`tools/`) — author the [canonical interfaces](00-overview.md) exactly (`ToolRisk`, `ToolSpec`, `ToolContext`, `ToolResult`, `ToolHandler`). Each tool carries `risk`, `requiresApproval`, `reversible`, `appliesToKinds`, `productTypes`, optional `actionId` (1:1 link to the existing catalog), and a `backend`.
-- **Wrap the catalog.** For every automatable `RemediationAction` in the seeded catalog ([data-model](../06-data-model-and-mock-data.md), ~154 actions), generate a `ToolHandler` with a JSON-Schema `inputSchema`, the correct `risk`/approval/backend, and a `run`/`preview` that emits a `ScriptArtifact` and hands it to the matching backend ([tools-and-backends](02-tools-and-backends.md)).
+- **`ToolSpec`/`ToolHandler`** (`tools/`) — author the [canonical interfaces](00-overview-and-goals.md) exactly (`ToolRisk`, `ToolSpec`, `ToolContext`, `ToolResult`, `ToolHandler`). Each tool carries `risk`, `requiresApproval`, `reversible`, `appliesToKinds`, `productTypes`, optional `actionId` (1:1 link to the existing catalog), and a `backend`.
+- **Wrap the catalog.** For every automatable `RemediationAction` in the seeded catalog ([data-model](../06-data-model-and-mock-data.md), ~154 actions), generate a `ToolHandler` with a JSON-Schema `inputSchema`, the correct `risk`/approval/backend, and a `run`/`preview` that emits a `ScriptArtifact` and hands it to the matching backend ([tools-and-backends](03-tool-and-execution-model.md)).
 - **Add read/diagnostic tools.** Author the evidence-gathering tools the agent calls during `triage`: `get_vss_writers`, `get_zfs_pool`, `get_agent_comms`, `get_backup_chain`, `get_oauth_grant`, `read_event_log`, `get_screenshot_result`, etc. — `risk:"read"`, never gated. These produce the evidence the model reasons over.
-- **Execution backends** (`backends/`) — implement `ExecutionBackend` for each `BackendKind`, all **simulated** ([contract asset-class model](00-overview.md)):
+- **Execution backends** (`backends/`) — implement `ExecutionBackend` for each `BackendKind`, all **simulated** ([contract asset-class model](00-overview-and-goals.md)):
   - `agent-windows` — PowerShell over a *simulated* Datto Windows Agent channel (cmdlets, `vssadmin`, `diskshadow`, service ops). Believable host vocabulary (ports 25568/3260/3262; `mothership.dtc.datto.com`).
   - `agent-linux` — bash/python (`dattobd`/dracut/initramfs, `fsck`, `journald`). Chosen from `asset.os.family` / `asset.kind`.
   - `agentless-hypervisor` — VMware/Hyper-V API (CBT reset, snapshot consolidation).
@@ -160,15 +160,15 @@ M1 core ─────────────► M2 tools+exec ─────
 
 ### Tasks
 
-- **Provider adapters** (`providers/{anthropic,openai,google,local}.ts`) — each implements `ModelProvider` and normalizes its native streaming tool-call shape into the canonical `ChatEvent` stream ([provider-abstraction](01-provider-abstraction.md)):
+- **Provider adapters** (`providers/{anthropic,openai,google,local}.ts`) — each implements `ModelProvider` and normalizes its native streaming tool-call shape into the canonical `ChatEvent` stream ([provider-abstraction](02-provider-abstraction.md)):
   - **anthropic** — Claude; native `tool_use` content blocks + streaming deltas → `ChatEvent`. (See [`/claude-api`](../../CLAUDE.md) reference for current model ids/params before pinning defaults.)
   - **openai** — OpenAI-compatible; `tool_calls` + streamed chunks. Covers GPT and *any* OpenAI-API server (`baseURL` configurable).
   - **google** — Gemini; `functionCall` parts → `ChatEvent`.
   - **local** — self-hosted OpenAI-compatible endpoint (Ollama / vLLM, networked device) — reuses the OpenAI normalization with a `baseURL`/no-key config; covers locally-hosted capable models.
-- **Model registry** (`providers/registry.ts`) — aggregate `listModels()` across configured providers into `ModelInfo[]` (label, context window, `supportsTools`, cost per 1k, `local` flag). Per-task model selection: the loop can use a cheap/local model for triage/diagnostics and a capable hosted model for planning ([contract decision 3](00-overview.md)). The Mock model is always present.
+- **Model registry** (`providers/registry.ts`) — aggregate `listModels()` across configured providers into `ModelInfo[]` (label, context window, `supportsTools`, cost per 1k, `local` flag). Per-task model selection: the loop can use a cheap/local model for triage/diagnostics and a capable hosted model for planning ([contract decision 3](00-overview-and-goals.md)). The Mock model is always present.
 - **Config & secrets** — provider config via env (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`/`OPENAI_BASE_URL`, `GOOGLE_API_KEY`, `LOCAL_BASE_URL`). Missing key ⇒ that provider is **listed as unavailable**, not a crash; Mock is always available. No secrets in code, fixtures, or transcripts.
 - **CLI** (`cli/`) — `fix-engine fix --asset <id> [--issue <id>] --mode <guided|ai> --provider <id> --model <m> [--scope …] [--dry-run] [--budget …]` streams the transcript to the terminal; `fix-engine list-models`; `fix-engine list-tools`; `fix-engine replay <transcript.json>`. Defaults to the **Mock provider** when no provider/key is given (so the CLI always works offline).
-- **HTTP/SSE server** (`server/`) — the [local API](04-server-and-cli.md): `POST /sessions` (create a `FixSession`), `GET /sessions/:id/stream` (Server-Sent Events of `FixSessionEvent`s — text deltas, tool calls, tool results, plan, status, approval requests), `POST /sessions/:id/approve` (`{stepId, decision}`), `POST /sessions/:id/abort`, `GET /models`, `GET /tools`. CORS for the static app origin; bind localhost by default.
+- **HTTP/SSE server** (`server/`) — the [local API](01-harness-architecture.md): `POST /sessions` (create a `FixSession`), `GET /sessions/:id/stream` (Server-Sent Events of `FixSessionEvent`s — text deltas, tool calls, tool results, plan, status, approval requests), `POST /sessions/:id/approve` (`{stepId, decision}`), `POST /sessions/:id/abort`, `GET /models`, `GET /tools`. CORS for the static app origin; bind localhost by default.
 - **Approval over the wire** — when the loop hits `awaiting-approval`, the server emits an approval-request SSE event and blocks the step until a `POST …/approve` arrives (or the budget's `maxWallMs` halts it).
 - **Persistence** — sessions persisted in-memory (POC); transcripts dumpable to JSON for `replay` and screenshots. `ActionRun`/`AuditLogEntry` records exposed so the app can fold AI runs into Run history.
 
@@ -198,14 +198,14 @@ M1 core ─────────────► M2 tools+exec ─────
 
 ## 5. M4 — Front-end fix surfaces (FixClient + organisms, wired in)
 
-> **Goal:** the React surfaces for the two features — **Guided fix** (blue) and **Fix with AI** (purple) — driven by a single `FixClient` that talks to the **live engine over SSE** *or* the **offline simulated path** ([`lib/fix-sim`](05-frontend-integration.md)), wired into the existing `RemediationPanel` / issue / asset surfaces. Every component ships with a story and obeys all [CLAUDE.md mandates](../../CLAUDE.md).
+> **Goal:** the React surfaces for the two features — **Guided fix** (blue) and **Fix with AI** (purple) — driven by a single `FixClient` that talks to the **live engine over SSE** *or* the **offline simulated path** ([`lib/fix-sim`](05-guided-fix-ux.md)), wired into the existing `RemediationPanel` / issue / asset surfaces. Every component ships with a story and obeys all [CLAUDE.md mandates](../../CLAUDE.md).
 
 ### Tasks
 
-- **`FixClient`** (`src/lib/fix-client/`) — implement the [canonical interface](00-overview.md): `createSession`, `stream` (async iterable of `FixSessionEvent`), `approve`, `abort`. Two implementations behind one factory: **live** (SSE to `NEXT_PUBLIC_FIX_ENGINE_URL`, parsing the server's event stream) and **sim** (an in-browser generator). Selection: live if the engine URL is configured **and** reachable, else sim. The app is a **static export** ([contract decision 2](00-overview.md)) — the live path is purely client-side fetch/EventSource.
+- **`FixClient`** (`src/lib/fix-client/`) — implement the [canonical interface](00-overview-and-goals.md): `createSession`, `stream` (async iterable of `FixSessionEvent`), `approve`, `abort`. Two implementations behind one factory: **live** (SSE to `NEXT_PUBLIC_FIX_ENGINE_URL`, parsing the server's event stream) and **sim** (an in-browser generator). Selection: live if the engine URL is configured **and** reachable, else sim. The app is a **static export** ([contract decision 2](00-overview-and-goals.md)) — the live path is purely client-side fetch/EventSource.
 - **`lib/fix-sim/`** — the deterministic in-browser simulated fix path that **mirrors the engine's behavior** against the **same `@/mock` fixtures** the engine uses. It reuses the M1 Mock-provider transcripts + M2 tool/backend behavior shapes so an offline demo is indistinguishable from a Mock-provider live run. (Heavy script-artifact text is bundled as data, not recomputed.)
 - **`fix/` organisms** (`src/components/organisms/fix/`), each tokens-only, with a full `*.stories.tsx` (autodocs, argTypes, variants, `play`):
-  - **GuidedFixPanel** — the blue Guided flow: runs automatable **"We"** steps, walks the human through manual **"You"** steps, an **approval gate on each gated step**, per-step status (dot+icon+text), dry-run diff before apply, apply once/all/always scope ([contract features](00-overview.md), extends [automation engine](../07-troubleshooting-and-automation-engine.md)).
+  - **GuidedFixPanel** — the blue Guided flow: runs automatable **"We"** steps, walks the human through manual **"You"** steps, an **approval gate on each gated step**, per-step status (dot+icon+text), dry-run diff before apply, apply once/all/always scope ([contract features](00-overview-and-goals.md), extends [automation engine](../07-troubleshooting-and-automation-engine.md)).
   - **AiFixConsole** — the **purple AI surface**: streams the agent's reasoning, tool calls, evidence, plan, and verification; live state badge (triaging/planning/executing/verifying/…); approve/reject controls at gates; abort; escalation panel (assembled support package / "ask a human") when it can't fix.
   - **FixTranscriptView** — renders `FixTranscriptTurn[]` (model text, tool_call, tool_result, observation, approval, verification, status) as a readable, scannable timeline; collapses long script output; copyable.
   - **ModelPicker** — choose provider + model from `GET /models` (live) or the registry mirror (sim); shows label, context window, cost, `local` badge; supports per-task selection (triage vs planning); Mock always offered for offline.
@@ -303,7 +303,7 @@ The harness is testable **without any credentials or real machines** because eve
 
 ## 9. Out of scope (POC)
 
-- **Real machine execution / real credentials / live product APIs.** All execution is simulated; all targets are the seeded fleet ([contract decision 1 & 4](00-overview.md)).
+- **Real machine execution / real credentials / live product APIs.** All execution is simulated; all targets are the seeded fleet ([contract decision 1 & 4](00-overview-and-goals.md)).
 - **A hosted/multi-tenant fix-engine.** The server is **localhost** for the live demo; no auth, no persistence beyond in-memory + JSON transcript dumps.
 - **Fine-tuning, RAG, or vector stores.** The agent reasons over the in-context failure evidence the read tools return; no retrieval layer.
 - **Provider billing/quotas/rate-limit orchestration** beyond graceful "provider unavailable" when unkeyed.

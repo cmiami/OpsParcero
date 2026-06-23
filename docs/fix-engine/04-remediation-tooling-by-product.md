@@ -2,18 +2,18 @@
 
 > The concrete tool catalog of the AI-remediation harness, grounded in the real [failure catalog](../02-failure-catalog.md). For each **execution backend** (asset class) it maps representative `FailureMode → diagnostic Tool(s) → remediation Tool(s) → real ScriptArtifact sketch`, marks every artifact's **risk / reversibility / approval**, and shows believable PowerShell / bash / HTTP that the simulated executors run.
 >
-> Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Part of the fix-engine sub-set: [00 — AI remediation overview](00-ai-remediation-overview.md) · [01 — provider abstraction](01-provider-abstraction.md) · [02 — tool catalog & schemas](02-tool-catalog.md) · [03 — execution backends](03-execution-backends.md) · **04 — remediation tooling by product** · [05 — agent loop & session](05-agent-loop-and-session.md).
+> Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Part of the fix-engine sub-set: [00 — AI remediation overview](00-overview-and-goals.md) · [01 — provider abstraction](02-provider-abstraction.md) · [02 — tool catalog & schemas](03-tool-and-execution-model.md) · [03 — execution backends](03-tool-and-execution-model.md) · **04 — remediation tooling by product** · [05 — agent loop & session](01-harness-architecture.md).
 
 ---
 
 ## 0. How to read this doc
 
-This is the **content layer** that fills the structures defined in the fix-engine sub-set. The shape of every artifact here is fixed by the [FIX-ENGINE design contract](00-ai-remediation-overview.md#design-contract):
+This is the **content layer** that fills the structures defined in the fix-engine sub-set. The shape of every artifact here is fixed by the [FIX-ENGINE design contract](00-overview-and-goals.md#design-contract):
 
-- **`ExecutionBackend`** — a simulated executor, one per asset class. `BackendKind = "agent-windows" | "agent-linux" | "agentless-hypervisor" | "endpoint-agent" | "saas-api"` ([03 §1](03-execution-backends.md)). Linux vs Windows is chosen from `asset.os.family` / `asset.kind` (see [domain model](../05-domain-model.md#8-key-enums)).
-- **`ToolSpec` / `ToolHandler`** — an AI-callable tool that wraps a `RemediationAction` (or adds a read/diagnostic) and emits a `ScriptArtifact` for its declared `backend` ([02 §2](02-tool-catalog.md)). Every automatable action in the [reference action catalog](../06-data-model-and-mock-data.md) becomes a tool; this doc names the **diagnostic** read-tools the agent must call *first*.
-- **`ScriptArtifact`** — `{ lang: "powershell" | "bash" | "python" | "http"; source; description }`. **Execution is simulated** — the backend returns believable `stdout`/`exitCode` + a `StateDiff`. No real machine is touched ([contract decision 4](00-ai-remediation-overview.md#locked-decisions)).
-- **`ToolRisk`** — `"read" | "safe-write" | "destructive"`, plus `requiresApproval` and `reversible` flags. The [agent loop](05-agent-loop-and-session.md) pauses at every gated step (`awaiting-approval`) and always runs a `preview` (dry-run `StateDiff`) before a `safe-write`/`destructive` `execute`.
+- **`ExecutionBackend`** — a simulated executor, one per asset class. `BackendKind = "agent-windows" | "agent-linux" | "agentless-hypervisor" | "endpoint-agent" | "saas-api"` ([03 §1](03-tool-and-execution-model.md)). Linux vs Windows is chosen from `asset.os.family` / `asset.kind` (see [domain model](../05-domain-model.md#8-key-enums)).
+- **`ToolSpec` / `ToolHandler`** — an AI-callable tool that wraps a `RemediationAction` (or adds a read/diagnostic) and emits a `ScriptArtifact` for its declared `backend` ([02 §2](03-tool-and-execution-model.md)). Every automatable action in the [reference action catalog](../06-data-model-and-mock-data.md) becomes a tool; this doc names the **diagnostic** read-tools the agent must call *first*.
+- **`ScriptArtifact`** — `{ lang: "powershell" | "bash" | "python" | "http"; source; description }`. **Execution is simulated** — the backend returns believable `stdout`/`exitCode` + a `StateDiff`. No real machine is touched ([contract decision 4](00-overview-and-goals.md#locked-decisions)).
+- **`ToolRisk`** — `"read" | "safe-write" | "destructive"`, plus `requiresApproval` and `reversible` flags. The [agent loop](01-harness-architecture.md) pauses at every gated step (`awaiting-approval`) and always runs a `preview` (dry-run `StateDiff`) before a `safe-write`/`destructive` `execute`.
 
 ### 0.1 Reading the per-backend tables
 
@@ -31,7 +31,7 @@ Each backend section below carries one table with these columns:
 
 ### 0.2 The universal triage-first rule
 
-The agent **must** gather evidence before it plans. For every backend the first turn(s) in the [transcript](05-agent-loop-and-session.md#fixtranscriptturn) are `read` tools. Read tools are never gated, never mutate, and are the same tools re-run in `verify` to prove the symptom cleared (`ToolResult.healed`). A plan that jumps straight to a `safe-write` without a supporting `read` observation is rejected by the loop's plan validator.
+The agent **must** gather evidence before it plans. For every backend the first turn(s) in the [transcript](01-harness-architecture.md#fixtranscriptturn) are `read` tools. Read tools are never gated, never mutate, and are the same tools re-run in `verify` to prove the symptom cleared (`ToolResult.healed`). A plan that jumps straight to a `safe-write` without a supporting `read` observation is rejected by the loop's plan validator.
 
 ---
 
@@ -398,7 +398,7 @@ Authorization: Bearer {{tenant_app_token}}
 # 200 => authorized; queue a confirming Exchange backup. 401/403 => still unauthorized, re-prompt.
 ```
 
-In the [agent loop](05-agent-loop-and-session.md), `launch_admin_consent` parks the session in `awaiting-approval` until the human completes the external consent; the loop **polls** `check_authorization_status` (read) on a backoff and resumes on success or escalates on timeout.
+In the [agent loop](01-harness-architecture.md), `launch_admin_consent` parks the session in `awaiting-approval` until the human completes the external consent; the loop **polls** `check_authorization_status` (read) on a backoff and resumes on success or escalates on timeout.
 
 ### 6.3 Artifact sketch — SharePoint/Teams 429/503 throttle backoff
 
@@ -497,7 +497,7 @@ Some catalog modes are `automatable: false` — the agent gathers evidence, asse
 | `saas-api` | `spanning-loses-access-reindex` | backend re-index is Support-driven |
 | any | post-Kaseya support / billing / contract modes | inherently human/business |
 
-The escalation artifact is `assemble_support_package` (a **read**-only collector: logs + agent version + error strings + steps tried), which writes an `ActionRun` of type `assemble-support-ticket` so the AI fix appears in Run history exactly like a manual one ([domain model](../05-domain-model.md), [contract](00-ai-remediation-overview.md#locked-decisions)).
+The escalation artifact is `assemble_support_package` (a **read**-only collector: logs + agent version + error strings + steps tried), which writes an `ActionRun` of type `assemble-support-ticket` so the AI fix appears in Run history exactly like a manual one ([domain model](../05-domain-model.md), [contract](00-overview-and-goals.md#locked-decisions)).
 
 ---
 

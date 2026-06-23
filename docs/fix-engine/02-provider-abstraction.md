@@ -4,7 +4,7 @@ The `fix-engine`'s provider layer: a single `ModelProvider` interface that every
 
 Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md).
 
-Sibling fix-engine docs: [00 — overview & architecture](00-overview.md) · [01 — agent loop & FixSession](01-agent-loop.md) · [03 — tools & execution backends](03-tools-and-backends.md). Grounded in the [FIX-ENGINE design contract](../../FIX-ENGINE-CONTRACT.md) (authoritative). Cross-links: [vision & scope](../00-vision-and-scope.md) · [failure catalog](../02-failure-catalog.md) · [domain model](../05-domain-model.md) · [automation engine](../07-troubleshooting-and-automation-engine.md) · [tech architecture](../11-tech-architecture.md).
+Sibling fix-engine docs: [00 — overview & architecture](00-overview-and-goals.md) · [01 — agent loop & FixSession](01-harness-architecture.md) · [03 — tools & execution backends](03-tool-and-execution-model.md). Grounded in the [FIX-ENGINE design contract](../../FIX-ENGINE-CONTRACT.md) (authoritative). Cross-links: [vision & scope](../00-vision-and-scope.md) · [failure catalog](../02-failure-catalog.md) · [domain model](../05-domain-model.md) · [automation engine](../07-troubleshooting-and-automation-engine.md) · [tech architecture](../11-tech-architecture.md).
 
 > **Scope reminder.** The provider layer lives in `fix-engine/src/providers/` — a **standalone Node + TypeScript package**, not under the app's `src/`. It is not bound by the CLAUDE.md token/Storybook mandates (those govern the front-end UI in `src/components/organisms/fix/`), but it must be clean, fully typed, deterministic where it claims to be, and tested. **Decision #3 of the contract is locked:** all five providers ship now, the Mock provider is always available, and the model is selectable per session *and* per task.
 
@@ -12,11 +12,11 @@ Sibling fix-engine docs: [00 — overview & architecture](00-overview.md) · [01
 
 ## 1. Design contract
 
-The provider layer exists so the rest of the engine — the agent loop ([01](01-agent-loop.md)), the tool dispatcher ([03](03-tools-and-backends.md)), the server and CLI — never branches on provider identity. Five rules govern it:
+The provider layer exists so the rest of the engine — the agent loop ([01](01-harness-architecture.md)), the tool dispatcher ([03](03-tool-and-execution-model.md)), the server and CLI — never branches on provider identity. Five rules govern it:
 
 1. **One shape in, one shape out.** Callers build a provider-neutral `ChatRequest` and consume a provider-neutral `AsyncIterable<ChatEvent>`. Anthropic `tool_use` blocks, OpenAI `tool_calls`, and Gemini `functionCall` parts all surface as the *same* `{ type: "tool_call" }` event. Tool results go back as the *same* `{ role: "tool", … }` message regardless of how the provider expects them on the wire.
 2. **Streaming is the default path.** Every adapter implements `chat()` as a streaming generator. The agent loop renders reasoning, tool calls, and verification live (it is the product surface for "Fix with AI"). Non-streaming providers are wrapped so they still emit a terminal event sequence.
-3. **Usage is always accounted.** Every adapter emits a `{ type: "usage" }` event with input/output token counts; the loop multiplies by registry cost rates to enforce the `FixBudget.maxTokens` halt condition ([01 §budget](01-agent-loop.md)) and to show a running cost in the transcript.
+3. **Usage is always accounted.** Every adapter emits a `{ type: "usage" }` event with input/output token counts; the loop multiplies by registry cost rates to enforce the `FixBudget.maxTokens` halt condition ([01 §budget](01-harness-architecture.md)) and to show a running cost in the transcript.
 4. **Keys come from the environment, never code.** Each adapter reads its credentials from documented env vars (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, …). No key, base URL, or model id is ever hardcoded in a committed file. The Mock provider needs no credentials and is the offline default.
 5. **The Mock provider is a first-class member.** It implements the exact same interface and emits a *seeded, scripted* `ChatEvent` sequence so demos, Storybook play functions, and CI run reproducibly with zero network and zero cost.
 
@@ -75,7 +75,7 @@ type ChatEvent =
 
 ### 2.1 Event ordering contract
 
-Adapters must emit events in a **deterministic, well-formed order** so the loop can drive its state machine ([01 §state machine](01-agent-loop.md)) without provider-specific glue:
+Adapters must emit events in a **deterministic, well-formed order** so the loop can drive its state machine ([01 §state machine](01-harness-architecture.md)) without provider-specific glue:
 
 1. Zero or more `text` events (streamed reasoning / narration deltas).
 2. Zero or more `tool_call` events. A `tool_call`'s `input` is the **fully assembled, parsed** JSON object — adapters buffer partial-JSON deltas internally and never emit a half-formed `input`.
@@ -184,7 +184,7 @@ Config: `LOCAL_BASE_URL` (the device endpoint, e.g. `http://gpu-box.lan:11434` o
 
 ### 3.5 Mock — deterministic scripted provider (`mock`)
 
-**Always available, no config, no network.** The Mock provider returns a **seeded, scripted `ChatEvent` sequence** keyed to the `(assetId, issueId, mode)` of the session so a given failure always produces the same triage → plan → tool-call → verify → success transcript. This powers the offline in-browser simulated fix path ([overview](00-overview.md) — `src/lib/fix-sim/` mirrors it), Storybook play functions, and CI.
+**Always available, no config, no network.** The Mock provider returns a **seeded, scripted `ChatEvent` sequence** keyed to the `(assetId, issueId, mode)` of the session so a given failure always produces the same triage → plan → tool-call → verify → success transcript. This powers the offline in-browser simulated fix path ([overview](00-overview-and-goals.md) — `src/lib/fix-sim/` mirrors it), Storybook play functions, and CI.
 
 Mechanics:
 
@@ -199,7 +199,7 @@ Mechanics:
 
 ## 4. Streaming
 
-Streaming is the default for all adapters (contract §3.2 above). The agent loop consumes the `AsyncIterable<ChatEvent>` directly and re-broadcasts a derived `FixSessionEvent` stream over SSE to the front end via the [server](00-overview.md) (`GET /sessions/:id/stream`) or, offline, via the in-browser generator in `src/lib/fix-sim/`. The `FixClient` interface ([contract](../../FIX-ENGINE-CONTRACT.md)) hides which transport is in play.
+Streaming is the default for all adapters (contract §3.2 above). The agent loop consumes the `AsyncIterable<ChatEvent>` directly and re-broadcasts a derived `FixSessionEvent` stream over SSE to the front end via the [server](00-overview-and-goals.md) (`GET /sessions/:id/stream`) or, offline, via the in-browser generator in `src/lib/fix-sim/`. The `FixClient` interface ([contract](../../FIX-ENGINE-CONTRACT.md)) hides which transport is in play.
 
 - **Abort.** Every `chat()` accepts an `AbortSignal`. `FixClient.abort(sessionId)` aborts the in-flight provider request; the adapter cancels the underlying SDK stream and emits a single `{ type: "error", message: "aborted" }`. The loop transitions to `halted`.
 - **Backpressure / partial JSON.** Adapters buffer tool-call argument fragments and only emit a `tool_call` when its JSON parses; a parse failure at end-of-stream emits an `error` event (the loop retries per §7 or escalates).
@@ -213,7 +213,7 @@ Streaming is the default for all adapters (contract §3.2 above). The agent loop
 Every adapter emits exactly one `{ type: "usage", inputTokens, outputTokens }` per `chat()` call. The loop accumulates these across iterations into `FixSession` usage and:
 
 1. Multiplies by `ModelInfo.costPer1kIn` / `costPer1kOut` to compute a running USD cost shown in the transcript and run record (local & mock models contribute 0).
-2. Compares cumulative tokens against `FixBudget.maxTokens` and **halts** the session when exceeded ([01 §budget/halt](01-agent-loop.md)).
+2. Compares cumulative tokens against `FixBudget.maxTokens` and **halts** the session when exceeded ([01 §budget/halt](01-harness-architecture.md)).
 
 Per-provider sourcing:
 
@@ -258,7 +258,7 @@ The session records the model used **per transcript turn** (`FixSession.model` i
 
 ## 7. Fallback & retries
 
-The loop is **bounded** ([01](01-agent-loop.md)); the provider layer adds resilience beneath that bound:
+The loop is **bounded** ([01](01-harness-architecture.md)); the provider layer adds resilience beneath that bound:
 
 - **Transient errors** (HTTP 429, 5xx, 529 overloaded, connection drops) → the adapter retries with exponential backoff (the official SDKs do this automatically with `maxRetries: 2`; the local/Gemini REST paths implement equivalent backoff honoring `retry-after`). Retries are invisible to the loop unless they exhaust.
 - **Exhausted retries / hard errors** (401/403 bad key, 400 bad request, parse failure) → the adapter emits a single `error` event. The loop's policy: on a recoverable error it may **fall back** to the next tier's always-available model (down to `mock`) for that task and continue; on a non-recoverable error (auth/config) it transitions to `escalated` and assembles a support package rather than looping.
@@ -309,7 +309,7 @@ What each provider supports, as the registry advertises it. ✅ supported · ⚠
 
 ## 10. Open decisions
 
-1. **Cache breakpoint placement under per-task model switching.** Switching the model mid-session (triage→planning) invalidates Anthropic's prompt cache (caches are model-scoped). The spec recommends keeping each *task* on one model and accepting a cold cache on the first planning turn; an alternative is a subagent-style split that keeps the main loop on one model. Flag for [01-agent-loop.md](01-agent-loop.md).
-2. **Estimated-usage fidelity.** The char/4 estimator (§5) is a guardrail, not a tokenizer. If a local/vLLM build never returns usage, budget enforcement is approximate. Decide whether to ship a per-provider tokenizer shim or accept the approximation for the mock. Flag for [03-tools-and-backends.md](03-tools-and-backends.md) only if tool-result sizing needs it.
-3. **Gemini function-call id correspondence.** Gemini keys function responses by name, not id; the synthesized `toolCallId` (`name:callIndex`) assumes at most one in-flight call per name per turn. If a plan ever issues two calls to the *same* tool in one turn, the correspondence needs a stronger key. Confirm against the tool catalog ([03](03-tools-and-backends.md)).
+1. **Cache breakpoint placement under per-task model switching.** Switching the model mid-session (triage→planning) invalidates Anthropic's prompt cache (caches are model-scoped). The spec recommends keeping each *task* on one model and accepting a cold cache on the first planning turn; an alternative is a subagent-style split that keeps the main loop on one model. Flag for [01-harness-architecture.md](01-harness-architecture.md).
+2. **Estimated-usage fidelity.** The char/4 estimator (§5) is a guardrail, not a tokenizer. If a local/vLLM build never returns usage, budget enforcement is approximate. Decide whether to ship a per-provider tokenizer shim or accept the approximation for the mock. Flag for [03-tool-and-execution-model.md](03-tool-and-execution-model.md) only if tool-result sizing needs it.
+3. **Gemini function-call id correspondence.** Gemini keys function responses by name, not id; the synthesized `toolCallId` (`name:callIndex`) assumes at most one in-flight call per name per turn. If a plan ever issues two calls to the *same* tool in one turn, the correspondence needs a stronger key. Confirm against the tool catalog ([03](03-tool-and-execution-model.md)).
 4. **Local model tool-calling detection.** `ModelInfo.supportsTools` for local models is currently a static registry assertion. A capability probe at startup (a throwaway tool-calling request) would be more robust but adds latency/cost. Decide probe-vs-declare.

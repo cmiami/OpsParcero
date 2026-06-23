@@ -2,7 +2,7 @@
 
 How every automatable `RemediationAction` plus the diagnostics that precede it become **AI-callable tools** with JSON-Schema inputs, risk/approval/reversibility metadata, and a backend; how the **five simulated `ExecutionBackend`s** "run" a real `ScriptArtifact` and return an `ExecResult` + `StateDiff`; and how the simulated executor derives believable output and **heals the asset in the shared mock state**.
 
-Part of the Kaseya Resolution Center fix-engine spec set — see [INDEX](../INDEX.md). Authoritative source for all interfaces and paths is the fix-engine design contract; this doc obeys it. Reads alongside: [fix-engine 01 — providers & loop](01-providers-and-loop.md), [fix-engine 02 — prompts & session](02-prompts-and-session.md), and the app specs [06 data-model](../06-data-model-and-mock-data.md) and [07 automation-engine](../07-troubleshooting-and-automation-engine.md).
+Part of the Kaseya Resolution Center fix-engine spec set — see [INDEX](../INDEX.md). Authoritative source for all interfaces and paths is the fix-engine design contract; this doc obeys it. Reads alongside: [fix-engine 01 — providers & loop](02-provider-abstraction.md), [fix-engine 02 — prompts & session](01-harness-architecture.md), and the app specs [06 data-model](../06-data-model-and-mock-data.md) and [07 automation-engine](../07-troubleshooting-and-automation-engine.md).
 
 ---
 

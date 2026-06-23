@@ -49,6 +49,20 @@ executes chains, an action cart persists across routes, and approvals gate the r
 The asset detail page is the signature flow: **red status → evidence (verbatim error) →
 We/You steps → apply once / to all matching / always.**
 
+## AI remediation — Guided fix &amp; Fix with AI
+
+A model-flexible, tool-calling **agent that actually resolves failures** (real loop, simulated
+targets) lives in [`fix-engine/`](fix-engine) — a standalone Node package with a CLI and a local
+HTTP/SSE server. It triages with read-only diagnostics, emits **real PowerShell / bash / Graph
+artifacts**, dry-runs them, executes against a simulated fleet, and verifies — streaming the whole
+thing into the UI. Providers: Anthropic · OpenAI-compatible · Gemini · local (Ollama/vLLM) · an
+always-on deterministic Mock (so it runs offline with no keys). Design spec:
+[`docs/fix-engine/INDEX.md`](docs/fix-engine/INDEX.md).
+
+| Fix with AI (autonomous) | Guided fix (human-in-the-loop) |
+|---|---|
+| ![fix with ai](docs/assets/fix-with-ai.png) | ![guided fix](docs/assets/guided-fix.png) |
+
 ## Tech stack
 
 Next.js 15 (App Router) · TypeScript · Tailwind v4 · shadcn/ui (Radix) · lucide-react ·

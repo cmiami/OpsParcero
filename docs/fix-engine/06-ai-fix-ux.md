@@ -14,14 +14,14 @@ Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md).
 > [09 — page specs](../09-page-specs.md) (where the AI button lives), and the
 > [10 — component inventory](../10-component-inventory.md) (organisms this composes). The agent loop,
 > providers, tools, backends, and session types are defined in the sibling fix-engine docs:
-> [01 — architecture](01-architecture.md), [02 — providers & models](02-providers-and-models.md),
-> [03 — tools & backends](03-tools-and-backends.md), [04 — the agent loop & sessions](04-agent-loop-and-session.md).
+> [01 — architecture](01-harness-architecture.md), [02 — providers & models](02-provider-abstraction.md),
+> [03 — tools & backends](03-tool-and-execution-model.md), [04 — the agent loop & sessions](01-harness-architecture.md).
 
 ---
 
 ## 0. How to read this doc
 
-This is the **UX layer** for the AI feature. Where [04 — agent loop & sessions](04-agent-loop-and-session.md)
+This is the **UX layer** for the AI feature. Where [04 — agent loop & sessions](01-harness-architecture.md)
 defines *what the engine does* (the `FixSession` state machine, `FixClient`, budgets, halt conditions),
 this doc defines *what the human sees and does*: the entry points, the `AiFixConsole` organism and its
 sub-components, the streaming transcript, the plan/dry-run preview, model selection, the bulk cohort
@@ -178,7 +178,7 @@ When a gated step is reached, the transcript pins an **approval card** and the c
 > for a real run it shows the `ExecResult` (exit, duration, collapsible stdout) and the real
 > **`ScriptArtifact`** (PowerShell/bash/Python/HTTP) under a "show script" disclosure. `healed: true`
 > from a `ToolResult` decorates the card with a success accent. See
-> [03 — tools & backends](03-tools-and-backends.md).
+> [03 — tools & backends](03-tool-and-execution-model.md).
 
 ### 3.3 The transcript turn vocabulary
 
@@ -204,7 +204,7 @@ and never gradient (impeccable ban). Tool I/O and diffs use `MonoLabel`/mono sur
 
 The console is a pure consumer of the canonical `FixClient`. It does not know whether it is talking to
 the **live `fix-engine`** (SSE) or the **offline `lib/fix-sim`** generator — the contract guarantees one
-interface ([01 — architecture](01-architecture.md), [04 — agent loop & sessions](04-agent-loop-and-session.md)).
+interface ([01 — architecture](01-harness-architecture.md), [04 — agent loop & sessions](01-harness-architecture.md)).
 
 ```ts
 // console mount → create + stream a session
@@ -240,7 +240,7 @@ re-renders wholesale:
 **Offline parity.** In a static export with no engine, `lib/fix-sim` replays a **deterministic, seeded**
 session for the same `assetId`/failure mode (the Mock provider's scripted sequence) so the demo always
 runs and always agrees with the seeded fleet. The console looks and behaves identically; a small
-`Offline demo` chip distinguishes it ([01 — architecture](01-architecture.md)).
+`Offline demo` chip distinguishes it ([01 — architecture](01-harness-architecture.md)).
 
 ---
 
@@ -370,7 +370,7 @@ capability, a refused approval, repeated verification failures, or a **You-step 
   confidence. This is the agent's hand-off note.
 - **Assemble support package** bundles the transcript, evidence, the relevant `ScriptArtifact`s, the
   asset/issue context, and the `FixSession` id into a copyable/exportable package (and links any
-  `opensTicket` ref). Mirrors the manual support-bundle path; see [03 — tools & backends](03-tools-and-backends.md).
+  `opensTicket` ref). Mirrors the manual support-bundle path; see [03 — tools & backends](03-tool-and-execution-model.md).
 - **Switch to Guided fix** hands the same `assetId/issueId` to the `GuidedFixPanel`
   ([05 — Guided Fix UX](05-guided-fix-ux.md)) with the AI's findings pre-loaded, so the human walks the
   You-steps with the diagnosis already done.
@@ -470,8 +470,8 @@ A "Fix with AI" surface is shippable only when **all** hold:
 
 ## 12. Cross-references
 
-- Sibling fix-engine specs: [01 — architecture](01-architecture.md) · [02 — providers & models](02-providers-and-models.md) ·
-  [03 — tools & backends](03-tools-and-backends.md) · [04 — the agent loop & sessions](04-agent-loop-and-session.md) ·
+- Sibling fix-engine specs: [01 — architecture](01-harness-architecture.md) · [02 — providers & models](02-provider-abstraction.md) ·
+  [03 — tools & backends](03-tool-and-execution-model.md) · [04 — the agent loop & sessions](01-harness-architecture.md) ·
   [05 — Guided Fix UX](05-guided-fix-ux.md) (the blue, step-by-step counterpart).
 - Product model & fix-classification: [00 — vision & scope §3, §7](../00-vision-and-scope.md).
 - Failure modes → tools mapping: [02 — failure catalog](../02-failure-catalog.md), `research/failure-catalog.json`.

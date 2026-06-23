@@ -84,7 +84,7 @@ function PlanCard({ plan }: { plan: FixPlan }) {
           <h3 className="text-sm font-bold text-foreground">{plan.summary}</h3>
           <p className="text-xs text-muted-foreground">{plan.rationale}</p>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-tint px-2 py-0.5 text-xs font-bold text-primary">
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-tint px-2 py-0.5 text-xs font-bold text-primary-accent">
           {plan.confidencePct}% confidence
         </span>
       </div>
@@ -352,7 +352,7 @@ export function GuidedFixPanel({
       <header className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h2 className="flex items-center gap-2 text-base font-bold text-foreground">
-            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary">
+            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-primary-tint text-primary-accent">
               <Wrench aria-hidden className="size-4" />
             </span>
             Guided fix
@@ -385,7 +385,7 @@ export function GuidedFixPanel({
               onChange={(e) => setDryRun(e.target.checked)}
               className="size-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <FlaskConical aria-hidden className="size-4 shrink-0 text-primary" />
+            <FlaskConical aria-hidden className="size-4 shrink-0 text-primary-accent" />
             Dry run first — preview each change before it is applied
           </label>
           <div>

@@ -114,18 +114,18 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [ ] Realistic-content review (mock data reads as real per product)
 - [ ] Final demo walkthrough of key journeys
 
-## Phase 7 — AI remediation harness (Guided fix + Fix with AI)  `[~]`
+## Phase 7 — AI remediation harness (Guided fix + Fix with AI)  `[x]`
 
 > POC tooling for the actual "fixing." Spec set: [`docs/fix-engine/INDEX.md`](docs/fix-engine/INDEX.md).
 > Decisions (locked): real provider-flexible agent loop · simulated targets · standalone `fix-engine/`
 > (CLI + local HTTP/SSE) · providers Anthropic/OpenAI/Gemini/Local + Mock · real scripts, simulated exec.
 
 - [x] Spec set authored (`docs/fix-engine/` — 8 docs + INDEX; design contract pinned)
-- [ ] **M1** — fix-engine core: `ModelProvider` abstraction + Mock provider + `FixSession` agent loop (state machine, budgets, halt, transcript) + shared-fleet wiring
-- [ ] **M2** — AI-callable tool catalog + simulated `ExecutionBackend`s (agent-windows/linux, agentless, endpoint, saas-api) + real script artifacts + diagnostics + dry-run/diff
-- [ ] **M3** — real provider adapters (Anthropic/OpenAI-compatible/Google/Local) + CLI + local HTTP/SSE server + model registry
-- [ ] **M4** — front-end `FixClient` (SSE live + offline sim) + `GuidedFixPanel` / `AiFixConsole` / `FixTranscriptView` / `ModelPicker` / `ToolCallCard` wired into RemediationPanel/issue/asset
-- [ ] **M5** — verify (tsc/build/storybook/a11y) + CLI smoke + live SSE demo + screenshots + ROADMAP
+- [x] **M1** — fix-engine core: `ModelProvider` abstraction + Mock provider + `FixSession` agent loop (state machine, budgets, halt, transcript) + shared-fleet wiring — *vitest 5/5*
+- [x] **M2** — AI-callable tool catalog (7 diagnostics + 12 remediations) + 5 simulated `ExecutionBackend`s + real PowerShell/bash/Graph artifacts + dry-run/diff + `applyHeal` — *vitest 13/13; BCDR VSS resolves end-to-end*
+- [x] **M3** — real adapters (Anthropic/OpenAI-compatible/Google/Local) + model registry + `fix-engine` CLI + local HTTP/SSE server — *vitest 23/23; CLI + SSE server verified offline via Mock*
+- [x] **M4** — front-end `FixClient` (SSE live + offline sim, in-browser engine = parity) + `GuidedFixPanel`/`AiFixConsole`/`FixTranscriptView`/`ModelPicker`/`ToolCallCard` wired into asset detail — *app tsc + static build + storybook green; coverage 89/89*
+- [x] **M5** — verify (engine tsc+vitest, app tsc+build+storybook) + **axe a11y on every fix surface (light+dark) → 0 violations** + CLI/SSE smoke + screenshots + spec cross-links fixed + ROADMAP
 
 ---
 
@@ -140,3 +140,5 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - 2026-06-22 — Phase 0 completed (research, impeccable v3.7.1 + hook, CLAUDE/PRODUCT/DESIGN, README, repo on GitHub). Build decisions locked (vertical slice / functional engine / BCDR / autonomous swarm). GitHub burn-down = milestones + issue per item. Phase 1 spec authoring in progress.
 - 2026-06-23 — Phases 2–5 built via agent swarm (3 workflow waves: base layer → domain+atoms → molecules+organisms, + manual foundation & page integration). 84 components (32 shadcn primitives + 9 atoms + 15 molecules + 29 organisms) each with a story; full seeded mock engine (135 failure modes, 154 remediation actions, ~300 correlated assets) + simulated runner + 8 Zustand stores; `(console)` shell + 14 routes. Verified: `next build` ✓, `tsc` clean, `build-storybook` ✓, coverage 84/84, runtime smoke ✓.
 - 2026-06-23 — Phase 5 surfaces completed (Overview, per-product lenses, Incident detail, Reports, route states) + **static export** (`output:"export"` → `out/`, deploys to Cloudflare Pages; dynamic routes split into server-shell + client-view with `generateStaticParams`). Phase 6 verification: **axe-core WCAG 2.2 AA audit across all 13 routes (light + dark) → 0 violations** via token-level contrast fixes; DESIGN.md synced. Pushed to PR cmiami/OpsParcero#1.
+- 2026-06-23 — Repo committed linearly to `main` (PR #1 merged, branch deleted); product-level README (badges, screenshots, repo map) replacing the planning doc.
+- 2026-06-23 — **Phase 7 (AI remediation harness) shipped** — specs (8 docs) + M1–M5 across `fix-engine/` (Node, CLI + HTTP/SSE) and the app: model-flexible tool-calling agent (Anthropic/OpenAI/Gemini/Local + Mock), 7 diagnostics + 12 remediations over 5 simulated backends emitting real PowerShell/bash/Graph artifacts (dry-run + heal), Guided fix + Fix with AI UI (FixClient sim/live parity). Verified: engine vitest 23/23, app tsc + static build + storybook green, coverage 89/89, **axe 0 violations on every fix surface (light+dark)**. Committed to `main` (M1–M5).

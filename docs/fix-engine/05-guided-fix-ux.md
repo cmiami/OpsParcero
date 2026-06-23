@@ -1,7 +1,7 @@
 # Fix Engine 05 — Guided Fix UX (the blue, human-in-the-loop path)
 
-The screen-level UX spec for **Guided fix** — the blue, step-by-step remediation surface where the AI harness runs the automatable **"We"** steps (with live tool-call cards, dry-run diffs, and verification) and walks the human through the manual **"You"** steps, pausing at every gated step for approval. This is the *human-in-the-loop* sibling of [Fix with AI](06-fix-with-ai-ux.md) (the autonomous purple path); both are driven by the same agent loop and the same `FixSession` state machine.
-Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Part of the **Fix Engine** sub-set: [00 overview](00-overview.md) · [01 architecture](01-architecture.md) · [02 providers & models](02-providers-and-models.md) · [03 tool catalog](03-tool-catalog.md) · [04 agent loop & sessions](04-agent-loop-and-sessions.md) · **05 Guided Fix UX** · [06 Fix-with-AI UX](06-fix-with-ai-ux.md).
+The screen-level UX spec for **Guided fix** — the blue, step-by-step remediation surface where the AI harness runs the automatable **"We"** steps (with live tool-call cards, dry-run diffs, and verification) and walks the human through the manual **"You"** steps, pausing at every gated step for approval. This is the *human-in-the-loop* sibling of [Fix with AI](06-ai-fix-ux.md) (the autonomous purple path); both are driven by the same agent loop and the same `FixSession` state machine.
+Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Part of the **Fix Engine** sub-set: [00 overview](00-overview-and-goals.md) · [01 architecture](01-harness-architecture.md) · [02 providers & models](02-provider-abstraction.md) · [03 tool catalog](03-tool-and-execution-model.md) · [04 agent loop & sessions](01-harness-architecture.md) · **05 Guided Fix UX** · [06 Fix-with-AI UX](06-ai-fix-ux.md).
 
 ---
 
@@ -9,7 +9,7 @@ Part of the Kaseya Resolution Center spec set — see [INDEX](../INDEX.md). Part
 
 This is the **feature-UX** layer for Guided fix. It says *what the Guided fix surface looks like, which components compose it, which `FixSession` states it renders, and how a technician drives a session from triage to verified-resolved* — without leaving the page they were already on. It is grounded in:
 
-- the **locked decisions** and **canonical interfaces** in the [Fix Engine design contract](01-architecture.md) (`FixSession`, `FixState`, `FixPlanStep`, `ToolResult`, `StateDiff`, `FixClient`, `ModelProvider`) — used here **verbatim**, never redefined;
+- the **locked decisions** and **canonical interfaces** in the [Fix Engine design contract](01-harness-architecture.md) (`FixSession`, `FixState`, `FixPlanStep`, `ToolResult`, `StateDiff`, `FixClient`, `ModelProvider`) — used here **verbatim**, never redefined;
 - the existing **RemediationPanel / We-You / ApplyScopeControl** model from [page specs §7 (Asset Detail)](../09-page-specs.md#7-asset-detail) and [§3 (Triage)](../09-page-specs.md#3-triage-queue), and the [component inventory](../10-component-inventory.md);
 - the **fix-classification** model (End-to-end / Guided / Insights) and the We/You + apply-once/all/always model from [00-vision §3](../00-vision-and-scope.md) and [07-troubleshooting-and-automation-engine](../07-troubleshooting-and-automation-engine.md).
 
@@ -19,7 +19,7 @@ This is the **feature-UX** layer for Guided fix. It says *what the Guided fix su
 
 - Component names in `CamelCase` reference the [component inventory](../10-component-inventory.md) or the new **Fix** organism family added by this doc (`GuidedFixPanel`, `FixTranscriptView`, `ToolCallCard`, `ModelPicker`, `FixStepRail`). Token names (`--primary`, `--fix-guided`, `--ai`, `bg-card`) reference the [design system](../03-design-system.md). Never hardcode hex.
 - All interfaces are the contract's. `FixState`, `FixMode`, `FixPlanStep`, `FixSession`, `FixTranscriptTurn`, `ToolResult`, `StateDiff`, `FixClient`, `FixSessionEvent`, `ModelInfo` are **imported**, not invented.
-- Guided fix runs in `mode: "guided"`. The loop pauses at **every `you` step and every gated `we` step**; AI mode (mode `"ai"`) does not — that is the only loop-level difference ([contract: agent loop](04-agent-loop-and-sessions.md)).
+- Guided fix runs in `mode: "guided"`. The loop pauses at **every `you` step and every gated `we` step**; AI mode (mode `"ai"`) does not — that is the only loop-level difference ([contract: agent loop](01-harness-architecture.md)).
 
 ---
 
@@ -55,7 +55,7 @@ Success / Failure                 ↓ each `you` / gated step: pause for human
                                 Run detail (unchanged target: /automation/runs/[id])
 ```
 
-The **`[Dry-run] / [Apply once] / [Always…]`** buttons remain for the classic one-shot path (and for `end-to-end` fixes). `[Start Guided fix]` is additive — present only when the suggested fix's classification is `guided` (or when the technician explicitly chooses "step me through it"). When the session finishes it lands in [Run detail](../09-page-specs.md#13-run-detail) exactly like a manual apply, because the loop writes `ActionRun` + `AuditLogEntry` records ([contract §canonical interfaces](04-agent-loop-and-sessions.md)).
+The **`[Dry-run] / [Apply once] / [Always…]`** buttons remain for the classic one-shot path (and for `end-to-end` fixes). `[Start Guided fix]` is additive — present only when the suggested fix's classification is `guided` (or when the technician explicitly chooses "step me through it"). When the session finishes it lands in [Run detail](../09-page-specs.md#13-run-detail) exactly like a manual apply, because the loop writes `ActionRun` + `AuditLogEntry` records ([contract §canonical interfaces](01-harness-architecture.md)).
 
 ### 1.2 We / You + Apply-scope are preserved, not replaced
 
@@ -184,7 +184,7 @@ interface GuidedFixPanelProps {
 
 ## 4. The sub-components (what to build)
 
-All live under `src/components/organisms/fix/` ([contract canonical layout](01-architecture.md)). Each gets a Storybook story with full `argTypes`, every state as a named export, and a `play` function for interactive states ([CLAUDE.md M2](../../CLAUDE.md), [storybook coverage rule](../10-component-inventory.md#6-coverage-matrix-auditable--100)). The offline `FixClient` (the [sim path](#6-offline-sim-vs-live-engine)) is what stories drive, so they are fully deterministic.
+All live under `src/components/organisms/fix/` ([contract canonical layout](01-harness-architecture.md)). Each gets a Storybook story with full `argTypes`, every state as a named export, and a `play` function for interactive states ([CLAUDE.md M2](../../CLAUDE.md), [storybook coverage rule](../10-component-inventory.md#6-coverage-matrix-auditable--100)). The offline `FixClient` (the [sim path](#6-offline-sim-vs-live-engine)) is what stories drive, so they are fully deterministic.
 
 ### 4.1 ToolCallCard — one automated "We" step
 
@@ -205,7 +205,7 @@ interface ToolCallCardProps {
 
 - **Risk badge** uses `ToolRisk` (`read` · `safe-write` · `destructive`) with text + icon (never color-only): `read` = eye, `safe-write` = pencil, `destructive` = alert-triangle. `requiresApproval` adds a **gated** chip.
 - **Diff** renders `StateDiff.before → after` as a two-column key/value list; removed/decremented values flagged with a minus icon, not red alone. `reversible: false` surfaces a "not reversible" line.
-- **Console** is a `MonoLabel`/`Textarea(mono)` region with `aria-live="polite"` and a copy button; the real `ScriptArtifact` source is viewable behind a **`▸ View script`** disclosure (the actual PowerShell/bash/HTTP — [contract: real script artifacts](03-tool-catalog.md)).
+- **Console** is a `MonoLabel`/`Textarea(mono)` region with `aria-live="polite"` and a copy button; the real `ScriptArtifact` source is viewable behind a **`▸ View script`** disclosure (the actual PowerShell/bash/HTTP — [contract: real script artifacts](03-tool-and-execution-model.md)).
 - **Indistinguishable** whether the console text came from a live executor or the sim ([§6](#6-offline-sim-vs-live-engine)).
 - **States (stories):** `Read`, `SafeWritePreview`, `SafeWriteRunning`, `SafeWriteDone`, `DestructiveGatedAwaitingApproval`, `BatchFanOut`, `Error`, `ScriptDisclosureOpen`.
 
@@ -264,7 +264,7 @@ interface FixTranscriptViewProps {
 
 ### 4.5 ModelPicker — choose provider / model (session + per-task)
 
-Lets the technician pick the `ModelProvider` + `ModelInfo` for the session, and (advanced) override per task phase (cheap local model for triage, capable hosted model for planning — [contract decision 3](02-providers-and-models.md)). The **Mock** provider is always present for reproducible/offline demos.
+Lets the technician pick the `ModelProvider` + `ModelInfo` for the session, and (advanced) override per task phase (cheap local model for triage, capable hosted model for planning — [contract decision 3](02-provider-abstraction.md)). The **Mock** provider is always present for reproducible/offline demos.
 
 ```ts
 interface ModelPickerProps {
@@ -288,7 +288,7 @@ interface ModelPickerProps {
 | **FixStatePill** | Molecule | `state: FixState; mode: FixMode` | dot + icon + label per [§3 table](#3-states-the-fixsession-state-machine-on-screen); the canonical non-color-only proof for fix sessions. |
 | **FixBudgetMeter** | Molecule | `budget: FixBudget; used: {steps; toolCalls; tokens; wallMs}` | segmented meter + "4/12 calls · 38s"; turns `--warning` near exhaustion; mono numerals. |
 | **StateDiffView** | Molecule | `diff: StateDiff` | shared by `ToolCallCard` preview + result; before→after key/value; used in [Run detail](../09-page-specs.md#13-run-detail) too. |
-| **RiskBadge** | Atom | `risk: ToolRisk; requiresApproval?; reversible?` | icon+text; reused by the [tool catalog](03-tool-catalog.md) docs surfaces. |
+| **RiskBadge** | Atom | `risk: ToolRisk; requiresApproval?; reversible?` | icon+text; reused by the [tool catalog](03-tool-and-execution-model.md) docs surfaces. |
 
 ### 4.7 Coverage matrix delta (append to component inventory §6)
 
@@ -311,7 +311,7 @@ interface ModelPickerProps {
 
 ## 5. The session lifecycle on this surface (driving the loop)
 
-This is the [contract's canonical state machine](04-agent-loop-and-sessions.md) as the technician experiences it in Guided mode:
+This is the [contract's canonical state machine](01-harness-architecture.md) as the technician experiences it in Guided mode:
 
 1. **Start.** Tech picks scope (`ApplyScopeControl`) and model (`ModelPicker`), clicks **[Start Guided fix]**. `client.createSession({ assetId, issueId, mode: "guided", model, scope })` → `FixSession{ state: "triaging" }`. Panel mounts; transcript begins streaming.
 2. **Triage.** Agent calls **read tools only** (`get_vss_writers`, `read_event_log`, `get_backup_chain` …) to gather evidence over the *real* failure data; cards show `risk: read`, no diffs/mutations.
@@ -329,7 +329,7 @@ This is the [contract's canonical state machine](04-agent-loop-and-sessions.md) 
 
 ## 6. Offline-sim vs live-engine (indistinguishable to the user)
 
-Per [contract decision 2](01-architecture.md), the front end talks to **one `FixClient` interface** with two implementations, and **the UX must be identical** regardless of which is active:
+Per [contract decision 2](01-harness-architecture.md), the front end talks to **one `FixClient` interface** with two implementations, and **the UX must be identical** regardless of which is active:
 
 | | Live engine | Offline sim |
 |---|---|---|
@@ -366,17 +366,17 @@ Carrying [CLAUDE.md M5](../../CLAUDE.md) and [page specs a11y](../09-page-specs.
 | Success / verify | `--success`, `--primary` | resolved + verifying. |
 | State pills, budget | semantic tokens per [§3](#3-states-the-fixsession-state-machine-on-screen) | no raw hex; add a token before inlining ([CLAUDE.md M1](../../CLAUDE.md)). |
 
-Net: **Guided fix reads as blue, with a purple reasoning inset.** [Fix with AI](06-fix-with-ai-ux.md) inverts this — purple-dominant — which is exactly how a user tells the two features apart at a glance.
+Net: **Guided fix reads as blue, with a purple reasoning inset.** [Fix with AI](06-ai-fix-ux.md) inverts this — purple-dominant — which is exactly how a user tells the two features apart at a glance.
 
 ---
 
 ## 9. Cross-references
 
-- Contract, canonical interfaces, layout, decisions: [Fix Engine 01 — architecture](01-architecture.md)
-- Provider/model abstraction, per-task model selection, Mock provider: [Fix Engine 02 — providers & models](02-providers-and-models.md)
-- Tool catalog (RemediationAction→Tool mapping, read/diagnostic tools, `ScriptArtifact`s, backends): [Fix Engine 03 — tool catalog](03-tool-catalog.md)
-- Agent loop, `FixSession` state machine, budget, halt conditions, `FixClient`: [Fix Engine 04 — agent loop & sessions](04-agent-loop-and-sessions.md)
-- The autonomous purple sibling: [Fix Engine 06 — Fix-with-AI UX](06-fix-with-ai-ux.md)
+- Contract, canonical interfaces, layout, decisions: [Fix Engine 01 — architecture](01-harness-architecture.md)
+- Provider/model abstraction, per-task model selection, Mock provider: [Fix Engine 02 — providers & models](02-provider-abstraction.md)
+- Tool catalog (RemediationAction→Tool mapping, read/diagnostic tools, `ScriptArtifact`s, backends): [Fix Engine 03 — tool catalog](03-tool-and-execution-model.md)
+- Agent loop, `FixSession` state machine, budget, halt conditions, `FixClient`: [Fix Engine 04 — agent loop & sessions](01-harness-architecture.md)
+- The autonomous purple sibling: [Fix Engine 06 — Fix-with-AI UX](06-ai-fix-ux.md)
 - Host surfaces (RemediationPanel rail, signature flow, Run detail): [09 — page specs §4](../09-page-specs.md#4-incident-detail), [§7.4](../09-page-specs.md#74-the-signature-troubleshooting-flow-concrete), [§13](../09-page-specs.md#13-run-detail)
 - Component basis (RemediationPanel, ApplyScopeControl, StatusBadge, MonoLabel, DataTable): [10 — component inventory](../10-component-inventory.md)
 - We/You, fix classification, apply once/all/always: [00 — vision & scope §3](../00-vision-and-scope.md), [07 — automation engine](../07-troubleshooting-and-automation-engine.md)

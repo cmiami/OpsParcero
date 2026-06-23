@@ -65,7 +65,7 @@ const RISK_META: Record<ToolRisk, RiskMeta> = {
     label: "Safe write",
     icon: PencilLine,
     dotClass: "bg-primary",
-    textClass: "text-primary",
+    textClass: "text-primary-accent",
     tintClass: "bg-primary-tint",
     borderClass: "border-primary",
   },
@@ -108,7 +108,7 @@ function ModeChip({ dryRun }: { dryRun: boolean }) {
         "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-bold",
         dryRun
           ? "border-border bg-subtle text-muted-foreground"
-          : "border-primary bg-primary-tint text-primary",
+          : "border-primary bg-primary-tint text-primary-accent",
       )}
     >
       <Icon aria-hidden className="size-3 shrink-0" />
@@ -196,7 +196,7 @@ function StateDiffTable({ diff }: { diff: StateDiff }) {
                   <TableCell
                     className={cn(
                       "py-1.5 align-top font-mono text-xs",
-                      changed ? "font-bold text-primary" : "text-foreground",
+                      changed ? "font-bold text-primary-accent" : "text-foreground",
                     )}
                   >
                     {after}

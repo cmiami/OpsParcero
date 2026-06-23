@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Undo2,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateTime, formatDurationSec } from "@/lib/format";
@@ -32,7 +33,7 @@ import { DataTable } from "./data-table";
 interface RunRow {
   id: string;
   name: string;
-  trigger: { kind: "user" | "playbook" | "policy" | "schedule"; label: string };
+  trigger: { kind: "user" | "playbook" | "policy" | "schedule" | "ai"; label: string };
   at?: string;
   scope?: ActionScope;
   assetCount: number;
@@ -58,6 +59,7 @@ const TRIGGER_META: Record<RunRow["trigger"]["kind"], { icon: React.ComponentTyp
   playbook: { icon: Workflow, label: "Playbook" },
   policy: { icon: Cog, label: "Policy" },
   schedule: { icon: Clock, label: "Schedule" },
+  ai: { icon: Sparkles, label: "AI agent" },
 };
 
 const SCOPE_LABEL: Record<ActionScope, string> = {

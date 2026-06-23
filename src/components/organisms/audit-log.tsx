@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
@@ -63,6 +64,7 @@ const ACTOR_KIND_META: Record<
   user: { label: "User", icon: UserIcon },
   policy: { label: "Policy", icon: Cog },
   system: { label: "System", icon: Cpu },
+  ai: { label: "AI agent", icon: Sparkles },
 };
 
 function actorName(entry: AuditLogEntry): string {

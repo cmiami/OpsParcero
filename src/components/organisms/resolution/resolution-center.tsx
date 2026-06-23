@@ -10,6 +10,7 @@ import {
   getActiveOutage,
   type FleetStats,
 } from "@/mock/query";
+import { useActiveClientId } from "@/stores/use-active-client";
 import type { Incident, Issue } from "@/types";
 import type { IssueCategoryGroup } from "@/mock/issues";
 import { StatBar } from "./stat-bar";
@@ -32,7 +33,11 @@ export interface ResolutionCenterProps {
  * getActiveOutage). The top-problem card opens the impacted-assets panel.
  */
 export function ResolutionCenter({ className }: ResolutionCenterProps) {
-  const stats: FleetStats = React.useMemo(() => getFleetStats(), []);
+  const activeClientId = useActiveClientId();
+  const stats: FleetStats = React.useMemo(
+    () => getFleetStats(activeClientId),
+    [activeClientId],
+  );
   const groups: IssueCategoryGroup[] = React.useMemo(
     () => getIssueCategories(),
     [],

@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { relativeTime } from "@/lib/format";
 import { productTypeToBucket, type ProtectedAsset, type BackupRun } from "@/types";
 import { getAssets, getClient } from "@/mock/query";
+import { useActiveClientId } from "@/stores/use-active-client";
 import { MonoLabel } from "@/components/atoms/mono-label";
 import { StatusBadge } from "@/components/atoms/status-badge";
 import { ProductChip } from "@/components/atoms/product-chip";
@@ -76,9 +77,14 @@ export function AssetTable({
   error,
   className,
 }: AssetTableProps) {
+  const activeClientId = useActiveClientId();
   const data = React.useMemo(
-    () => assets ?? getAssets({}).items,
-    [assets],
+    () =>
+      assets ??
+      getAssets({
+        clientIds: activeClientId ? [activeClientId] : undefined,
+      }).items,
+    [assets, activeClientId],
   );
   const clientName = useClientName();
 

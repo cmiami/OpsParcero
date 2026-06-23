@@ -9,6 +9,8 @@ import { NAV } from "@/config/nav";
 import type { AssetStatus } from "@/types";
 import { rollupStatus } from "@/lib/status";
 import { getClients, getOpenAlerts, getIssues } from "@/mock/query";
+import { useUiStore } from "@/stores/ui";
+import { useActiveClientId } from "@/stores/use-active-client";
 import { useActionCart } from "@/stores/action-cart";
 import { useHasHydrated } from "@/stores/use-has-hydrated";
 import { SeverityDot } from "@/components/atoms/severity-dot";
@@ -56,9 +58,12 @@ export function AppSidebar({
   className,
 }: AppSidebarProps) {
   const clients = React.useMemo(() => getClients(), []);
-  const [clientId, setClientId] = React.useState(clients[0]?.id ?? "");
+  // The active tenant is shared, persisted state (useUiStore) so every data
+  // surface can scope to it; undefined = "All tenants".
+  const clientId = useActiveClientId();
+  const setClientId = useUiStore((s) => s.setLastClientId);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
-  const activeClient = clients.find((c) => c.id === clientId) ?? clients[0];
+  const activeClient = clients.find((c) => c.id === clientId);
 
   const hydrated = useHasHydrated();
   const cartCount = useActionCart((s) => s.steps.length);
@@ -161,6 +166,18 @@ export function AppSidebar({
               <CommandList>
                 <CommandEmpty>No tenants found.</CommandEmpty>
                 <CommandGroup heading="Tenants">
+                  <CommandItem
+                    value="All tenants"
+                    onSelect={() => {
+                      setClientId(undefined);
+                      setSwitcherOpen(false);
+                    }}
+                  >
+                    <span className="min-w-0 flex-1 truncate">All tenants</span>
+                    {!clientId ? (
+                      <Check className="size-4 text-primary" aria-hidden />
+                    ) : null}
+                  </CommandItem>
                   {clients.map((client) => (
                     <CommandItem
                       key={client.id}

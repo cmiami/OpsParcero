@@ -437,20 +437,30 @@ export interface FleetStats {
 }
 
 /** KPI rollups for the Resolution Center home + product tiles. */
-export function getFleetStats(): FleetStats {
-  const assets = DB.assets;
-  const issues = ISSUES;
+export function getFleetStats(clientId?: ClientId): FleetStats {
+  // Tenant scope: when a client is active, every KPI counts only that client's
+  // assets / issues / alerts (issues belong to a client via their impacted assets).
+  const assets = clientId
+    ? DB.assets.filter((a) => a.clientId === clientId)
+    : DB.assets;
+  const assetIds = clientId ? new Set(assets.map((a) => a.id)) : null;
+  const issues = assetIds
+    ? ISSUES.filter((i) => i.impactedAssetIds.some((id) => assetIds.has(id)))
+    : ISSUES;
+  const alerts = clientId
+    ? DB.alerts.filter((a) => a.clientId === clientId)
+    : DB.alerts;
 
   const protectedAssets = assets.filter((a) => a.status === "protected").length;
   const failedAssets = assets.filter((a) => a.status === "failed").length;
   const warningAssets = assets.filter((a) => a.status === "warning").length;
 
-  const resolvedToday = DB.alerts.filter(
+  const resolvedToday = alerts.filter(
     (a) =>
       (a.state === "resolved" || a.state === "auto-resolved") &&
       relativeTime(a.lastSeenAt).includes("h ago"),
   ).length;
-  const lastResolved = DB.alerts
+  const lastResolved = alerts
     .filter((a) => a.state === "resolved" || a.state === "auto-resolved")
     .map((a) => a.lastSeenAt)
     .sort()
@@ -482,8 +492,8 @@ export function getFleetStats(): FleetStats {
       (i) => i.fixType === "external" || i.fixType === "manual" || i.fixType === "unknown",
     ).length,
     resolvedToday,
-    openAlerts: DB.alerts.filter((a) => a.state === "open").length,
-    cosmeticAlerts: DB.alerts.filter((a) => a.isCosmetic && a.state === "open").length,
+    openAlerts: alerts.filter((a) => a.state === "open").length,
+    cosmeticAlerts: alerts.filter((a) => a.isCosmetic && a.state === "open").length,
     pendingApprovals: DB.approvals.filter((a) => a.state === "pending").length,
     activeIncidents: DB.incidents.filter((i) => i.status === "active").length,
     perProduct: [perBucket("bcdr"), perBucket("saas"), perBucket("endpoint")],

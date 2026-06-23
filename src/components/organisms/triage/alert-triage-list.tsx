@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriageRow, type TriageAction } from "./alert-triage-row";
 import { getOpenAlerts } from "@/mock/query";
+import { useActiveClientId } from "@/stores/use-active-client";
 import type { Alert } from "@/types";
 
 export interface AlertTriageListProps {
@@ -49,9 +50,16 @@ export function AlertTriageList({
   onTriage,
   className,
 }: AlertTriageListProps) {
+  const activeClientId = useActiveClientId();
   const alerts = React.useMemo(
-    () => sortAlerts(alertsProp ?? getOpenAlerts()),
-    [alertsProp],
+    () =>
+      sortAlerts(
+        alertsProp ??
+          getOpenAlerts({
+            clientIds: activeClientId ? [activeClientId] : undefined,
+          }),
+      ),
+    [alertsProp, activeClientId],
   );
 
   const [selected, setSelected] = React.useState<Set<string>>(new Set());

@@ -167,7 +167,7 @@ export function AutomationPolicyEditor({
           </p>
           <div
             aria-live="polite"
-            className="inline-flex items-center gap-1.5 self-start rounded-md bg-primary-tint px-2.5 py-1 text-xs font-bold text-primary"
+            className="inline-flex items-center gap-1.5 self-start rounded-md bg-primary-tint px-2.5 py-1 text-xs font-bold text-primary-accent"
           >
             <Users aria-hidden className="size-3.5 shrink-0" />
             {liveCount} assets match · membership re-evaluated on each fire

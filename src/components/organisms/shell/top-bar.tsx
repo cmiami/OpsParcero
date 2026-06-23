@@ -75,7 +75,7 @@ function initials(name: string) {
 /**
  * TopBar — the Kaseya-blue application top bar (M4).
  *
- * `bg-primary` / `text-primary-foreground`, `h-14`. Left: sidebar toggle +
+ * `bg-primary` / `text-topbar-foreground`, `h-14`. Left: sidebar toggle +
  * breadcrumb. Right: a search affordance that opens the command palette, the
  * "Scan now" and "End-to-end fix all" translucent action buttons, a
  * notifications bell with an optional count, a theme toggle (next-themes), and
@@ -94,7 +94,7 @@ export function TopBar({
   return (
     <header
       className={cn(
-        "flex h-14 items-center gap-3 bg-primary px-3 text-primary-foreground",
+        "flex h-14 items-center gap-3 bg-topbar px-3 text-topbar-foreground",
         className,
       )}
     >
@@ -103,33 +103,33 @@ export function TopBar({
         size="icon"
         aria-label="Toggle navigation"
         onClick={toggleSidebar}
-        className="text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+        className="text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground"
       >
         <PanelLeft className="size-5" aria-hidden />
       </Button>
 
       <Breadcrumb className="min-w-0">
-        <BreadcrumbList className="text-primary-foreground/70">
+        <BreadcrumbList className="text-topbar-foreground">
           {breadcrumb.map((crumb, i) => {
             const last = i === breadcrumb.length - 1;
             return (
               <React.Fragment key={`${crumb.label}-${i}`}>
                 <BreadcrumbItem>
                   {last || !crumb.href ? (
-                    <BreadcrumbPage className="text-primary-foreground">
+                    <BreadcrumbPage className="text-topbar-foreground">
                       {crumb.label}
                     </BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink
                       href={crumb.href}
-                      className="text-primary-foreground/70 hover:text-primary-foreground"
+                      className="font-medium text-topbar-foreground hover:underline"
                     >
                       {crumb.label}
                     </BreadcrumbLink>
                   )}
                 </BreadcrumbItem>
                 {!last && (
-                  <BreadcrumbSeparator className="text-primary-foreground/50" />
+                  <BreadcrumbSeparator className="text-topbar-foreground/50" />
                 )}
               </React.Fragment>
             );
@@ -144,11 +144,11 @@ export function TopBar({
           onClick={onSearch}
           aria-label="Search (open command palette)"
           aria-keyshortcuts="f Meta+K"
-          className="hidden items-center gap-2 rounded-md border border-primary-foreground/25 bg-primary-foreground/10 px-2.5 py-1.5 text-sm text-primary-foreground/80 transition-colors hover:bg-primary-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/50 md:flex"
+          className="hidden items-center gap-2 rounded-md border border-topbar-foreground/40 px-2.5 py-1.5 text-sm text-topbar-foreground transition-colors hover:bg-topbar-foreground/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-topbar-foreground/60 md:flex"
         >
           <ScanLine className="size-4" aria-hidden />
           <span>Search…</span>
-          <kbd className="rounded-sm border border-primary-foreground/30 px-1.5 py-0.5 font-mono text-[10px] font-bold">
+          <kbd className="rounded-sm border border-topbar-foreground/30 px-1.5 py-0.5 font-mono text-[10px] font-bold">
             f
           </kbd>
         </button>
@@ -156,7 +156,7 @@ export function TopBar({
         <Button
           variant="ghost"
           size="sm"
-          className="hidden gap-1.5 border border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground lg:inline-flex"
+          className="hidden gap-1.5 border border-topbar-foreground/40 text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground lg:inline-flex"
         >
           <ScanLine className="size-4" aria-hidden />
           Scan now
@@ -165,7 +165,7 @@ export function TopBar({
         <Button
           variant="ghost"
           size="sm"
-          className="hidden gap-1.5 border border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground lg:inline-flex"
+          className="hidden gap-1.5 border border-topbar-foreground/40 text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground lg:inline-flex"
         >
           <Wrench className="size-4" aria-hidden />
           End-to-end fix all
@@ -180,7 +180,7 @@ export function TopBar({
               ? `Notifications, ${notificationCount} unread`
               : "Notifications"
           }
-          className="relative text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+          className="relative text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground"
         >
           <Bell className="size-5" aria-hidden />
           {hasUnread && (
@@ -198,13 +198,13 @@ export function TopBar({
             <button
               type="button"
               aria-label={`Account: ${user.name}`}
-              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-topbar-foreground/50"
             >
-              <Avatar className="size-8 border border-primary-foreground/30">
+              <Avatar className="size-8 border border-topbar-foreground/30">
                 {user.avatarUrl ? (
                   <AvatarImage src={user.avatarUrl} alt="" />
                 ) : null}
-                <AvatarFallback className="bg-primary-strong text-xs font-bold text-primary-foreground">
+                <AvatarFallback className="bg-primary-strong text-xs font-bold text-topbar-foreground">
                   {initials(user.name)}
                 </AvatarFallback>
               </Avatar>
@@ -244,7 +244,7 @@ function ThemeToggle() {
           variant="ghost"
           size="icon"
           aria-label="Change theme"
-          className="text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground"
+          className="text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground"
         >
           {mounted && theme === "dark" ? (
             <Moon className="size-5" aria-hidden />

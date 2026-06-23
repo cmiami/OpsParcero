@@ -1,0 +1,68 @@
+import { Sparkles, Search, Lightbulb } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AiBadge } from "@/components/atoms/ai-badge";
+import type { AiInsight } from "@/types";
+
+export interface AiInsightCardProps {
+  /** The AI-generated insight (root cause + recommendation + confidence). */
+  insight: AiInsight;
+  className?: string;
+}
+
+/**
+ * AiInsightCard — the purple AI-assist surface attached to an Issue.
+ *
+ * The ONLY place purple (`ai*` tokens) appears in a molecule (M4). Surfaces the
+ * AI's root-cause analysis, recommendation, and confidence. Labeled "AI insight"
+ * with the Sparkles marker so the AI provenance is explicit. Confidence is shown
+ * as a percentage with text, not color-coded.
+ */
+export function AiInsightCard({ insight, className }: AiInsightCardProps) {
+  return (
+    <section
+      aria-label="AI insight"
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border border-ai-accent bg-ai-tint p-4",
+        className,
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-sm font-bold text-ai">
+          <Sparkles aria-hidden className="size-4 shrink-0" />
+          AI insight
+        </span>
+        <AiBadge>{insight.confidencePct}% confidence</AiBadge>
+      </div>
+
+      <dl className="flex flex-col gap-3">
+        <div className="flex items-start gap-2">
+          <Search aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ai" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
+              Root cause
+            </dt>
+            <dd className="text-sm text-card-foreground">{insight.rootCause}</dd>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2">
+          <Lightbulb aria-hidden className="mt-0.5 size-3.5 shrink-0 text-ai" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
+              Recommendation
+            </dt>
+            <dd className="text-sm text-card-foreground">
+              {insight.recommendation}
+            </dd>
+          </div>
+        </div>
+
+        {insight.classificationRationale && (
+          <p className="text-xs italic text-muted-foreground">
+            {insight.classificationRationale}
+          </p>
+        )}
+      </dl>
+    </section>
+  );
+}

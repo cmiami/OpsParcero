@@ -12,7 +12,8 @@
 
 - ✅ **Phase 0 (Foundation) complete** — research, impeccable v3.7.1 + hook (Claude + Codex), `CLAUDE.md` / `AGENTS.md` / `PRODUCT.md` / `DESIGN.md` / `README.md`, repo on GitHub (`cmiami/OpsParcero`, `main`), 7 phase milestones.
 - ✅ **Phase 1 (Specification) complete** — [`00-vision`](docs/00-vision-and-scope.md) + the `docs/` spec set define the **Kaseya Resolution Center**: issues-by-category, fix-classification (End-to-end / Guided / Insights), "We/You" steps, apply once/always, outage awareness, **Recovery Launchpad** (recovery on local device or in the Datto Cloud — Datto Cloud is a target, not a product). Scope: **SaaS / BCDR / Endpoint v2**.
-- 👉 **Next: Phase 2** — scaffold Next.js + design-system tokens (`globals.css`) + Storybook, then the **BCDR vertical slice**. Create Phase 2 issues and burn them down.
+- ✅ **Phases 2–5 built (vertical slice) — 2026-06-23** — full app stands up and is **verified building**: `next build` (14 routes) · `tsc --noEmit` clean · `build-storybook` (84 component stories) · story-coverage gate 84/84. Delivered via an agent swarm: foundation (Next 15 + Tailwind v4 + tokens + Storybook 10) → base layer (32 shadcn primitives, typed domain backbone, foundations stories) → mock engine (135 failure modes + 154 actions from the research catalog, correlated seeded fixtures, query + simulated runner) + 8 Zustand stores + 9 atoms → 15 molecules + 29 organisms → `(console)` app shell + BCDR-lead pages (Resolution Center home, Fleet, Asset detail, Alerts, Backups, Automation: playbooks/policies/approvals/runs, Cart, Settings). Runtime-smoke confirms real seeded content renders.
+- 👉 **Next: Phase 6 (polish & verification)** — `/impeccable polish`+`audit` per screen, run the a11y/story-test gate (`vitest --project=storybook`, needs `npx playwright install chromium`), light/dark parity sweep, then broaden the other product surfaces (SaaS / Endpoint lenses).
 
 ## Build decisions (locked 2026-06-22)
 
@@ -67,7 +68,7 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [x] `docs/13-implementation-phases.md` — build milestones
 - [x] `docs/products/*.md` — per-product deep dives (BCDR, Endpoint Backup, Recovery Launchpad, SaaS Protect, Spanning)
 
-## Phase 2 — Project scaffold & design system  `[ ]`
+## Phase 2 — Project scaffold & design system  `[x]`
 
 - [ ] Scaffold Next.js (App Router) + TS + Tailwind v4 + shadcn/ui; install pinned deps
 - [ ] Write `src/app/globals.css` token blocks (light + dark) from the design system spec
@@ -77,14 +78,14 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [ ] Add shadcn primitives + Atom stories (100% coverage)
 - [ ] Configure token/lint enforcement (stylelint/eslint ban on hardcoded values)
 
-## Phase 3 — Mock data & domain layer  `[ ]`
+## Phase 3 — Mock data & domain layer  `[x]`
 
 - [ ] Implement TypeScript domain types from `docs/05-domain-model.md`
 - [ ] Implement seeded deterministic mock-data generator (fleets, assets, jobs, recovery points, alerts, run history) across all products
 - [ ] Mock "action runner" service (simulated execution, latency, outcomes) + localStorage persistence
 - [ ] Zustand stores (action cart/chains, playbooks, saved views); nuqs URL state
 
-## Phase 4 — Core molecules & organisms  `[ ]`
+## Phase 4 — Core molecules & organisms  `[x]`
 
 - [ ] StatusBadge, BackupHealthCell, last-10 dot-strip, FleetRollup, severity chips
 - [ ] DataTable (TanStack) with sticky header/col, bulk toolbar, saved views
@@ -92,7 +93,7 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [ ] ActionCart / action-chain builder, ApplyScope control (once/all/always), PlaybookStepCard
 - [ ] AssetTimeline, AlertTriageRow, RemediationPanel — each with stories
 
-## Phase 5 — Pages / screens  `[ ]`
+## Phase 5 — Pages / screens  `[~]`  (BCDR-lead slice done; per-product lenses + full empty/loading/error states remain)
 
 - [ ] Overview / fleet health
 - [ ] Triage queue (incident/alert grouping, dedup, severity)
@@ -123,3 +124,4 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 ## Changelog
 
 - 2026-06-22 — Phase 0 completed (research, impeccable v3.7.1 + hook, CLAUDE/PRODUCT/DESIGN, README, repo on GitHub). Build decisions locked (vertical slice / functional engine / BCDR / autonomous swarm). GitHub burn-down = milestones + issue per item. Phase 1 spec authoring in progress.
+- 2026-06-23 — Phases 2–5 built via agent swarm (3 workflow waves: base layer → domain+atoms → molecules+organisms, + manual foundation & page integration). 84 components (32 shadcn primitives + 9 atoms + 15 molecules + 29 organisms) each with a story; full seeded mock engine (135 failure modes, 154 remediation actions, ~300 correlated assets) + simulated runner + 8 Zustand stores; `(console)` shell + 14 routes. Verified: `next build` ✓, `tsc` clean, `build-storybook` ✓, coverage 84/84, runtime smoke ✓. Next: Phase 6 polish + a11y story-test gate + per-product lenses.

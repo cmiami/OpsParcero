@@ -1,0 +1,136 @@
+"use client";
+
+import * as React from "react";
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { MonoLabel } from "@/components/atoms/mono-label";
+import { ProductChip } from "@/components/atoms/product-chip";
+import { SeverityBadge } from "@/components/atoms/severity-badge";
+import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
+import { OccurrenceCount } from "@/components/atoms/occurrence-count";
+import { AiButton } from "@/components/atoms/ai-badge";
+import { FIX_META } from "@/lib/status";
+import type { Issue } from "@/types";
+import { IssueDetailPanel } from "./issue-detail-panel";
+import { ImpactedAssetsPanel } from "./impacted-assets-panel";
+import { FixModal } from "./fix-modal";
+
+export interface IssueRowProps {
+  /** The issue to render. */
+  issue: Issue;
+  /** Controlled expanded state; omit for self-managed expansion. */
+  expanded?: boolean;
+  /** Fired when the row toggles; required for controlled use. */
+  onToggle?: (expanded: boolean) => void;
+  className?: string;
+}
+
+/**
+ * IssueRow — one issue in a category group's table.
+ *
+ * Shows name + mono detail, product chip, severity, occurrence count (→ impacted
+ * panel), and the fix classification, plus a primary Fix button and a purple AI
+ * affordance. Expands in place to the IssueDetailPanel. Works controlled
+ * (expanded/onToggle) or uncontrolled. Severity/status read by icon + label, not
+ * color (M5); purple is confined to the AI button (M4).
+ */
+export function IssueRow({
+  issue,
+  expanded,
+  onToggle,
+  className,
+}: IssueRowProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const isControlled = expanded !== undefined;
+  const open = isControlled ? expanded : internalOpen;
+
+  const [impactOpen, setImpactOpen] = React.useState(false);
+  const [fixOpen, setFixOpen] = React.useState(false);
+
+  const fix = FIX_META[issue.fixType];
+  const automatable = issue.fixType === "full" || issue.fixType === "partial";
+  const fixLabel = automatable ? "Fix" : "Runbook";
+  const detailId = `issue-detail-${issue.id}`;
+
+  function toggle() {
+    const next = !open;
+    if (!isControlled) setInternalOpen(next);
+    onToggle?.(next);
+  }
+
+  return (
+    <div
+      className={cn(
+        "border-b border-border last:border-b-0",
+        open && "bg-subtle/60",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:flex-nowrap">
+        {/* Expand toggle + name/detail */}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-controls={detailId}
+          className="flex min-w-0 flex-1 items-start gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          <ChevronDown
+            aria-hidden
+            className={cn(
+              "mt-0.5 size-4 shrink-0 text-faint-foreground transition-transform",
+              open && "rotate-180",
+            )}
+          />
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-sm font-bold text-card-foreground">
+              {issue.title}
+            </span>
+            <MonoLabel className="truncate text-faint-foreground">
+              {issue.detail}
+            </MonoLabel>
+          </span>
+        </button>
+
+        {/* Meta chips */}
+        <div className="flex shrink-0 items-center gap-2">
+          <ProductChip bucket={issue.productBucket} size="sm" />
+          <SeverityBadge severity={issue.severity} size="sm" />
+          <OccurrenceCount
+            count={issue.impactedAssetIds.length}
+            onClick={() => setImpactOpen(true)}
+          />
+          <FixTypeBadge type={issue.fixType} size="sm" />
+        </div>
+
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-2">
+          <AiButton aria-label={`Ask AI about ${issue.title}`} />
+          <Button
+            type="button"
+            size="sm"
+            variant={automatable ? "default" : "outline"}
+            onClick={() => setFixOpen(true)}
+          >
+            <fix.icon aria-hidden className="size-4" />
+            {fixLabel}
+          </Button>
+        </div>
+      </div>
+
+      {open && (
+        <div id={detailId}>
+          <IssueDetailPanel issue={issue} />
+        </div>
+      )}
+
+      <ImpactedAssetsPanel
+        issue={issue}
+        open={impactOpen}
+        onOpenChange={setImpactOpen}
+      />
+      <FixModal issue={issue} open={fixOpen} onOpenChange={setFixOpen} />
+    </div>
+  );
+}

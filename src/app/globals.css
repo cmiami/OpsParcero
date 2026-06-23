@@ -1,0 +1,364 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ---------------------------------------------------------------------------
+ * Kaseya Resolution Center — token law (M1).
+ * This is the ONE file allowed to declare raw color literals (palette source,
+ * stylelint-exempt). Everything else references semantic tokens via Tailwind
+ * utilities (bg-primary, text-fix-endtoend, border-border, …).
+ * Canonical spec: DESIGN.md + docs/03-design-system.md. globals.css wins.
+ * ------------------------------------------------------------------------- */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* — Brand / primary (Kaseya blue) — */
+  --primary: #0e67f5;
+  --primary-foreground: #ffffff;
+  --primary-strong: #0d47a1;      /* hover / pressed */
+  --primary-accent: #1565c0;      /* active nav, links, selected row */
+  --primary-tint: #eef5ff;        /* active / selected background */
+
+  /* — AI-assist (purple — the ONLY place purple appears) — */
+  --ai: #6a1b9a;
+  --ai-accent: #ab47bc;
+  --ai-tint: #f3e5f5;
+  --ai-foreground: #ffffff;
+
+  /* — Canvas / surfaces / text — */
+  --background: #ffffff;
+  --foreground: #1a2332;          /* ink */
+  --surface: #ffffff;
+  --subtle: #f8f9fc;              /* stat bar / muted surface */
+  --muted: #f8f9fc;
+  --muted-foreground: #607185;
+  --faint-foreground: #8a9bb0;    /* labels / captions */
+  --border: #e2e8f0;              /* hairline */
+  --input: #e2e8f0;
+  --ring: #0e67f5;
+
+  /* shadcn semantic aliases (map onto the same palette) */
+  --card: #ffffff;
+  --card-foreground: #1a2332;
+  --popover: #ffffff;
+  --popover-foreground: #1a2332;
+  --secondary: #f8f9fc;
+  --secondary-foreground: #1a2332;
+  --accent: #eef5ff;
+  --accent-foreground: #1565c0;
+  --destructive: #c62828;
+  --destructive-foreground: #ffffff;
+
+  /* — Left nav (white) — */
+  --nav-foreground: #455a64;
+  --nav-hover: #f0f4f8;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #455a64;
+  --sidebar-accent: #eef5ff;
+  --sidebar-accent-foreground: #1565c0;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #0e67f5;
+  --sidebar-primary: #0e67f5;
+  --sidebar-primary-foreground: #ffffff;
+
+  /* — Fix classification (load-bearing) — */
+  --fix-endtoend: #2e7d32;        /* End-to-end fix (green) */
+  --fix-endtoend-tint: #e8f5e9;
+  --fix-endtoend-foreground: #ffffff;
+  --fix-guided: #1565c0;          /* Guided fix (blue) */
+  --fix-guided-tint: #eef5ff;
+  --fix-guided-foreground: #ffffff;
+  --fix-insights: #e65100;        /* Insights only (orange) */
+  --fix-insights-tint: #fff3e0;
+  --fix-insights-foreground: #ffffff;
+  --fix-unknown: #9e9e9e;         /* Unknown (gray) */
+  --fix-unknown-tint: #f1f1f1;
+  --fix-unknown-foreground: #ffffff;
+
+  /* — Severity / status (never color-only) — */
+  --critical: #c62828;
+  --critical-tint: #ffebee;
+  --critical-foreground: #ffffff;
+  --warning: #e65100;
+  --warning-tint: #fff3e0;
+  --warning-foreground: #ffffff;
+  --success: #2e7d32;
+  --success-tint: #e8f5e9;
+  --success-foreground: #ffffff;
+
+  /* — Asset health states (fleet rollup; dot + icon + label) — */
+  --status-protected: #2e7d32;
+  --status-protected-tint: #e8f5e9;
+  --status-warning: #e65100;
+  --status-warning-tint: #fff3e0;
+  --status-failed: #c62828;
+  --status-failed-tint: #ffebee;
+  --status-paused: #9e9e9e;
+  --status-paused-tint: #f1f1f1;
+  --status-syncing: #1976d2;
+  --status-syncing-tint: #e3f2fd;
+  --status-offline: #607185;
+  --status-offline-tint: #eef1f5;
+
+  /* — Product accents (chips / charts only) — */
+  --product-saas: #1976d2;
+  --product-bcdr: #e65100;
+  --product-endpoint: #2e7d32;
+
+  /* — Charts — */
+  --chart-1: #0e67f5;             /* primary blue */
+  --chart-2: #2e7d32;             /* green */
+  --chart-3: #e65100;             /* orange */
+  --chart-4: #6a1b9a;             /* purple */
+  --chart-5: #1976d2;             /* product blue */
+
+  /* — Semantic z-index scale (never arbitrary 9999) — */
+  --z-base: 0;
+  --z-dropdown: 30;
+  --z-sticky: 40;
+  --z-sidepanel: 50;
+  --z-overlay: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+  --z-tooltip: 90;
+}
+
+.dark {
+  /* slate canvas — portal dark is slate, not teal/carbon */
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --primary-strong: #2563eb;
+  --primary-accent: #60a5fa;
+  --primary-tint: #16263f;
+
+  --ai: #c084fc;
+  --ai-accent: #d8b4fe;
+  --ai-tint: #2a1b33;
+  --ai-foreground: #1a1023;
+
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --surface: #1e293b;
+  --subtle: #172033;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --faint-foreground: #64748b;
+  --border: #334155;
+  --input: #334155;
+  --ring: #3b82f6;
+
+  --card: #1e293b;
+  --card-foreground: #e2e8f0;
+  --popover: #1e293b;
+  --popover-foreground: #e2e8f0;
+  --secondary: #1e293b;
+  --secondary-foreground: #e2e8f0;
+  --accent: #16263f;
+  --accent-foreground: #bfdbfe;
+  --destructive: #ef5350;
+  --destructive-foreground: #1a0f0f;
+
+  --nav-foreground: #cbd5e1;
+  --nav-hover: #334155;
+  --sidebar: #1e293b;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-accent: #16263f;
+  --sidebar-accent-foreground: #bfdbfe;
+  --sidebar-border: #334155;
+  --sidebar-ring: #3b82f6;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+
+  --fix-endtoend: #66bb6a;
+  --fix-endtoend-tint: #163020;
+  --fix-endtoend-foreground: #0c1a10;
+  --fix-guided: #60a5fa;
+  --fix-guided-tint: #16263f;
+  --fix-guided-foreground: #0a1322;
+  --fix-insights: #fb8c00;
+  --fix-insights-tint: #3a2814;
+  --fix-insights-foreground: #1a1107;
+  --fix-unknown: #b0b0b0;
+  --fix-unknown-tint: #2a2e35;
+  --fix-unknown-foreground: #14161a;
+
+  --critical: #ef5350;
+  --critical-tint: #3b1a1c;
+  --critical-foreground: #1a0d0d;
+  --warning: #fb8c00;
+  --warning-tint: #3a2814;
+  --warning-foreground: #1a1107;
+  --success: #66bb6a;
+  --success-tint: #163020;
+  --success-foreground: #0c1a10;
+
+  --status-protected: #66bb6a;
+  --status-protected-tint: #163020;
+  --status-warning: #fb8c00;
+  --status-warning-tint: #3a2814;
+  --status-failed: #ef5350;
+  --status-failed-tint: #3b1a1c;
+  --status-paused: #94a3b8;
+  --status-paused-tint: #2a2e35;
+  --status-syncing: #60a5fa;
+  --status-syncing-tint: #16263f;
+  --status-offline: #94a3b8;
+  --status-offline-tint: #232c3a;
+
+  --product-saas: #60a5fa;
+  --product-bcdr: #fb8c00;
+  --product-endpoint: #66bb6a;
+
+  --chart-1: #3b82f6;
+  --chart-2: #66bb6a;
+  --chart-3: #fb8c00;
+  --chart-4: #c084fc;
+  --chart-5: #60a5fa;
+}
+
+@theme inline {
+  /* fonts (next/font injects --font-* on <html>) */
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-plus-jakarta), var(--font-figtree), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+
+  /* radius scale (DESIGN.md) */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  /* elevation (structure via hairline borders; shadows for floating layers) */
+  --shadow-e1: 0 2px 10px rgba(0, 0, 0, 0.08);
+  --shadow-e2: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-e3: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --shadow-panel: -4px 0 16px rgba(0, 0, 0, 0.08);
+
+  /* color tokens → Tailwind utilities */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-accent: var(--primary-accent);
+  --color-primary-tint: var(--primary-tint);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-faint-foreground: var(--faint-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ai: var(--ai);
+  --color-ai-accent: var(--ai-accent);
+  --color-ai-tint: var(--ai-tint);
+  --color-ai-foreground: var(--ai-foreground);
+
+  --color-nav-foreground: var(--nav-foreground);
+  --color-nav-hover: var(--nav-hover);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+
+  --color-fix-endtoend: var(--fix-endtoend);
+  --color-fix-endtoend-tint: var(--fix-endtoend-tint);
+  --color-fix-endtoend-foreground: var(--fix-endtoend-foreground);
+  --color-fix-guided: var(--fix-guided);
+  --color-fix-guided-tint: var(--fix-guided-tint);
+  --color-fix-guided-foreground: var(--fix-guided-foreground);
+  --color-fix-insights: var(--fix-insights);
+  --color-fix-insights-tint: var(--fix-insights-tint);
+  --color-fix-insights-foreground: var(--fix-insights-foreground);
+  --color-fix-unknown: var(--fix-unknown);
+  --color-fix-unknown-tint: var(--fix-unknown-tint);
+  --color-fix-unknown-foreground: var(--fix-unknown-foreground);
+
+  --color-critical: var(--critical);
+  --color-critical-tint: var(--critical-tint);
+  --color-critical-foreground: var(--critical-foreground);
+  --color-warning: var(--warning);
+  --color-warning-tint: var(--warning-tint);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-tint: var(--success-tint);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-status-protected: var(--status-protected);
+  --color-status-protected-tint: var(--status-protected-tint);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-tint: var(--status-warning-tint);
+  --color-status-failed: var(--status-failed);
+  --color-status-failed-tint: var(--status-failed-tint);
+  --color-status-paused: var(--status-paused);
+  --color-status-paused-tint: var(--status-paused-tint);
+  --color-status-syncing: var(--status-syncing);
+  --color-status-syncing-tint: var(--status-syncing-tint);
+  --color-status-offline: var(--status-offline);
+  --color-status-offline-tint: var(--status-offline-tint);
+
+  --color-product-saas: var(--product-saas);
+  --color-product-bcdr: var(--product-bcdr);
+  --color-product-endpoint: var(--product-endpoint);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    font-size: 13px; /* Figtree 13px base — data-dense product UI */
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Visible focus ring everywhere (M5) */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  /* Mono numerics + ids */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Reduced-motion: kill non-essential animation (M5) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

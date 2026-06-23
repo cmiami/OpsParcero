@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
+import { playwright } from "@vitest/browser-playwright";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,13 +15,17 @@ export default defineConfig({
     storybookTest({ configDir: path.join(dirname, ".storybook") }),
   ],
   resolve: {
-    alias: { "@": path.join(dirname, "src") },
+    alias: {
+      "@": path.join(dirname, "src"),
+      // The fix stories run the engine's mock loop in-browser (sim path).
+      "@fix-engine": path.join(dirname, "fix-engine", "src"),
+    },
   },
   test: {
     name: "storybook",
     browser: {
       enabled: true,
-      provider: "playwright",
+      provider: playwright(),
       headless: true,
       instances: [{ browser: "chromium" }],
     },

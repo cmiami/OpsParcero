@@ -44,7 +44,8 @@ export function MonoLabel({
   const handleCopy = React.useCallback(() => {
     const text =
       copyValue ?? (typeof children === "string" ? children : String(children));
-    void navigator.clipboard?.writeText(text);
+    // Clipboard can reject (denied permission / headless) — swallow it.
+    void navigator.clipboard?.writeText(text).catch(() => {});
     setCopied(true);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setCopied(false), 1500);

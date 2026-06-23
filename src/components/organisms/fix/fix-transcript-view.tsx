@@ -128,7 +128,8 @@ function TimelineRow({
 }
 
 /** Long text block — collapses past a threshold. */
-function CollapsibleText({ text }: { text: string }) {
+function CollapsibleText({ text }: { text?: string }) {
+  if (!text) return null;
   const long = text.length > 280;
   if (!long) {
     return <p className="whitespace-pre-wrap text-sm text-card-foreground">{text}</p>;

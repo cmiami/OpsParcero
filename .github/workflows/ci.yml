@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      # App + fix-engine dependencies (the engine has its own package).
+      - run: npm ci
+      - run: npm --prefix fix-engine ci
+      # Story tests run play fns + axe in headless Chromium.
+      - run: npx playwright install --with-deps chromium
+      # The full gate: typecheck · lint · story coverage · engine tests · fix-client
+      # smoke · story tests (play + axe) · static build · storybook build.
+      - run: npm run verify

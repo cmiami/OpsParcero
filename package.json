@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "npx --yes serve@latest out -l 3000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest run",
+    "test:engine": "npm --prefix fix-engine test && npm --prefix fix-engine run typecheck",
     "lint:stories": "node scripts/check-story-coverage.mjs",
     "smoke:fix-client": "fix-engine/node_modules/.bin/tsx --tsconfig ./tsconfig.json scripts/fix-client-smoke.mts",
-    "verify": "npm run typecheck && npm run lint:stories"
+    "verify": "npm run typecheck && npm run lint && npm run lint:stories && npm run test:engine && npm run smoke:fix-client && npm run test && npm run build && npm run build-storybook"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -72,6 +73,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitest/browser": "^4.1.9",
+    "@vitest/browser-playwright": "^4.1.9",
     "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^9.17.0",
     "eslint-config-next": "15.5.19",

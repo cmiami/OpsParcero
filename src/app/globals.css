@@ -131,7 +131,7 @@
   /* slate canvas — portal dark is slate, not teal/carbon */
   --primary: #3b82f6;
   --primary-foreground: #0a1322;   /* dark text on the lifted dark-mode blue (AA) */
-  --primary-strong: #2563eb;
+  --primary-strong: #4f8df9;       /* hover: LIGHTER than --primary in dark, so the dark fg stays AA (5.77:1, not 3.6:1) */
   --primary-accent: #60a5fa;
   --primary-tint: #16263f;
 

@@ -58,8 +58,21 @@ function buildDB(): MockDB {
   // 12. Inject every failure mode → mutate assets + emit alerts.
   const { alerts } = injectFailures(assets, FAILURE_MODES);
 
-  // 13. Incidents re-parent grouped alerts.
+  // 13. Incidents re-parent grouped alerts (and may flip some to auto-resolved).
   const incidents = generateIncidents(alerts);
+
+  // 13b. Prune any alert an incident closed out of each asset's openAlertIds, so
+  // a "resolved" alert never lingers in an asset's OPEN list.
+  const openAlertIdSet = new Set(
+    alerts.filter((a) => a.state === "open").map((a) => a.id),
+  );
+  for (const asset of assets) {
+    if (asset.openAlertIds.some((id) => !openAlertIdSet.has(id))) {
+      asset.openAlertIds = asset.openAlertIds.filter((id) =>
+        openAlertIdSet.has(id),
+      );
+    }
+  }
 
   // 14. Recompute denormalized rollups (after mutations).
   const cosmeticAssetIds = new Set<string>(
@@ -108,7 +121,11 @@ function assertIntegrity(db: MockDB): void {
   const modeIds = new Set(FAILURE_MODES.map((m) => m.id));
   const incidentIds = new Set(db.incidents.map((i) => i.id));
 
-  // Alerts → asset / client / mode / incident.
+  const openAlertIds = new Set(
+    db.alerts.filter((a) => a.state === "open").map((a) => a.id),
+  );
+
+  // Alerts → asset / client / mode / incident + temporal coherence.
   for (const alert of db.alerts) {
     if (alert.assetId && !assetIds.has(alert.assetId))
       throw new Error(`[fixtures] alert ${alert.id} → unknown asset ${alert.assetId}`);
@@ -118,16 +135,33 @@ function assertIntegrity(db: MockDB): void {
       throw new Error(`[fixtures] alert ${alert.id} → unknown mode ${alert.failureModeId}`);
     if (alert.incidentId && !incidentIds.has(alert.incidentId))
       throw new Error(`[fixtures] alert ${alert.id} → unknown incident ${alert.incidentId}`);
+    // firstSeenAt must never be newer than lastSeenAt.
+    if (Date.parse(alert.firstSeenAt) > Date.parse(alert.lastSeenAt))
+      throw new Error(
+        `[fixtures] alert ${alert.id} → firstSeenAt ${alert.firstSeenAt} is after lastSeenAt ${alert.lastSeenAt}`,
+      );
   }
 
-  // Assets → client + openAlertIds resolve.
+  // Assets → client + openAlertIds resolve AND are actually open.
   for (const asset of db.assets) {
     if (!clientIds.has(asset.clientId))
       throw new Error(`[fixtures] asset ${asset.id} → unknown client ${asset.clientId}`);
     for (const aid of asset.openAlertIds) {
       if (!alertIds.has(aid))
         throw new Error(`[fixtures] asset ${asset.id} → unknown openAlert ${aid}`);
+      if (!openAlertIds.has(aid))
+        throw new Error(
+          `[fixtures] asset ${asset.id} → openAlertIds lists a non-open alert ${aid}`,
+        );
     }
+  }
+
+  // Automation policies → counters must be possible (succeeded ≤ triggered).
+  for (const p of db.policies) {
+    if (p.stats.succeeded > p.stats.triggered)
+      throw new Error(
+        `[fixtures] policy ${p.id} → succeeded ${p.stats.succeeded} > triggered ${p.stats.triggered}`,
+      );
   }
 
   // Incidents → alertIds resolve.

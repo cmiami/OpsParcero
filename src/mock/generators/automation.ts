@@ -115,6 +115,24 @@ export function generatePlaybooks(users: User[]): Playbook[] {
 
 // ── Seeded policies (3 — the "always" spine) ────────────────────────────────
 
+/**
+ * Coherent policy counters: draw `triggered`, then derive `succeeded` as that
+ * minus a small failure count, so succeeded ≤ triggered always (never the
+ * impossible "triggered 20 · succeeded 33"). Same three PRNG draws as before
+ * (triggered · delta · lastFiredAt), so the seed stays aligned.
+ */
+function policyStats(
+  r: Rng,
+  tMin: number,
+  tMax: number,
+  lastMin: number,
+  lastMax: number,
+): AutomationPolicy["stats"] {
+  const triggered = int(r, tMin, tMax);
+  const succeeded = triggered - int(r, 0, Math.max(1, Math.round(triggered * 0.18)));
+  return { triggered, succeeded, lastFiredAt: minToIso(int(r, lastMin, lastMax)) };
+}
+
 export function generatePolicies(): AutomationPolicy[] {
   const r = rng("automation-pol");
   return [
@@ -128,7 +146,7 @@ export function generatePolicies(): AutomationPolicy[] {
       approvalRule: "never",
       enabled: true,
       dryRunFirst: false,
-      stats: { triggered: int(r, 18, 40), succeeded: int(r, 14, 34), lastFiredAt: minToIso(int(r, 30, 600)) },
+      stats: policyStats(r, 18, 40, 30, 600),
     },
     {
       id: "POL-AUTO-SCREENSHOT",
@@ -140,7 +158,7 @@ export function generatePolicies(): AutomationPolicy[] {
       approvalRule: "never",
       enabled: true,
       dryRunFirst: true,
-      stats: { triggered: int(r, 30, 70), succeeded: int(r, 28, 66), lastFiredAt: minToIso(int(r, 60, 900)) },
+      stats: policyStats(r, 30, 70, 60, 900),
     },
     {
       id: "POL-AUTO-MERGE",
@@ -152,7 +170,7 @@ export function generatePolicies(): AutomationPolicy[] {
       approvalRule: "over-threshold",
       enabled: false,
       dryRunFirst: true,
-      stats: { triggered: int(r, 5, 18), succeeded: int(r, 4, 16), lastFiredAt: minToIso(int(r, 600, 60 * 24 * 5)) },
+      stats: policyStats(r, 5, 18, 600, 60 * 24 * 5),
     },
   ];
 }
@@ -234,10 +252,15 @@ export function generateAutomationHistory(
       | "always";
     const targetCount = scope === "once" ? 1 : int(r, 2, 9);
     const targetRefs: EntityRef[] = [];
+    const targetSeen = new Set<string>();
     for (let t = 0; t < targetCount; t += 1) {
       const aid = alertingAssetIds.length
         ? pick(r, alertingAssetIds)
         : pick(r, assets).id;
+      // Skip a repeated draw so one run never lists the same asset twice (same
+      // PRNG draws either way — the loop still runs targetCount times).
+      if (targetSeen.has(aid)) continue;
+      targetSeen.add(aid);
       const asset = assetById.get(aid);
       targetRefs.push({ kind: "asset", id: aid, label: asset?.displayName ?? aid });
     }

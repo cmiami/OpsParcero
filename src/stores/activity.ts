@@ -92,6 +92,26 @@ export const useActivity = create<ActivityState>()(
         audit: s.audit,
         assetOverrides: s.assetOverrides,
       }),
+      // Don't trust localStorage verbatim: drop malformed/stale entries so a
+      // corrupt payload can't distort Run history / Audit / asset state.
+      merge: (persisted, current) => {
+        const p = persisted as Partial<ActivityState> | undefined;
+        const hasId = (x: unknown): boolean =>
+          !!x && typeof (x as { id?: unknown }).id === "string";
+        return {
+          ...current,
+          runs: Array.isArray(p?.runs)
+            ? (p!.runs.filter(hasId) as ActionRun[]).slice(0, 200)
+            : [],
+          audit: Array.isArray(p?.audit)
+            ? (p!.audit.filter(hasId) as AuditLogEntry[]).slice(0, 200)
+            : [],
+          assetOverrides:
+            p?.assetOverrides && typeof p.assetOverrides === "object"
+              ? p.assetOverrides
+              : {},
+        };
+      },
     },
   ),
 );

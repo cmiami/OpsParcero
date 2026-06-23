@@ -420,10 +420,26 @@ function DataRow<T>({
       data-state={selected ? "selected" : undefined}
       aria-selected={selected || undefined}
       onClick={clickable ? () => onRowClick?.(row.original) : undefined}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              // Activate on Enter/Space only when the row itself is focused —
+              // never when a key comes from an inner control (checkbox, ⋯ menu).
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onRowClick?.(row.original);
+              }
+            }
+          : undefined
+      }
       className={cn(
         rowHeight,
         "border-0 transition-colors",
-        clickable && "cursor-pointer",
+        clickable &&
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         selected
           ? "bg-primary-tint hover:bg-primary-tint"
           : "hover:bg-subtle",

@@ -329,6 +329,13 @@ export function injectFailures(
     const alertId: AlertId = `ALR-${alertSeq}`;
     alertSeq += int(r, 1, 4);
     const severity: Severity = mode.defaultSeverity;
+    // Draw both timestamps (same order/draws as before), then order them so
+    // firstSeenAt is never newer than lastSeenAt — the two independent ranges
+    // could previously invert.
+    const seenA = Date.parse(
+      isoAgo(r, isCosmetic ? 60 : 30, 60 * 24 * (isCosmetic ? 5 : 3)),
+    );
+    const seenB = NOW_MS - int(r, 5, 240) * 60_000;
     alerts.push({
       id: alertId,
       clientId: asset.clientId,
@@ -342,8 +349,8 @@ export function injectFailures(
       failureModeId: mode.id,
       state: "open",
       isCosmetic,
-      firstSeenAt: isoAgo(r, isCosmetic ? 60 : 30, 60 * 24 * (isCosmetic ? 5 : 3)),
-      lastSeenAt: new Date(NOW_MS - int(r, 5, 240) * 60_000).toISOString(),
+      firstSeenAt: new Date(Math.min(seenA, seenB)).toISOString(),
+      lastSeenAt: new Date(Math.max(seenA, seenB)).toISOString(),
       occurrenceCount: int(r, 1, status === "failed" ? 9 : 4),
     });
     asset.openAlertIds = [...asset.openAlertIds, alertId];

@@ -106,7 +106,7 @@ function reduce(model: ConsoleModel, action: ConsoleEvent): ConsoleModel {
             ...model,
             state: ev.session.state,
             plan: ev.session.plan ?? model.plan,
-            turns: ev.session.transcript.length
+            turns: ev.session.transcript?.length
               ? ev.session.transcript
               : model.turns,
             gate: null,

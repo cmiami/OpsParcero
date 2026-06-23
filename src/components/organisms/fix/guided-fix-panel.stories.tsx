@@ -324,7 +324,9 @@ export const Escalated: Story = {
     const start = await canvas.findByRole("button", { name: /start guided/i });
     await userEvent.click(start);
     await waitFor(() =>
-      expect(canvas.getByText(/Escalated/i)).toBeInTheDocument(),
+      expect(
+        canvas.getByText(/must approve the M365 re-consent/i),
+      ).toBeInTheDocument(),
     );
   },
 };

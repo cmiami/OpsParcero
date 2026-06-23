@@ -132,6 +132,10 @@ export function DataTable<T>({
     data,
     columns,
     state: { sorting, rowSelection, columnVisibility },
+    // First click on any column (incl. numeric) sorts ascending — TanStack
+    // defaults numeric columns to descending-first, which contradicts the
+    // predictable aria-sort contract.
+    sortDescFirst: false,
     enableRowSelection: enableSelection,
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,

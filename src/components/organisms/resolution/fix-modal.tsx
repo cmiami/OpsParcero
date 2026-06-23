@@ -1,8 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { toast } from "sonner";
-import { CheckCircle2, ListChecks, Layers, FolderCog } from "lucide-react";
+import {
+  CheckCircle2,
+  ListChecks,
+  Layers,
+  FolderCog,
+  AlertTriangle,
+  Info,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +34,34 @@ export interface FixModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
+
+/** The persistent outcome shown in-modal after a confirm (M5: icon + text). */
+type FixResult = {
+  tone: "success" | "warning" | "info";
+  title: string;
+  detail: string;
+};
+
+const RESULT_TONE = {
+  success: {
+    Icon: CheckCircle2,
+    tint: "bg-success-tint",
+    text: "text-success",
+    border: "border-success",
+  },
+  warning: {
+    Icon: AlertTriangle,
+    tint: "bg-warning-tint",
+    text: "text-warning",
+    border: "border-warning",
+  },
+  info: {
+    Icon: Info,
+    tint: "bg-primary-tint",
+    text: "text-primary-accent",
+    border: "border-primary",
+  },
+} as const;
 
 /**
  * FixModal — the "What will happen" confirmation for applying a fix.
@@ -55,6 +89,7 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
   const [scope, setScope] = React.useState<ActionScope>("once");
   const [alwaysCategory, setAlwaysCategory] = React.useState(false);
   const [running, setRunning] = React.useState(false);
+  const [result, setResult] = React.useState<FixResult | null>(null);
 
   // Reset transient state whenever the modal (re)opens for a fresh issue.
   React.useEffect(() => {
@@ -62,6 +97,7 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
       setScope("once");
       setAlwaysCategory(false);
       setRunning(false);
+      setResult(null);
     }
   }, [open, issue.id]);
 
@@ -69,10 +105,11 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
 
   function handleConfirm() {
     if (!action) {
-      toast.info("Runbook opened", {
-        description: `${issue.title} is insights-only — follow the You-steps to resolve it.`,
+      setResult({
+        tone: "info",
+        title: "Runbook opened",
+        detail: `${issue.title} is insights-only — follow the You-steps to resolve it.`,
       });
-      onOpenChange?.(false);
       return;
     }
 
@@ -85,20 +122,41 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
     // inside an event handler, never at module scope (M6).
     const outcome = simulateRun(action, targets, scope, {}, { approved: true });
 
+    // Where the apply landed — the once → all-matching → always scope spine.
+    const where =
+      scope === "always"
+        ? "this category, now and going forward"
+        : scope === "all-matching"
+          ? `${matchCount} matching ${matchCount === 1 ? "asset" : "assets"}`
+          : "1 asset";
+
     if (alwaysCategory || scope === "always") {
-      toast.success("Auto-remediation policy created", {
-        description: `Future "${issue.category}" failures will be fixed automatically. ${outcome.resultSummary}`,
+      setResult({
+        tone: "warning",
+        title: "Auto-remediation policy created",
+        detail: `Future "${issue.category}" failures will be fixed automatically. ${outcome.resultSummary}`,
       });
     } else if (outcome.healsAsset) {
-      toast.success("Fix applied", { description: outcome.resultSummary });
+      setResult({
+        tone: "success",
+        title: "Fix applied",
+        detail: `Applied to ${where}. ${outcome.resultSummary} Recorded in Run history and Audit.`,
+      });
     } else if (outcome.awaitingApproval) {
-      toast.warning("Approval required", { description: outcome.resultSummary });
+      setResult({
+        tone: "warning",
+        title: "Approval required",
+        detail: outcome.resultSummary,
+      });
     } else {
-      toast.info("Fix dispatched", { description: outcome.resultSummary });
+      setResult({
+        tone: "info",
+        title: "Fix dispatched",
+        detail: `Dispatched to ${where}. ${outcome.resultSummary}`,
+      });
     }
 
     setRunning(false);
-    onOpenChange?.(false);
   }
 
   return (
@@ -134,7 +192,7 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
           <p className="text-xs text-muted-foreground">{issue.problem}</p>
         </section>
 
-        {automatable && (
+        {automatable && !result && (
           <>
             <ApplyScopeControl
               value={scope}
@@ -180,23 +238,61 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
           </>
         )}
 
+        {result &&
+          (() => {
+            const tone = RESULT_TONE[result.tone];
+            const ToneIcon = tone.Icon;
+            return (
+              <section
+                aria-label="Result"
+                role="status"
+                className={cn(
+                  "flex items-start gap-2 rounded-md border p-3",
+                  tone.tint,
+                  tone.border,
+                )}
+              >
+                <ToneIcon
+                  aria-hidden
+                  className={cn("mt-0.5 size-4 shrink-0", tone.text)}
+                />
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className={cn("text-sm font-bold", tone.text)}>
+                    {result.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {result.detail}
+                  </span>
+                </div>
+              </section>
+            );
+          })()}
+
         <DialogFooter>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange?.(false)}
-            disabled={running}
-          >
-            Cancel
-          </Button>
-          <Button size="sm" onClick={handleConfirm} disabled={running}>
-            <CheckCircle2 aria-hidden className="size-4" />
-            {automatable
-              ? scope === "always" || alwaysCategory
-                ? "Create policy"
-                : "Confirm fix"
-              : "Open runbook"}
-          </Button>
+          {result ? (
+            <Button size="sm" onClick={() => onOpenChange?.(false)}>
+              Done
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenChange?.(false)}
+                disabled={running}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleConfirm} disabled={running}>
+                <CheckCircle2 aria-hidden className="size-4" />
+                {automatable
+                  ? scope === "always" || alwaysCategory
+                    ? "Create policy"
+                    : "Confirm fix"
+                  : "Open runbook"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

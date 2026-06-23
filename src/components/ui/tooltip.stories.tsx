@@ -61,9 +61,11 @@ export const Opens: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.hover(canvas.getByText("btru-fs1"));
-    const tip = await within(document.body).findByText(
+    // Radix renders the tooltip content twice (the visible portal + an sr-only
+    // copy for aria-describedby) — assert at least one is present.
+    const tips = await within(document.body).findAllByText(
       /Datto Windows Agent/,
     );
-    await expect(tip).toBeInTheDocument();
+    await expect(tips.length).toBeGreaterThan(0);
   },
 };

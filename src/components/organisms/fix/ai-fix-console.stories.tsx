@@ -427,7 +427,10 @@ export const Succeeded: Story = {
       await canvas.findByRole("button", { name: /Fix with AI/i }),
     );
     await waitFor(
-      () => expect(canvas.getByText(/Resolved/i)).toBeInTheDocument(),
+      () =>
+        expect(
+          canvas.getByText(/verified the symptom cleared/i),
+        ).toBeInTheDocument(),
       { timeout: 4000 },
     );
   },

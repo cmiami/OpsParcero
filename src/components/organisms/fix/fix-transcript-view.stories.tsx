@@ -216,9 +216,10 @@ export const Resolved: Story = {
   args: { turns: resolved, streaming: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // The terminal status badge is present.
-    await expect(canvas.getByText("Succeeded")).toBeInTheDocument();
-    // A folded tool call surfaced its result summary.
+    // The success state is shown (terminal status row + per-tool "Succeeded"
+    // badges all read "Succeeded" — there are legitimately several).
+    await expect(canvas.getAllByText("Succeeded").length).toBeGreaterThan(0);
+    // A folded tool call surfaced its (unique) result summary.
     await expect(
       canvas.getByText(/re-armed the backup schedule/i),
     ).toBeInTheDocument();
@@ -238,7 +239,11 @@ export const WithApprovalGate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Awaiting approval")).toBeInTheDocument();
-    await expect(canvas.getByText(/Approve to continue/i)).toBeInTheDocument();
+    // The approval prompt is shown (the visible banner + the sr-only aria-live
+    // region both carry it — assistive tech announces the latest turn).
+    await expect(
+      canvas.getAllByText(/Approve to continue/i).length,
+    ).toBeGreaterThan(0);
   },
 };
 

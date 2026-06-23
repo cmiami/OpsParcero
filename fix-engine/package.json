@@ -6,6 +6,19 @@
   "description": "AI remediation harness for the Kaseya Resolution Center — a model-flexible, tool-calling agent (real loop, simulated targets). POC.",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "fix": "tsx src/cli/index.ts",
+    "serve": "tsx src/server/index.ts",
+    "models": "tsx src/cli/index.ts list-models"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
+    "openai": "^6.44.0",
+    "@google/genai": "^2.9.0",
+    "hono": "^4.12.27",
+    "@hono/node-server": "^2.0.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
   }
 }

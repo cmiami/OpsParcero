@@ -2,6 +2,15 @@
 export { runSession } from "./loop/session";
 export type { RunDeps } from "./loop/session";
 export { MockProvider } from "./providers/mock";
+export { AnthropicProvider } from "./providers/anthropic";
+export { OpenAIProvider } from "./providers/openai";
+export { GoogleProvider } from "./providers/google";
+export { LocalProvider } from "./providers/local";
+export {
+  ProviderRegistry,
+  defaultProviderRegistry,
+} from "./providers/registry";
+export type { ModelRef, ProviderListing } from "./providers/registry";
 export {
   ToolRegistry,
   defaultRegistry,

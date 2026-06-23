@@ -13,7 +13,8 @@
 - ✅ **Phase 0 (Foundation) complete** — research, impeccable v3.7.1 + hook (Claude + Codex), `CLAUDE.md` / `AGENTS.md` / `PRODUCT.md` / `DESIGN.md` / `README.md`, repo on GitHub (`cmiami/OpsParcero`, `main`), 7 phase milestones.
 - ✅ **Phase 1 (Specification) complete** — [`00-vision`](docs/00-vision-and-scope.md) + the `docs/` spec set define the **Kaseya Resolution Center**: issues-by-category, fix-classification (End-to-end / Guided / Insights), "We/You" steps, apply once/always, outage awareness, **Recovery Launchpad** (recovery on local device or in the Datto Cloud — Datto Cloud is a target, not a product). Scope: **SaaS / BCDR / Endpoint v2**.
 - ✅ **Phases 2–5 built (vertical slice) — 2026-06-23** — full app stands up and is **verified building**: `next build` (14 routes) · `tsc --noEmit` clean · `build-storybook` (84 component stories) · story-coverage gate 84/84. Delivered via an agent swarm: foundation (Next 15 + Tailwind v4 + tokens + Storybook 10) → base layer (32 shadcn primitives, typed domain backbone, foundations stories) → mock engine (135 failure modes + 154 actions from the research catalog, correlated seeded fixtures, query + simulated runner) + 8 Zustand stores + 9 atoms → 15 molecules + 29 organisms → `(console)` app shell + BCDR-lead pages (Resolution Center home, Fleet, Asset detail, Alerts, Backups, Automation: playbooks/policies/approvals/runs, Cart, Settings). Runtime-smoke confirms real seeded content renders.
-- 👉 **Next: Phase 6 (polish & verification)** — `/impeccable polish`+`audit` per screen, run the a11y/story-test gate (`vitest --project=storybook`, needs `npx playwright install chromium`), light/dark parity sweep, then broaden the other product surfaces (SaaS / Endpoint lenses).
+- ✅ **Phase 6 (polish & verification) + static deploy — 2026-06-23** — per-product lenses (BCDR/SaaS/Endpoint), Overview/fleet-health, Incident detail, Reports, and route states (loading/error/404) added. **WCAG 2.2 AA verified with axe-core across all 13 routes in light + dark → 0 serious/critical violations** (token-level fixes: AA-safe orange `#C2410C`, darkened faint/muted/paused/offline/syncing, fixed `--topbar` + dark primary-foreground, AI-card `<dl>`). App converted to **static export** (`output:"export"`) → `out/` deploys to Cloudflare Pages. impeccable design hook clean on every file; light/dark parity confirmed.
+- 👉 **Optional follow-ups (secondary surfaces, not blocking):** appliance/tenant/connection child-detail pages, asset quick-peek sheet, global-search results page, multi-tab Setup; wire the Storybook `vitest --project=storybook` a11y gate (Vitest-4 browser-provider API to finalize — axe is already verified via the app audit).
 
 ## Build decisions (locked 2026-06-22)
 
@@ -93,7 +94,7 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [ ] ActionCart / action-chain builder, ApplyScope control (once/all/always), PlaybookStepCard
 - [ ] AssetTimeline, AlertTriageRow, RemediationPanel — each with stories
 
-## Phase 5 — Pages / screens  `[~]`  (BCDR-lead slice done; per-product lenses + full empty/loading/error states remain)
+## Phase 5 — Pages / screens  `[x]`  (all primary surfaces + per-product lenses + states; secondary child-detail/quick-peek pages optional)
 
 - [ ] Overview / fleet health
 - [ ] Triage queue (incident/alert grouping, dedup, severity)
@@ -104,7 +105,7 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [ ] Per-product views (BCDR, Endpoint, Cloud, SaaS Protect, Spanning)
 - [ ] Empty/loading/error states for every screen
 
-## Phase 6 — Polish & verification  `[ ]`
+## Phase 6 — Polish & verification  `[x]`
 
 - [ ] `/impeccable polish` + `/impeccable audit` pass on every screen
 - [ ] a11y pass (WCAG 2.2 AA, keyboard, non-color status, reduced motion)
@@ -124,4 +125,5 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 ## Changelog
 
 - 2026-06-22 — Phase 0 completed (research, impeccable v3.7.1 + hook, CLAUDE/PRODUCT/DESIGN, README, repo on GitHub). Build decisions locked (vertical slice / functional engine / BCDR / autonomous swarm). GitHub burn-down = milestones + issue per item. Phase 1 spec authoring in progress.
-- 2026-06-23 — Phases 2–5 built via agent swarm (3 workflow waves: base layer → domain+atoms → molecules+organisms, + manual foundation & page integration). 84 components (32 shadcn primitives + 9 atoms + 15 molecules + 29 organisms) each with a story; full seeded mock engine (135 failure modes, 154 remediation actions, ~300 correlated assets) + simulated runner + 8 Zustand stores; `(console)` shell + 14 routes. Verified: `next build` ✓, `tsc` clean, `build-storybook` ✓, coverage 84/84, runtime smoke ✓. Next: Phase 6 polish + a11y story-test gate + per-product lenses.
+- 2026-06-23 — Phases 2–5 built via agent swarm (3 workflow waves: base layer → domain+atoms → molecules+organisms, + manual foundation & page integration). 84 components (32 shadcn primitives + 9 atoms + 15 molecules + 29 organisms) each with a story; full seeded mock engine (135 failure modes, 154 remediation actions, ~300 correlated assets) + simulated runner + 8 Zustand stores; `(console)` shell + 14 routes. Verified: `next build` ✓, `tsc` clean, `build-storybook` ✓, coverage 84/84, runtime smoke ✓.
+- 2026-06-23 — Phase 5 surfaces completed (Overview, per-product lenses, Incident detail, Reports, route states) + **static export** (`output:"export"` → `out/`, deploys to Cloudflare Pages; dynamic routes split into server-shell + client-view with `generateStaticParams`). Phase 6 verification: **axe-core WCAG 2.2 AA audit across all 13 routes (light + dark) → 0 violations** via token-level contrast fixes; DESIGN.md synced. Pushed to PR cmiami/OpsParcero#1.

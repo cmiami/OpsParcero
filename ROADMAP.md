@@ -114,6 +114,19 @@ Repo `cmiami/OpsParcero` (public, `main`). The numbered items below are the burn
 - [ ] Realistic-content review (mock data reads as real per product)
 - [ ] Final demo walkthrough of key journeys
 
+## Phase 7 — AI remediation harness (Guided fix + Fix with AI)  `[~]`
+
+> POC tooling for the actual "fixing." Spec set: [`docs/fix-engine/INDEX.md`](docs/fix-engine/INDEX.md).
+> Decisions (locked): real provider-flexible agent loop · simulated targets · standalone `fix-engine/`
+> (CLI + local HTTP/SSE) · providers Anthropic/OpenAI/Gemini/Local + Mock · real scripts, simulated exec.
+
+- [x] Spec set authored (`docs/fix-engine/` — 8 docs + INDEX; design contract pinned)
+- [ ] **M1** — fix-engine core: `ModelProvider` abstraction + Mock provider + `FixSession` agent loop (state machine, budgets, halt, transcript) + shared-fleet wiring
+- [ ] **M2** — AI-callable tool catalog + simulated `ExecutionBackend`s (agent-windows/linux, agentless, endpoint, saas-api) + real script artifacts + diagnostics + dry-run/diff
+- [ ] **M3** — real provider adapters (Anthropic/OpenAI-compatible/Google/Local) + CLI + local HTTP/SSE server + model registry
+- [ ] **M4** — front-end `FixClient` (SSE live + offline sim) + `GuidedFixPanel` / `AiFixConsole` / `FixTranscriptView` / `ModelPicker` / `ToolCallCard` wired into RemediationPanel/issue/asset
+- [ ] **M5** — verify (tsc/build/storybook/a11y) + CLI smoke + live SSE demo + screenshots + ROADMAP
+
 ---
 
 ## Open decisions  `[!]`

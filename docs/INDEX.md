@@ -22,6 +22,13 @@ Master tracker: [`../ROADMAP.md`](../ROADMAP.md) · Operating contract: [`../CLA
 | 12 | [content-strategy](12-content-strategy.md) | Per-product content, runbook copy, microcopy, empty/error states |
 | 13 | [implementation-phases](13-implementation-phases.md) | Detailed build milestones |
 
+## Fix Engine — AI remediation harness (`docs/fix-engine/`)
+
+The model-flexible, tool-calling agent that powers **Guided fix** + **Fix with AI** (real loop,
+simulated targets; standalone `fix-engine/` package). Sub-set index:
+[fix-engine/INDEX](fix-engine/INDEX.md) — overview · harness architecture · provider abstraction ·
+tool & execution model · per-product tooling · guided-fix UX · AI-fix UX · phases & milestones.
+
 ## Per-product deep dives (`docs/products/`)
 
 - [BCDR (SIRIS/ALTO)](products/bcdr.md) · [Endpoint Backup v1/v2](products/endpoint-backup.md) · [Datto Cloud DR](products/datto-cloud.md) · [SaaS Protect](products/saas-protect.md) · [Spanning](products/spanning.md)

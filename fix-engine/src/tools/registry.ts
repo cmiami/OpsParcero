@@ -5,6 +5,7 @@
  */
 import type { AssetKind, ProductType } from "../domain";
 import type { ToolHandler, ToolResult, ToolContext } from "./types";
+import { buildCatalog } from "./catalog";
 
 const ALL_KINDS: AssetKind[] = [
   "agent",
@@ -139,6 +140,16 @@ export class ToolRegistry {
   }
 }
 
+/**
+ * The default registry now serves the full M2 catalog (diagnostics + showcase
+ * remediations, each wired to a real ScriptArtifact + simulated backend). The M1
+ * STUB_TOOLS remain exported for the minimal smoke path / back-compat.
+ */
 export function defaultRegistry(): ToolRegistry {
+  return new ToolRegistry(buildCatalog());
+}
+
+/** Registry built from only the M1 stub tools (kept for the minimal loop test). */
+export function stubRegistry(): ToolRegistry {
   return new ToolRegistry(STUB_TOOLS);
 }

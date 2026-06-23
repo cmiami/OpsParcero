@@ -22,6 +22,8 @@ import { TERMINAL_STATES } from "../types";
 import { DEFAULT_BUDGET, Budgeter } from "./budget";
 import { SeededClock } from "../shared/clock";
 import { getAsset, getIssue, primaryIssueForAsset } from "../shared/fleet";
+import { pickToolsForAsset, type ToolsForAsset } from "../tools/catalog";
+import type { ToolHandler } from "../tools/types";
 import type {
   ActionRun,
   ActionRunId,
@@ -40,10 +42,120 @@ export interface RunDeps {
   onTurn?: (turn: FixTranscriptTurn) => void;
 }
 
-const SYSTEM = (mode: string) =>
+const SYSTEM_PREAMBLE = (mode: string) =>
   `You are the Kaseya Resolution Center remediation agent (${mode} mode). Triage the failure by ` +
   `reading diagnostics first, propose a minimal fix, dry-run it, then execute and verify. ` +
   `Never take a destructive action without approval. Stop when the asset is healthy or you cannot proceed.`;
+
+/**
+ * The system prompt carries a machine-parseable plan directive derived from the
+ * asset's failure (via pickToolsForAsset). A real provider would read the tool
+ * catalog + this directive and converge on the same tools; the deterministic
+ * Mock provider parses it directly. Format (one tool per line):
+ *
+ *   <fix-plan>
+ *   triage: get_vss_writers {}
+ *   triage: read_event_log {"source":"VSS"}
+ *   remediate: reset_vss_writers {"verifyAfter":true}
+ *   verify: get_vss_writers {}
+ *   </fix-plan>
+ */
+const PLAN_OPEN = "<fix-plan>";
+const PLAN_CLOSE = "</fix-plan>";
+
+interface PlannedCall {
+  phase: "triage" | "remediate" | "verify";
+  toolName: string;
+  input: Record<string, unknown>;
+}
+
+/** Supply valid default inputs for tools whose inputSchema marks fields required. */
+function defaultInputFor(handler: ToolHandler, asset: ProtectedAsset): Record<string, unknown> {
+  const schema = handler.spec.inputSchema as {
+    properties?: Record<string, { type?: string; default?: unknown }>;
+    required?: string[];
+  };
+  const props = schema.properties ?? {};
+  const required = schema.required ?? [];
+  const input: Record<string, unknown> = {};
+  for (const key of required) {
+    const def = props[key]?.default;
+    if (def !== undefined) {
+      input[key] = def;
+      continue;
+    }
+    // Synthesize a deterministic, plausible value for the required field.
+    switch (key) {
+      case "tenantId":
+        input[key] =
+          asset.kind === "saas-seat"
+            ? `${(asset as { upn?: string }).upn?.split("@")[1] ?? "contoso.onmicrosoft.com"}`
+            : "contoso.onmicrosoft.com";
+        break;
+      case "localRetentionDays":
+        input[key] = 30;
+        break;
+      case "rationale":
+      case "reason":
+        input[key] = "Primary remediation for the classified failure mode.";
+        break;
+      default:
+        input[key] = props[key]?.type === "boolean" ? true : "";
+    }
+  }
+  return input;
+}
+
+/**
+ * Build the ordered plan-call list for an asset. The asset-correct tools come
+ * from pickToolsForAsset, but each call is resolved against the REGISTRY actually
+ * in use: a planned tool absent from the registry falls back to the registry's
+ * first read (diagnostics/verify) or first write (remediation). This keeps the
+ * plan coherent whether the loop runs the full catalog or a minimal/stub set.
+ */
+function plannedCalls(
+  picked: ToolsForAsset,
+  asset: ProtectedAsset,
+  reg: ToolRegistry,
+): PlannedCall[] {
+  const has = (name: string) => reg.get(name) !== undefined;
+  const firstRead = reg.list().find((h) => h.spec.risk === "read");
+  const firstWrite = reg.list().find((h) => h.spec.risk !== "read");
+  const handlerFor = (name: string): ToolHandler | undefined => reg.get(name);
+
+  const calls: PlannedCall[] = [];
+
+  // Diagnostics (triage): keep those present in the registry; if none are, use
+  // the registry's first read tool so triage still happens.
+  const diags = picked.diagnostic.filter((d) => has(d.spec.name));
+  if (diags.length > 0) {
+    for (const d of diags) {
+      calls.push({ phase: "triage", toolName: d.spec.name, input: defaultInputFor(d, asset) });
+    }
+  } else if (firstRead) {
+    calls.push({ phase: "triage", toolName: firstRead.spec.name, input: defaultInputFor(firstRead, asset) });
+  }
+
+  // Remediation: the picked tool if present, else the registry's first write.
+  const rem = has(picked.remediation.spec.name) ? picked.remediation : firstWrite;
+  if (rem) {
+    calls.push({ phase: "remediate", toolName: rem.spec.name, input: defaultInputFor(rem, asset) });
+  }
+
+  // Verify: re-read the first triage tool we actually scheduled.
+  const firstTriage = calls.find((c) => c.phase === "triage");
+  const verifyTool = firstTriage ? handlerFor(firstTriage.toolName) : firstRead;
+  if (verifyTool) {
+    calls.push({ phase: "verify", toolName: verifyTool.spec.name, input: defaultInputFor(verifyTool, asset) });
+  }
+  return calls;
+}
+
+/** Render the plan directive block the Mock provider parses. */
+function planDirective(calls: PlannedCall[]): string {
+  const lines = calls.map((c) => `${c.phase}: ${c.toolName} ${JSON.stringify(c.input)}`);
+  return [PLAN_OPEN, ...lines, PLAN_CLOSE].join("\n");
+}
 
 function userPrompt(asset: ProtectedAsset, issue?: Issue): string {
   return (
@@ -54,45 +166,34 @@ function userPrompt(asset: ProtectedAsset, issue?: Issue): string {
   );
 }
 
-/** A plan derived from the registry + issue, shown alongside the agentic run. */
-function derivePlan(reg: ToolRegistry, issue?: Issue): FixPlan {
-  const read = reg.list().find((h) => h.spec.risk === "read");
-  const write = reg.list().find((h) => h.spec.risk !== "read");
-  const steps: FixPlanStep[] = [];
-  if (read)
-    steps.push({
-      id: "p1",
-      intent: "Gather evidence (diagnostics)",
-      toolName: read.spec.name,
-      input: {},
-      actor: "we",
-      risk: read.spec.risk,
-      requiresApproval: read.spec.requiresApproval,
-    });
-  if (write)
-    steps.push({
-      id: "p2",
-      intent: "Apply primary remediation",
-      toolName: write.spec.name,
-      input: {},
-      actor: "we",
-      risk: write.spec.risk,
-      requiresApproval: write.spec.requiresApproval,
-    });
-  if (read)
-    steps.push({
-      id: "p3",
-      intent: "Verify protection restored",
-      toolName: read.spec.name,
-      input: {},
-      actor: "we",
-      risk: read.spec.risk,
-      requiresApproval: read.spec.requiresApproval,
-    });
+/** A plan derived from the asset's failure (pickToolsForAsset) — the real tools. */
+function buildPlan(
+  calls: PlannedCall[],
+  reg: ToolRegistry,
+  issue?: Issue,
+): FixPlan {
+  const steps: FixPlanStep[] = calls.map((c, i) => {
+    const spec = reg.get(c.toolName)?.spec;
+    const intent =
+      c.phase === "triage"
+        ? "Gather evidence (diagnostics)"
+        : c.phase === "remediate"
+          ? "Apply primary remediation"
+          : "Verify protection restored";
+    return {
+      id: `p${i + 1}`,
+      intent,
+      toolName: c.toolName,
+      input: c.input,
+      actor: c.phase === "remediate" && spec?.requiresApproval ? "you" : "we",
+      risk: spec?.risk ?? "read",
+      requiresApproval: spec?.requiresApproval ?? false,
+    };
+  });
   return {
     summary: issue ? `Resolve: ${issue.title}` : "Triage and remediate the asset",
     rationale:
-      "Diagnose with read-only tools, apply the minimal remediation, then verify the symptom cleared.",
+      "Diagnose with the asset-correct read tools, apply the single best-fit remediation, then re-read to verify the symptom cleared.",
     confidencePct: issue?.aiInsight?.confidencePct ?? 72,
     steps,
   };
@@ -113,6 +214,11 @@ export async function runSession(
   const budget = { ...DEFAULT_BUDGET[req.mode], ...req.budget };
   const scope = req.scope ?? "once";
 
+  // Derive the asset-correct tools (diagnostics + the single best remediation)
+  // and the ordered plan-call sequence the provider will be steered through.
+  const picked = pickToolsForAsset(asset, issue);
+  const calls = plannedCalls(picked, asset, registry);
+
   const session: FixSession = {
     id: `fix-${req.assetId}-${req.mode}`,
     mode: req.mode,
@@ -123,7 +229,7 @@ export async function runSession(
     scope,
     state: "triaging",
     budget,
-    plan: derivePlan(registry, issue),
+    plan: buildPlan(calls, registry, issue),
     transcript: [],
     usage: { inputTokens: 0, outputTokens: 0, toolCalls: 0, steps: 0 },
     startedAt: clock.now(),
@@ -150,7 +256,7 @@ export async function runSession(
   push({ kind: "status", state: "triaging", text: "Session started." });
 
   const budgeter = new Budgeter(budget, clock.ms());
-  const system = SYSTEM(req.mode);
+  const system = `${SYSTEM_PREAMBLE(req.mode)}\n\n${planDirective(calls)}`;
   const messages: ChatMessage[] = [{ role: "user", content: userPrompt(asset, issue) }];
   const toolSpecs = registry.specs();
 

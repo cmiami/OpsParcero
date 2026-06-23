@@ -26,7 +26,12 @@ describe("fix-engine M1 — agent loop", () => {
     );
     expect(s.state).toBe("succeeded");
     expect(s.result?.healed).toBe(true);
-    expect(s.plan?.steps.length).toBe(3);
+    // The default registry now serves the real catalog: the plan is the
+    // asset-correct tool set (≥1 triage diagnostic + 1 remediation + 1 verify).
+    expect(s.plan?.steps.length).toBeGreaterThanOrEqual(3);
+    const phases = s.plan?.steps.map((st) => st.intent) ?? [];
+    expect(phases).toContain("Apply primary remediation");
+    expect(phases).toContain("Verify protection restored");
     expect(s.transcript.length).toBeGreaterThan(5);
     expect(s.result?.actionRunIds.length).toBeGreaterThanOrEqual(1);
     expect(s.usage.toolCalls).toBeGreaterThanOrEqual(3);

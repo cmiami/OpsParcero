@@ -2,7 +2,19 @@
 export { runSession } from "./loop/session";
 export type { RunDeps } from "./loop/session";
 export { MockProvider } from "./providers/mock";
-export { ToolRegistry, defaultRegistry, STUB_TOOLS } from "./tools/registry";
+export {
+  ToolRegistry,
+  defaultRegistry,
+  stubRegistry,
+  STUB_TOOLS,
+} from "./tools/registry";
+export {
+  buildCatalog,
+  pickToolsForAsset,
+  REMEDIATION_TOOLS,
+} from "./tools/catalog";
+export type { ToolsForAsset } from "./tools/catalog";
+export { DIAGNOSTIC_TOOLS } from "./tools/diagnostics";
 export { SeededClock } from "./shared/clock";
 export { DEFAULT_BUDGET, Budgeter } from "./loop/budget";
 export * as fleet from "./shared/fleet";

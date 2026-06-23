@@ -90,7 +90,7 @@ src/
 ```
 
 The component library is **atomic** (Foundations → Atoms → Molecules → Organisms → Pages)
-and ships as part of the product: **84/84 components have a Storybook story.**
+and ships as part of the product: **89/89 components have a Storybook story.**
 
 ## Getting started
 
@@ -109,11 +109,13 @@ npx wrangler pages deploy out   # e.g. Cloudflare Pages
 
 ## Quality
 
-- **Accessibility:** WCAG 2.2 AA verified with axe-core across all routes in light **and** dark
-  (0 serious/critical violations). Status is never color-only (dot + icon + label).
-- **Type-safe:** `tsc --noEmit` clean. **Storybook coverage:** 84/84 components storied.
-- **Tokens only:** no hard-coded colors/spacing in component code — enforced by the
-  impeccable design hook.
+- **Accessibility:** WCAG 2.2 AA — axe-core runs on **every Storybook story** in light **and**
+  dark (0 serious/critical violations), gated in `npm test`. Status is never color-only
+  (dot + icon + label).
+- **Type-safe:** `tsc --noEmit` clean. **Storybook coverage:** 89/89 components storied —
+  each with a meta + named states, enforced by `scripts/check-story-coverage.mjs`.
+- **Tokens only:** no hard-coded colors or `z-index` in component code — **eslint-enforced**
+  (`eslint.config.mjs`); spacing & typography are held by the impeccable design hook + review.
 
 ## Status
 

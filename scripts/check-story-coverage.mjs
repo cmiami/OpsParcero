@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 /**
- * 100%-coverage gate (M2): every component .tsx under src/components must have a
- * sibling *.stories.tsx. Excludes stories, tests, index barrels, and the
- * theme-provider plumbing component. Pure Node (no deps) so CI runs it bare.
+ * Story-coverage gate (M2): every component .tsx under src/components must have a
+ * sibling *.stories.tsx that is non-empty — it must export a meta (default
+ * export) AND at least one named story export. This catches both a missing
+ * story and a stub story file, so the gate proves real coverage rather than
+ * mere file existence. (argTypes / play are required by M2 only where the
+ * component has props / interactive states, so they are not gated universally.)
+ * Excludes stories, tests, index barrels, and non-renderable helpers. Pure Node
+ * (no deps) so CI runs it bare.
  */
-import { readdirSync, existsSync, statSync } from "node:fs";
+import { readdirSync, existsSync, statSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -37,16 +42,31 @@ function walk(dir) {
 }
 
 const components = walk(componentsDir);
-const missing = components.filter(
-  (f) => !existsSync(f.replace(/\.tsx$/, ".stories.tsx")),
-);
 
-if (missing.length) {
-  console.error("Components missing a *.stories.tsx (M2 — 100% coverage):");
-  for (const m of missing) console.error("  ✗ " + m.replace(root + "/", ""));
+/** A story file counts only if it has a meta (default export) + ≥1 named story. */
+function storyIsReal(storyPath) {
+  if (!existsSync(storyPath)) return false;
+  const src = readFileSync(storyPath, "utf8");
+  const hasMeta = /export\s+default\b/.test(src);
+  const hasNamedStory = /export\s+const\s+[A-Z]\w*/.test(src);
+  return hasMeta && hasNamedStory;
+}
+
+const offenders = components
+  .map((f) => ({ component: f, story: f.replace(/\.tsx$/, ".stories.tsx") }))
+  .filter(({ story }) => !storyIsReal(story));
+
+if (offenders.length) {
+  console.error(
+    "Components without a real *.stories.tsx (M2 — needs a meta + ≥1 named story):",
+  );
+  for (const { component, story } of offenders) {
+    const why = existsSync(story) ? "stub (no meta / named story)" : "missing";
+    console.error(`  ✗ ${component.replace(root + "/", "")} — ${why}`);
+  }
   process.exit(1);
 }
 
 console.log(
-  `✓ Story coverage: ${components.length}/${components.length} components have stories.`,
+  `✓ Story coverage: ${components.length}/${components.length} components have a real story (meta + named states).`,
 );

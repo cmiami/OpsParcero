@@ -17,12 +17,15 @@ import {
 } from "recharts";
 import { TrendingUp, PieChart as PieIcon, BarChart3, Layers } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { ClientId } from "@/types";
 import { cn } from "@/lib/utils";
 import { getFleetStats, getIssueCategories, type FleetStats } from "@/mock/query";
 
 export interface IssueChartsProps {
   /** Pre-fetched stats; falls back to `getFleetStats()`. */
   stats?: FleetStats;
+  /** Active tenant — scopes the by-category chart to that client's issues. */
+  clientId?: ClientId;
   className?: string;
 }
 
@@ -136,7 +139,7 @@ function buildTrend(open: number, resolved: number) {
  * token via `var(--…)`, soft gridlines, no heavy axes. Each panel carries a
  * text legend so the data is readable without relying on color (M5).
  */
-export function IssueCharts({ stats, className }: IssueChartsProps) {
+export function IssueCharts({ stats, clientId, className }: IssueChartsProps) {
   const s = stats ?? getFleetStats();
 
   const trend = React.useMemo(
@@ -168,13 +171,13 @@ export function IssueCharts({ stats, className }: IssueChartsProps) {
   );
 
   const categoryData = React.useMemo(() => {
-    const cats = getIssueCategories();
+    const cats = getIssueCategories(clientId);
     return cats.slice(0, 5).map((c, i) => ({
       name: c.category,
       value: c.totalIssues,
       color: C.category[i % C.category.length],
     }));
-  }, []);
+  }, [clientId]);
 
   const tooltipStyle: React.CSSProperties = {
     backgroundColor: "var(--popover)",

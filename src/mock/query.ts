@@ -255,18 +255,34 @@ export interface IssueFilter {
   fixTypes?: Issue["fixType"][];
   categories?: Issue["category"][];
   severities?: Severity[];
+  /** Tenant scope: keep only issues impacting one of these clients' assets. */
+  clientIds?: ClientId[];
   realOnly?: boolean;
   search?: string;
 }
 
 /** Filtered issue list (already worst-first from the builder). */
 export function getIssues(filter: IssueFilter = {}): Issue[] {
+  // Build the tenant's asset-id set once when scoping by client.
+  const clientAssetIds =
+    filter.clientIds?.length
+      ? new Set(
+          DB.assets
+            .filter((a) => filter.clientIds!.includes(a.clientId))
+            .map((a) => a.id),
+        )
+      : null;
   return ISSUES.filter((i) => {
     if (filter.productBuckets?.length && !filter.productBuckets.includes(i.productBucket))
       return false;
     if (filter.fixTypes?.length && !filter.fixTypes.includes(i.fixType)) return false;
     if (filter.categories?.length && !filter.categories.includes(i.category)) return false;
     if (filter.severities?.length && !filter.severities.includes(i.severity)) return false;
+    if (
+      clientAssetIds &&
+      !i.impactedAssetIds.some((id) => clientAssetIds.has(id))
+    )
+      return false;
     if (filter.realOnly && i.isCosmetic) return false;
     if (filter.search) {
       const q = lc(filter.search);
@@ -282,8 +298,11 @@ export function getIssue(id: string): Issue | undefined {
 }
 
 /** The category-grouped view for the Resolution Center home. */
-export function getIssueCategories(): IssueCategoryGroup[] {
-  return ISSUE_CATEGORIES;
+export function getIssueCategories(clientId?: ClientId): IssueCategoryGroup[] {
+  // Unscoped → the precomputed worst-first groups. Scoped → regroup just this
+  // tenant's issues so the category list matches the scoped KPIs.
+  if (!clientId) return ISSUE_CATEGORIES;
+  return groupIssuesByCategory(getIssues({ clientIds: [clientId] }));
 }
 
 // ── Runs / recovery points ─────────────────────────────────────────────────────
@@ -469,7 +488,13 @@ export function getFleetStats(clientId?: ClientId): FleetStats {
   const perBucket = (bucket: ProductBucket): ProductKpi => {
     const bucketIssues = issues.filter((i) => i.productBucket === bucket);
     const affected = new Set<string>();
-    bucketIssues.forEach((i) => i.impactedAssetIds.forEach((id) => affected.add(id)));
+    // A cross-tenant issue can impact assets in other tenants; when scoped, only
+    // count this tenant's affected assets so the KPI doesn't leak across tenants.
+    bucketIssues.forEach((i) =>
+      i.impactedAssetIds.forEach((id) => {
+        if (!assetIds || assetIds.has(id)) affected.add(id);
+      }),
+    );
     return {
       bucket,
       openIssues: bucketIssues.length,

@@ -39,8 +39,8 @@ export function ResolutionCenter({ className }: ResolutionCenterProps) {
     [activeClientId],
   );
   const groups: IssueCategoryGroup[] = React.useMemo(
-    () => getIssueCategories(),
-    [],
+    () => getIssueCategories(activeClientId),
+    [activeClientId],
   );
   const outage: Incident | undefined = React.useMemo(
     () => getActiveOutage(),
@@ -66,9 +66,13 @@ export function ResolutionCenter({ className }: ResolutionCenterProps) {
 
         {outage && <OutageBanner incident={outage} />}
 
-        <SummaryCardsRow stats={stats} onSelectTopProblem={setPanelIssue} />
+        <SummaryCardsRow
+          stats={stats}
+          clientId={activeClientId}
+          onSelectTopProblem={setPanelIssue}
+        />
 
-        <IssueCharts stats={stats} />
+        <IssueCharts stats={stats} clientId={activeClientId} />
 
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-bold text-card-foreground">

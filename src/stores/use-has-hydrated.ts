@@ -24,15 +24,17 @@ interface PersistApi {
 }
 
 export function useHasHydrated(store: PersistApi = useActionCart): boolean {
-  // SSR / prerender safe: the persist API may not be attached during a static
-  // render — treat that as "not hydrated yet" (matches the empty-state paint).
-  const [hydrated, setHydrated] = useState<boolean>(
-    () => store?.persist?.hasHydrated?.() ?? false,
-  );
+  // ALWAYS start false on the very first render — both on the server (no window)
+  // AND on the client. With synchronous localStorage, zustand has already
+  // hydrated by the time the client renders, so reading hasHydrated() in the
+  // initializer would return true on the client but false on the server →
+  // hydration mismatch. Starting false on both sides keeps the first paint
+  // identical; the effect below flips it true after mount.
+  const [hydrated, setHydrated] = useState<boolean>(false);
 
   useEffect(() => {
     if (!store?.persist) return;
-    // Already finished before the effect ran (fast rehydrate / re-mount).
+    // Already finished before the effect ran (sync storage / fast rehydrate).
     if (store.persist.hasHydrated()) {
       setHydrated(true);
     }

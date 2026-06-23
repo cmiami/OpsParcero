@@ -4,11 +4,13 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { SummaryCard } from "@/components/molecules/summary-card";
 import { getFleetStats, getIssues, type FleetStats } from "@/mock/query";
-import type { Issue } from "@/types";
+import type { ClientId, Issue } from "@/types";
 
 export interface SummaryCardsRowProps {
   /** Pre-fetched stats; falls back to `getFleetStats()`. */
   stats?: FleetStats;
+  /** Active tenant — scopes the "top problem" to that client's issues. */
+  clientId?: ClientId;
   /** Click-through for a card (e.g. to open the impacted-assets list). */
   onSelectTopProblem?: (issue: Issue) => void;
   className?: string;
@@ -25,14 +27,16 @@ export interface SummaryCardsRowProps {
  */
 export function SummaryCardsRow({
   stats,
+  clientId,
   onSelectTopProblem,
   className,
 }: SummaryCardsRowProps) {
-  const s = stats ?? getFleetStats();
+  const s = stats ?? getFleetStats(clientId);
 
-  // The worst issue currently open is the "top problem of the day".
+  // The worst issue currently open is the "top problem of the day" — scoped to
+  // the active tenant so it can't contradict the scoped counts beside it.
   const topProblem = React.useMemo<Issue | undefined>(() => {
-    const issues = getIssues();
+    const issues = getIssues(clientId ? { clientIds: [clientId] } : {});
     const sorted = [...issues].sort((a, b) => {
       const sev =
         (a.severity === "critical" ? 0 : 1) - (b.severity === "critical" ? 0 : 1);
@@ -40,7 +44,7 @@ export function SummaryCardsRow({
       return b.occurrenceCount - a.occurrenceCount;
     });
     return sorted[0];
-  }, []);
+  }, [clientId]);
 
   return (
     <div

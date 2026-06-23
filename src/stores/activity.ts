@@ -63,8 +63,9 @@ export const useActivity = create<ActivityState>()(
 
       record: ({ runs, audit, heal }) =>
         set((s) => ({
-          runs: [...runs, ...s.runs],
-          audit: [...audit, ...s.audit],
+          // Cap the runtime log so a long demo can't grow localStorage unbounded.
+          runs: [...runs, ...s.runs].slice(0, 200),
+          audit: [...audit, ...s.audit].slice(0, 200),
           assetOverrides: heal
             ? {
                 ...s.assetOverrides,

@@ -400,7 +400,7 @@ const ROWS: Row[] = [
   },
   {
     pt: "endpoint-v1",
-    id: "screenshot-verification-failed",
+    id: "screenshot-verification-failed-v1",
     title: "Screenshot verification failure / false alarm",
     cat: "Screenshot/Local Verification",
     freq: "common",
@@ -502,7 +502,7 @@ const ROWS: Row[] = [
   },
   {
     pt: "endpoint-v1",
-    id: "bmr-code-9999",
+    id: "bmr-code-9999-v1",
     title: "Bare Metal Restore error Code 9999",
     cat: "BMR",
     freq: "occasional",
@@ -1671,16 +1671,15 @@ export const FAILURE_MODE_BY_ID: Record<string, FailureMode> = Object.fromEntrie
 // ─────────────────────────────────────────────────────────────────────────────
 
 (() => {
-  // Same failure id can legitimately recur across products (e.g.
-  // screenshot-verification-failed, bmr-code-9999); only an exact
-  // (id, productType) repeat is a real duplicate.
+  // FAILURE_MODE_BY_ID is keyed by id ALONE, so ids must be globally unique —
+  // a repeat (even across products) silently overwrites a distinct mode in the
+  // lookup. Enforce global uniqueness so that class of corruption fails loud.
   const seen = new Set<string>();
   for (const m of FAILURE_MODES) {
-    const key = `${m.id}::${m.productType}`;
-    if (seen.has(key)) {
-      throw new Error(`[failure-modes] duplicate FailureMode (id+product): ${key}`);
+    if (seen.has(m.id)) {
+      throw new Error(`[failure-modes] duplicate FailureMode id: ${m.id}`);
     }
-    seen.add(key);
+    seen.add(m.id);
     if (m.remediationActionIds.length === 0) {
       throw new Error(`[failure-modes] ${m.id} references no remediation actions`);
     }

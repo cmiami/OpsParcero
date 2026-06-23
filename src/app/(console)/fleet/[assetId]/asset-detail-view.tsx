@@ -1,7 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Wrench, Sparkles } from "lucide-react";
 import type { AssetId } from "@/types";
 import { productTypeToBucket } from "@/types";
 import {
@@ -31,10 +32,19 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { GuidedFixPanel } from "@/components/organisms/fix/guided-fix-panel";
+import { AiFixConsole } from "@/components/organisms/fix/ai-fix-console";
 
 export function AssetDetailView() {
   const params = useParams<{ assetId: string }>();
   const router = useRouter();
+  const [fixOpen, setFixOpen] = React.useState<null | "guided" | "ai">(null);
   const id = params.assetId as AssetId;
   const asset = getAsset(id);
 
@@ -110,6 +120,22 @@ export function AssetDetailView() {
           </TabsList>
 
           <TabsContent value="overview">
+            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-4 py-3">
+              <span className="mr-1 text-sm font-bold text-foreground">
+                Resolve this asset
+              </span>
+              <Button size="sm" onClick={() => setFixOpen("guided")}>
+                <Wrench className="size-4" aria-hidden /> Guided fix
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setFixOpen("ai")}
+                className="border-ai-accent bg-ai-tint text-ai hover:bg-ai-tint hover:text-ai"
+              >
+                <Sparkles className="size-4" aria-hidden /> Fix with AI
+              </Button>
+            </div>
             <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
               <RemediationPanel asset={asset} issue={issue} />
               <AssetTimeline />
@@ -164,6 +190,44 @@ export function AssetDetailView() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog
+        open={fixOpen === "guided"}
+        onOpenChange={(o) => {
+          if (!o) setFixOpen(null);
+        }}
+      >
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="size-4 text-primary" aria-hidden /> Guided fix —{" "}
+              {asset.displayName}
+            </DialogTitle>
+          </DialogHeader>
+          <GuidedFixPanel asset={asset} issue={issue} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={fixOpen === "ai"}
+        onOpenChange={(o) => {
+          if (!o) setFixOpen(null);
+        }}
+      >
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-4 text-ai" aria-hidden /> Fix with AI —{" "}
+              {asset.displayName}
+            </DialogTitle>
+          </DialogHeader>
+          <AiFixConsole
+            asset={asset}
+            issue={issue}
+            onSwitchToGuided={() => setFixOpen("guided")}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

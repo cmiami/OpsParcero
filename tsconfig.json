@@ -16,7 +16,8 @@
     "verbatimModuleSyntax": false,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@fix-engine/*": ["./fix-engine/src/*"]
     }
   },
   "include": [

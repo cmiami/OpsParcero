@@ -26,5 +26,5 @@
     ".next/types/**/*.ts",
     ".storybook/**/*.ts"
   ],
-  "exclude": ["node_modules", "vitest.config.ts"]
+  "exclude": ["node_modules", "vitest.config.ts", "fix-engine"]
 }

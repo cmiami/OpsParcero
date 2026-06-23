@@ -637,7 +637,7 @@ export interface RemediationAction {
 export interface ActionRun {
   id: ActionRunId;
   actionId: RemediationActionId;
-  triggeredBy: { kind: "user" | "playbook" | "policy"; refId: string };
+  triggeredBy: { kind: "user" | "playbook" | "policy" | "ai"; refId: string };
   scope: ActionScope;
   targetRefs: EntityRef[];
   paramsUsed: Record<string, unknown>;
@@ -702,7 +702,7 @@ export interface ApprovalRequest {
 export interface AuditLogEntry {
   id: AuditLogEntryId;
   at: ISODateTime;
-  actor: { kind: "user" | "policy" | "system"; refId: string };
+  actor: { kind: "user" | "policy" | "system" | "ai"; refId: string };
   verb: AuditVerb;
   subjectRef: EntityRef;
   scope?: ActionScope;

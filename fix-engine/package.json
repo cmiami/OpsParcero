@@ -1,0 +1,11 @@
+{
+  "name": "@krc/fix-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI remediation harness for the Kaseya Resolution Center — a model-flexible, tool-calling agent (real loop, simulated targets). POC.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  }
+}

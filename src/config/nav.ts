@@ -7,10 +7,14 @@
  */
 
 import {
+  LayoutDashboard,
   LifeBuoy,
   Server,
   DatabaseBackup,
   Bell,
+  BarChart3,
+  Cloud,
+  HardDrive,
   Workflow,
   ShieldCheck,
   CheckSquare,
@@ -19,7 +23,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavSectionId = "resolution" | "automation" | "settings";
+export type NavSectionId =
+  | "resolution"
+  | "products"
+  | "automation"
+  | "settings";
 
 export interface NavItem {
   label: string;
@@ -41,6 +49,13 @@ export const NAV: NavSection[] = [
     id: "resolution",
     label: "Resolution",
     items: [
+      {
+        label: "Overview",
+        href: "/overview",
+        icon: LayoutDashboard,
+        section: "resolution",
+        description: "Fleet health, active incidents, and SLA/RPO posture at a glance",
+      },
       {
         label: "Resolution Center",
         href: "/resolution",
@@ -68,6 +83,40 @@ export const NAV: NavSection[] = [
         icon: Bell,
         section: "resolution",
         description: "Triage queue of open alerts and incidents",
+      },
+      {
+        label: "Reports",
+        href: "/reports",
+        icon: BarChart3,
+        section: "resolution",
+        description: "SLA/RPO posture, issue trends, and fix-classification",
+      },
+    ],
+  },
+  {
+    id: "products",
+    label: "By product",
+    items: [
+      {
+        label: "Datto BCDR",
+        href: "/products/bcdr",
+        icon: Server,
+        section: "products",
+        description: "SIRIS/ALTO appliances, agents, ZFS pools, off-site sync",
+      },
+      {
+        label: "SaaS Protect",
+        href: "/products/saas",
+        icon: Cloud,
+        section: "products",
+        description: "Microsoft 365, Google Workspace, and Salesforce (Spanning)",
+      },
+      {
+        label: "Endpoint Backup",
+        href: "/products/endpoint",
+        icon: HardDrive,
+        section: "products",
+        description: "Endpoint Backup v2 (and legacy v1) direct-to-cloud",
       },
     ],
   },

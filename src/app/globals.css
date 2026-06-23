@@ -75,7 +75,7 @@
   --fix-insights: #c2410c;        /* Insights only (orange) */
   --fix-insights-tint: #fff3e0;
   --fix-insights-foreground: #ffffff;
-  --fix-unknown: #9e9e9e;         /* Unknown (gray) */
+  --fix-unknown: #63666e;         /* Unknown (gray) — darkened for AA: white text on it ≥4.5:1, and legible as text on the tint */
   --fix-unknown-tint: #f1f1f1;
   --fix-unknown-foreground: #ffffff;
 

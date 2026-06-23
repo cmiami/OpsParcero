@@ -87,6 +87,11 @@ export function FleetRollup({ stats, size = "md", className }: FleetRollupProps)
   const worst = rollupStatus(present);
   const dim = DONUT_SIZE[size];
 
+  // Render the donut only after mount — ResponsiveContainer measures its parent,
+  // which has no size during the static prerender (Recharts width(-1)).
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
   return (
     <div
       className={cn(
@@ -95,7 +100,7 @@ export function FleetRollup({ stats, size = "md", className }: FleetRollupProps)
       )}
     >
       <div className={cn("relative shrink-0", dim.box)}>
-        {total > 0 ? (
+        {total > 0 && mounted ? (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

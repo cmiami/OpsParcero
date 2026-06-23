@@ -128,6 +128,7 @@ export function AppSidebar({
               type="button"
               role="combobox"
               aria-expanded={switcherOpen}
+              aria-controls="tenant-switcher-list"
               aria-label="Switch tenant"
               className={cn(
                 "flex w-full items-center gap-2 rounded-md border border-sidebar-border bg-background px-2 py-1.5 text-left text-sm transition-colors hover:bg-nav-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -150,7 +151,11 @@ export function AppSidebar({
               )}
             </button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-60 p-0">
+          <PopoverContent
+            id="tenant-switcher-list"
+            align="start"
+            className="w-60 p-0"
+          >
             <Command>
               <CommandInput placeholder="Find tenant…" />
               <CommandList>

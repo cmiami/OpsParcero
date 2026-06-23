@@ -66,8 +66,11 @@ function HoverCard({
   );
 
   React.useEffect(() => {
+    // Alias the ref object so the unmount cleanup clears whatever timer is
+    // pending at that moment (and to keep the ref-in-cleanup linter happy).
+    const ref = timerRef;
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (ref.current) clearTimeout(ref.current);
     };
   }, []);
 

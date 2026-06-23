@@ -76,6 +76,12 @@ function ChartCard({
   children: React.ReactNode;
   className?: string;
 }) {
+  // Recharts' ResponsiveContainer measures its parent; during the static
+  // prerender there is no layout, so it would paint a 0/-1-sized chart and warn.
+  // Render the chart only after mount, reserving the box so layout is stable.
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
   return (
     <section
       className={cn(
@@ -87,7 +93,7 @@ function ChartCard({
         <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         {title}
       </h3>
-      <div className="h-40 w-full">{children}</div>
+      <div className="h-40 w-full">{mounted ? children : null}</div>
       {legend && (
         <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {legend}

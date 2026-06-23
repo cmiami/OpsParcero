@@ -429,9 +429,8 @@ function DataRow<T>({
           : "hover:bg-subtle",
       )}
     >
-      {row.getVisibleCells().map((cell, i) => {
+      {row.getVisibleCells().map((cell) => {
         const meta = cell.column.columnDef.meta;
-        const firstReal = i === 0;
         return (
           <TableCell
             key={cell.id}
@@ -439,11 +438,6 @@ function DataRow<T>({
               "border-b border-border align-middle text-sm",
               cellPad,
               meta?.numeric && "text-right tabular-nums",
-              // 2px left primary border on selected rows (not color-only — pairs
-              // with the checkbox + aria-selected).
-              firstReal &&
-                selected &&
-                "border-l-2 border-l-primary",
               stickyClass(
                 cell.column.id,
                 false,

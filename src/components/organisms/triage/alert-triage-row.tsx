@@ -86,7 +86,7 @@ export function AlertTriageRow({
       data-state={selected ? "selected" : undefined}
       className={cn(
         "flex items-center gap-3 border-b border-border bg-card px-3 py-2.5 transition-colors hover:bg-subtle",
-        "data-[state=selected]:border-l-2 data-[state=selected]:border-l-primary data-[state=selected]:bg-primary-tint",
+        "data-[state=selected]:bg-primary-tint",
         className,
       )}
     >

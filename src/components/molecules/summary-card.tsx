@@ -11,7 +11,7 @@ export interface SummaryCardProps {
   label: string;
   /** The headline number/value. */
   value: React.ReactNode;
-  /** Role-based accent on the top border + label. */
+  /** Role-based accent on the leading dot + label. */
   tone?: SummaryCardTone;
   /** Optional secondary line under the value. */
   sublabel?: string;
@@ -20,21 +20,22 @@ export interface SummaryCardProps {
   className?: string;
 }
 
-const TONE: Record<SummaryCardTone, { border: string; label: string }> = {
-  default: { border: "border-t-primary", label: "text-muted-foreground" },
-  critical: { border: "border-t-critical", label: "text-critical" },
-  success: { border: "border-t-success", label: "text-success" },
-  ai: { border: "border-t-ai", label: "text-ai" },
+const TONE: Record<SummaryCardTone, { dot: string; label: string }> = {
+  default: { dot: "bg-primary", label: "text-muted-foreground" },
+  critical: { dot: "bg-critical", label: "text-critical" },
+  success: { dot: "bg-success", label: "text-success" },
+  ai: { dot: "bg-ai", label: "text-ai" },
 };
 
 /**
  * SummaryCard — a Resolution Center summary tile.
  *
- * A single bordered surface (no nested cards) with a role-colored 2px top
- * border, an eyebrow label, a big number, and an optional sublabel. When
- * `onClick` is set it becomes a keyboard-operable button that drills into the
- * impacted assets, with a corner arrow affordance. The colored border is paired
- * with a colored label so the role never reads by hue alone (M5).
+ * A single hairline-bordered surface (no nested cards) with a small role-colored
+ * leading dot beside an eyebrow label, a big number, and an optional sublabel.
+ * When `onClick` is set it becomes a keyboard-operable button that drills into
+ * the impacted assets, with a corner arrow affordance. The role reads from the
+ * dot + the colored label, never hue alone (M5) — and there is no accent border
+ * on the rounded edge (impeccable register).
  */
 export function SummaryCard({
   label,
@@ -52,10 +53,11 @@ export function SummaryCard({
       <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            "text-2xs font-bold uppercase tracking-eyebrow",
+            "flex items-center gap-1.5 text-2xs font-bold uppercase tracking-eyebrow",
             t.label,
           )}
         >
+          <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", t.dot)} />
           {label}
         </span>
         {interactive && (
@@ -75,8 +77,7 @@ export function SummaryCard({
   );
 
   const cls = cn(
-    "flex flex-col gap-1 rounded-lg border border-border border-t-2 bg-card p-4 text-left",
-    t.border,
+    "flex flex-col gap-1 rounded-lg border border-border bg-card p-4 text-left",
     interactive &&
       "group cursor-pointer transition-colors hover:bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     className,

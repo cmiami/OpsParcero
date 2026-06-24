@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within, userEvent } from "storybook/test";
+import { expect, within, userEvent, waitFor } from "storybook/test";
 import { IssueRow } from "./issue-row";
 import { Toaster } from "@/components/ui/sonner";
 import { getIssues } from "@/mock/query";
@@ -69,5 +69,25 @@ export const TogglesOpen: Story = {
     await expect(
       canvas.getByRole("button", { expanded: true }),
     ).toBeInTheDocument();
+  },
+};
+
+/**
+ * AskAiOpensConsole — regression gate: clicking the row's "Ask AI" must open the
+ * real AiFixConsole dialog (it previously had no onClick and did nothing). The
+ * dialog portals to document.body. The console's own story gates the run+record.
+ */
+export const AskAiOpensConsole: Story = {
+  args: { issue: full },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const ask = canvas.getByRole("button", { name: /Ask AI about/i });
+    await expect(ask).toBeEnabled();
+    await userEvent.click(ask);
+    const body = within(document.body);
+    await waitFor(() =>
+      expect(body.getByRole("dialog")).toBeInTheDocument(),
+    );
+    await expect(body.getByRole("dialog")).toHaveTextContent(/Fix with AI/i);
   },
 };

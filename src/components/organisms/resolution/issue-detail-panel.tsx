@@ -1,14 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Wrench, Users } from "lucide-react";
+import { FileText, Wrench, Users, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { AiButton } from "@/components/atoms/ai-badge";
 import { WeYouSteps } from "@/components/molecules/we-you-steps";
 import { AiInsightCard } from "@/components/molecules/ai-insight-card";
+import { GuidedFixPanel } from "@/components/organisms/fix/guided-fix-panel";
+import { AiFixConsole } from "@/components/organisms/fix/ai-fix-console";
+import { getAsset } from "@/mock/query";
 import { FIX_META } from "@/lib/status";
 import type { Issue } from "@/types";
 import { FixModal } from "./fix-modal";
@@ -32,7 +41,12 @@ export interface IssueDetailPanelProps {
 export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
   const fix = FIX_META[issue.fixType];
   const [fixOpen, setFixOpen] = React.useState(false);
+  const [guidedOpen, setGuidedOpen] = React.useState(false);
+  const [aiOpen, setAiOpen] = React.useState(false);
   const [impactOpen, setImpactOpen] = React.useState(false);
+
+  // One concrete asset for the streaming panels (the canonical issue→asset focus).
+  const focusAsset = getAsset(issue.impactedAssetIds[0]);
 
   const automatable = issue.fixType === "full" || issue.fixType === "partial";
   const ctaLabel =
@@ -41,6 +55,13 @@ export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
       : issue.fixType === "partial"
         ? "Run guided fix"
         : "View runbook";
+
+  // "Run guided fix" should reach the real streaming GuidedFixPanel — not the
+  // lightweight FixModal. Full (end-to-end) + insights + no-asset keep FixModal
+  // (its scope spine + buildAutomationPolicy path). One CTA, the right surface.
+  const opensGuidedPanel = issue.fixType === "partial" && Boolean(focusAsset);
+  const onPrimaryFix = () =>
+    opensGuidedPanel ? setGuidedOpen(true) : setFixOpen(true);
 
   return (
     <div
@@ -91,12 +112,18 @@ export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
             <Users aria-hidden className="size-4" />
             View {issue.impactedAssetIds.length} impacted
           </Button>
-          <AiButton aria-label="Ask AI about this issue">Ask AI</AiButton>
+          <AiButton
+            aria-label="Ask AI about this issue"
+            onClick={() => setAiOpen(true)}
+            disabled={!focusAsset}
+          >
+            Ask AI
+          </AiButton>
           <Button
             type="button"
             size="sm"
             variant={automatable ? "default" : "outline"}
-            onClick={() => setFixOpen(true)}
+            onClick={onPrimaryFix}
           >
             <fix.icon aria-hidden className="size-4" />
             {ctaLabel}
@@ -110,6 +137,48 @@ export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
         open={impactOpen}
         onOpenChange={setImpactOpen}
       />
+
+      {/* "Run guided fix" → the existing streaming GuidedFixPanel (records + heals
+          via its own recordAgentRun). matchCount spans the true blast radius. */}
+      <Dialog open={guidedOpen} onOpenChange={(o) => !o && setGuidedOpen(false)}>
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="size-4 text-primary" aria-hidden /> Guided fix —{" "}
+              {issue.title}
+            </DialogTitle>
+          </DialogHeader>
+          {focusAsset && (
+            <GuidedFixPanel
+              asset={focusAsset}
+              issue={issue}
+              matchCount={issue.impactedAssetIds.length}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Ask AI → the existing autonomous AI fix console (records as triggeredBy:ai). */}
+      <Dialog open={aiOpen} onOpenChange={(o) => !o && setAiOpen(false)}>
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-4 text-ai" aria-hidden /> Fix with AI —{" "}
+              {issue.title}
+            </DialogTitle>
+          </DialogHeader>
+          {focusAsset && (
+            <AiFixConsole
+              asset={focusAsset}
+              issue={issue}
+              onSwitchToGuided={() => {
+                setAiOpen(false);
+                setGuidedOpen(true);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

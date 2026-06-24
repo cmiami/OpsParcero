@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, within, userEvent, waitFor } from "storybook/test";
 import { IssueDetailPanel } from "./issue-detail-panel";
 import { Toaster } from "@/components/ui/sonner";
 import { getIssues } from "@/mock/query";
@@ -43,4 +44,42 @@ export const Guided: Story = {
 /** InsightsOnly — diagnostic-only: You-leaning runbook and a "View runbook" CTA. */
 export const InsightsOnly: Story = {
   args: { issue: insights },
+};
+
+/**
+ * RunGuidedFixOpensPanel — regression gate: for a `partial` issue, "Run guided
+ * fix" must open the real streaming GuidedFixPanel (not the lightweight FixModal).
+ * Proven by the panel's own "Start guided fix" run button appearing in the dialog.
+ */
+export const RunGuidedFixOpensPanel: Story = {
+  args: { issue: partial },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Run guided fix/i }),
+    );
+    const body = within(document.body);
+    await waitFor(() => expect(body.getByRole("dialog")).toBeInTheDocument());
+    // GuidedFixPanel renders a "Start guided fix" run button; FixModal does not.
+    await expect(
+      body.getByRole("button", { name: /Start guided (fix|dry run)/i }),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * AskAiOpensConsole — regression gate: "Ask AI" must open the real AiFixConsole
+ * dialog (it previously had no onClick).
+ */
+export const AskAiOpensConsole: Story = {
+  args: { issue: partial },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const ask = canvas.getByRole("button", { name: /Ask AI about this issue/i });
+    await expect(ask).toBeEnabled();
+    await userEvent.click(ask);
+    const body = within(document.body);
+    await waitFor(() => expect(body.getByRole("dialog")).toBeInTheDocument());
+    await expect(body.getByRole("dialog")).toHaveTextContent(/Fix with AI/i);
+  },
 };

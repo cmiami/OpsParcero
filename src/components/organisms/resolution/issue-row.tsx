@@ -10,6 +10,15 @@ import { SeverityBadge } from "@/components/atoms/severity-badge";
 import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { OccurrenceCount } from "@/components/atoms/occurrence-count";
 import { AiButton } from "@/components/atoms/ai-badge";
+import { Sparkles } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AiFixConsole } from "@/components/organisms/fix/ai-fix-console";
+import { getAsset } from "@/mock/query";
 import { FIX_META } from "@/lib/status";
 import type { Issue } from "@/types";
 import { IssueDetailPanel } from "./issue-detail-panel";
@@ -47,6 +56,12 @@ export function IssueRow({
 
   const [impactOpen, setImpactOpen] = React.useState(false);
   const [fixOpen, setFixOpen] = React.useState(false);
+  const [aiOpen, setAiOpen] = React.useState(false);
+
+  // The interactive AI/guided panels act on one concrete asset; the issue's first
+  // impacted asset is the canonical focus (the convention ImpactedAssetsPanel and
+  // FixModal already use). Insights-only issues may have none → Ask AI disables.
+  const focusAsset = getAsset(issue.impactedAssetIds[0]);
 
   const fix = FIX_META[issue.fixType];
   const automatable = issue.fixType === "full" || issue.fixType === "partial";
@@ -107,7 +122,11 @@ export function IssueRow({
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-2">
-          <AiButton aria-label={`Ask AI about ${issue.title}`} />
+          <AiButton
+            aria-label={`Ask AI about ${issue.title}`}
+            onClick={() => setAiOpen(true)}
+            disabled={!focusAsset}
+          />
           <Button
             type="button"
             size="sm"
@@ -132,6 +151,29 @@ export function IssueRow({
         onOpenChange={setImpactOpen}
       />
       <FixModal issue={issue} open={fixOpen} onOpenChange={setFixOpen} />
+
+      {/* Ask AI → the existing autonomous AI fix console (records as triggeredBy:ai
+          and heals the asset via its own recordAgentRun — no recording here). */}
+      <Dialog open={aiOpen} onOpenChange={(o) => !o && setAiOpen(false)}>
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-4 text-ai" aria-hidden /> Fix with AI —{" "}
+              {issue.title}
+            </DialogTitle>
+          </DialogHeader>
+          {focusAsset && (
+            <AiFixConsole
+              asset={focusAsset}
+              issue={issue}
+              onSwitchToGuided={() => {
+                setAiOpen(false);
+                setFixOpen(true);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

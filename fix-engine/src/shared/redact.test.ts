@@ -3,22 +3,46 @@ import { redact, redactDeep, redactTurn } from "./redact";
 import type { FixTranscriptTurn } from "../types";
 
 describe("fix-engine — secret redaction", () => {
-  it("masks the common secret shapes", () => {
+  it("masks the common secret shapes (full-string, no trailing leak)", () => {
     expect(redact("Authorization: Bearer abc123DEF456ghi789xyz")).toBe(
       "Authorization: Bearer [redacted]",
     );
-    expect(redact("key = sk-proj-AbCdEf123456GhIjKl")).toContain("sk-[redacted]");
+    expect(redact("key = sk-proj-AbCdEf123456GhIjKl tail")).toBe(
+      "key = sk-[redacted] tail",
+    );
     expect(redact("connect with password=hunter2secret now")).toBe(
       "connect with password=[redacted] now",
     );
-    expect(
-      redact('{"client_secret":"s3cr3t-value-9999"}'),
-    ).toContain('client_secret":"[redacted]');
-    expect(
-      redact("token eyJhbGciOi.eyJzdWIiOiI.SflKxwRJSMeKKF2QT4"),
-    ).toContain("[redacted-jwt]");
-    expect(redact("aws AKIAIOSFODNN7EXAMPLE here")).toContain("AKIA[redacted]");
-    expect(redact("Server=db;Password=p@ss;Db=x")).toContain("Password=[redacted]");
+    expect(redact('{"client_secret":"s3cr3t-value-9999"}')).toBe(
+      '{"client_secret":"[redacted]"}',
+    );
+    expect(redact("token eyJhbGciOi.eyJzdWIiOiI.SflKxwRJSMeKKF2QT4 end")).toBe(
+      "token [redacted-jwt] end",
+    );
+    expect(redact("aws AKIAIOSFODNN7EXAMPLE here")).toBe(
+      "aws AKIA[redacted] here",
+    );
+    expect(redact("Server=db;Password=p@ss;Db=x")).toBe(
+      "Server=db;Password=[redacted];Db=x",
+    );
+    // Inline access_token (was leaking — only object KEYS were masked).
+    expect(redact("access_token=ya29.SECRETVALUE12345 ok")).toBe(
+      "access_token=[redacted] ok",
+    );
+    // Basic/Digest credentials are masked by the scheme rule (scheme word kept).
+    expect(redact("authorization=Basic dXNlcjpwYXNz x")).toBe(
+      "authorization=Basic [redacted] x",
+    );
+    // Must not mask the ordinary word "author".
+    expect(redact("the author wrote it")).toBe("the author wrote it");
+  });
+
+  it("is not vulnerable to ReDoS on a long whitespace run after a key word", () => {
+    const start = performance.now();
+    redact("password" + " ".repeat(64_000) + "x");
+    const ms = performance.now() - start;
+    // Bounded separator → linear; the old two-\s* group was ~4400ms here.
+    expect(ms).toBeLessThan(100);
   });
 
   it("does NOT over-redact non-secret short ids", () => {

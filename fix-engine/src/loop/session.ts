@@ -403,7 +403,10 @@ export async function runSession(
           risk: handler.spec.risk,
           requiresApproval: true,
         };
-        const decision = await approve(planStep, redactDeep(preview));
+        const decision = await approve(
+          { ...planStep, input: redactDeep(planStep.input) },
+          redactDeep(preview),
+        );
         push({ kind: "approval", text: `Approval for "${call.name}" (preview shown above): ${decision}` });
         if (decision === "reject") {
           push({ kind: "status", text: "Approval rejected — halting (nothing was changed)." });

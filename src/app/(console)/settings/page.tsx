@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { useUiStore } from "@/stores/ui";
 import { Button } from "@/components/ui/button";
+import { PageShell } from "@/components/templates/page-shell";
 import {
   Card,
   CardHeader,
@@ -34,17 +35,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <header>
-        <h1 className="font-display text-xl font-bold tracking-tight">
-          Settings
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Appearance, table density, and demo-state controls.
-        </p>
-      </header>
-
-      <Card>
+    <PageShell
+      title="Settings"
+      description="Appearance, table density, and demo-state controls."
+      scroll
+    >
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Card>
         <CardHeader>
           <CardTitle className="text-sm">Appearance</CardTitle>
           <CardDescription>Theme for the console shell.</CardDescription>
@@ -97,6 +94,7 @@ export default function SettingsPage() {
           </Button>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageShell>
   );
 }

@@ -12,8 +12,11 @@ import type { FixTranscriptTurn } from "../types";
 import type { ToolResult } from "../tools/types";
 
 const RULES: Array<[RegExp, (...args: string[]) => string]> = [
-  // Authorization: Bearer <token>
-  [/\b(Bearer\s+)[A-Za-z0-9._~+/=-]{8,}/gi, (_m, p) => `${p}[redacted]`],
+  // HTTP auth schemes: Bearer / Basic / Digest <credential>
+  [
+    /\b((?:Bearer|Basic|Digest)\s+)[A-Za-z0-9._~+/=-]{8,}/gi,
+    (_m, p) => `${p}[redacted]`,
+  ],
   // JWT (three base64url segments)
   [
     /\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}/g,
@@ -24,9 +27,15 @@ const RULES: Array<[RegExp, (...args: string[]) => string]> = [
   // AWS access key id
   [/\bAKIA[0-9A-Z]{16}\b/g, () => "AKIA[redacted]"],
   // key = value / key: value secrets (also covers connection-string Password=…;,
-  // since the value stops at whitespace / ; / quote).
+  // since the value stops at whitespace / ; / quote). The separator uses BOUNDED
+  // whitespace (\s{0,4}) — two unbounded \s* blocks would backtrack O(n²) on a
+  // long whitespace run after a key word (ReDoS over untrusted tool output).
+  // `authorization`/`auth` are intentionally NOT here: their credentials carry a
+  // scheme word (Bearer/Basic/Digest) handled above, and listing them as kv keys
+  // would re-match the scheme word ("Authorization: Bearer" → mask "Bearer").
+  // They remain in SECRET_KEY for exact object-key matching in redactDeep.
   [
-    /\b(password|passwd|pwd|secret|client[_-]?secret|token|api[_-]?key|access[_-]?key|refresh[_-]?token)(\s*["']?\s*[:=]\s*["']?)([^\s"',;&)]{3,})/gi,
+    /\b(password|passwd|pwd|secret|client[_-]?secret|token|access[_-]?token|refresh[_-]?token|api[_-]?key|access[_-]?key)(\s{0,4}["']?\s{0,4}[:=]\s{0,4}["']?)([^\s"',;&)]{3,})/gi,
     (_m, key, sep) => `${key}${sep}[redacted]`,
   ],
 ];
@@ -66,8 +75,13 @@ function redactResult(r: ToolResult): ToolResult {
     ...r,
     summary: redact(r.summary),
     output: redact(r.output),
+    opensTicket: r.opensTicket ? redact(r.opensTicket) : r.opensTicket,
     artifact: r.artifact
-      ? { ...r.artifact, source: redact(r.artifact.source) }
+      ? {
+          ...r.artifact,
+          source: redact(r.artifact.source),
+          description: redact(r.artifact.description),
+        }
       : r.artifact,
     diff: r.diff ? (redactDeep(r.diff) as ToolResult["diff"]) : r.diff,
   };

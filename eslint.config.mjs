@@ -83,6 +83,16 @@ const eslintConfig = [
             "M1: no arbitrary z-index (z-[…]). Add a token / use a semantic z-index class.",
         },
         {
+          selector: "Literal[value=/\\b(backdrop-)?blur-\\[/]",
+          message:
+            "M1: no arbitrary blur (blur-[…]/backdrop-blur-[…]). Add a token (e.g. --blur-overlay) and use the utility.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\b(backdrop-)?blur-\\[/]",
+          message:
+            "M1: no arbitrary blur (blur-[…]/backdrop-blur-[…]). Add a token (e.g. --blur-overlay) and use the utility.",
+        },
+        {
           selector: "Literal[value=/\\btext-\\[[0-9.]+px\\]/]",
           message:
             "M1: no arbitrary font sizes (e.g. text-[10px]). Use a type-scale token (text-2xs … text-xl).",

@@ -179,11 +179,13 @@ export function IssueCharts({ stats, clientId, className }: IssueChartsProps) {
     }));
   }, [clientId]);
 
+  // Recharts contentStyle — token-driven, no raw px (M1). (The chart axis ticks
+  // below stay numeric because Recharts requires a number for tick fontSize.)
   const tooltipStyle: React.CSSProperties = {
     backgroundColor: "var(--popover)",
     border: "1px solid var(--border)",
-    borderRadius: 6,
-    fontSize: 12,
+    borderRadius: "var(--radius-md)",
+    fontSize: "var(--text-2xs)",
     color: "var(--foreground)",
   };
 

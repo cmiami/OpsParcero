@@ -239,6 +239,10 @@
   --radius-lg: 8px;
   --radius-xl: 10px;
 
+  /* overlay scrim blur — tokenized so dialogs never use an arbitrary
+     backdrop-blur-[1px] (M1). Emits the `backdrop-blur-overlay` utility. */
+  --blur-overlay: 1px;
+
   /* elevation (structure via hairline borders; shadows for floating layers) */
   --shadow-e1: 0 2px 10px rgba(0, 0, 0, 0.08);
   --shadow-e2: 0 4px 16px rgba(0, 0, 0, 0.1);

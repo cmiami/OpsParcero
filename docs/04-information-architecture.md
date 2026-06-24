@@ -153,34 +153,33 @@ Driven by `config/nav.ts` (single source of truth for sidebar, breadcrumbs, and 
 
 ## 4. Full route map (Next.js App Router)
 
-All authenticated routes live under the `(console)` route group (shared shell). `(console)/page.tsx` redirects `/` → `/triage`. Dynamic segments in `[brackets]`. Primary entity = the [domain entity](05-domain-model.md) the page is built around.
+> **Canonical as built — Kaseya Resolution Center.** The product evolved from the
+> earlier "Datto Care Center / Triage Queue" model into the **Resolution Center**
+> (issues-by-category, fix-once-or-forever). Per CLAUDE.md (the operating
+> contract), the routes below are authoritative; the earlier `/triage`, `/assets`,
+> `/setup` naming is superseded. `/products/datto-cloud` is intentionally absent —
+> Datto Cloud is a recovery *target*, not a product ([00-vision §4](00-vision-and-scope.md)).
+
+All authenticated routes live under the `(console)` route group (shared shell). `src/app/page.tsx` redirects `/` → `/resolution`. Dynamic segments in `[brackets]`. Primary entity = the [domain entity](05-domain-model.md) the page is built around.
 
 | Route | Page | Purpose | Primary entity |
 |---|---|---|---|
-| `/` | — | Redirect → `/triage`. | — |
-| `/triage` | **Triage Queue** | Default landing. Grouped, prioritized incidents; bulk + per-incident contextual actions. | `Incident` (grouped `Alert`s) |
-| `/triage/[incidentId]` | **Incident detail** | Grouped alerts (why grouped) · shared "what changed" timeline · affected cohort · suggested playbooks. | `Incident` |
-| `/overview` | **Overview / Command Center** | Lean fleet health roll-up: backup-health rollup, coverage, SLA/RPO, recency-at-risk, incident preview. Every segment links into a filtered list. | fleet rollup (read-only) |
-| `/assets` | **Assets & Protection** | The cross-product workhorse table. Faceted filters, saved views, bulk action toolbar, last-10 dot-strip. | `ProtectedAsset` |
-| `/assets/[assetId]` | **Asset detail** | Single-page troubleshooting surface: "Why is this red?" · "What changed" · backup timeline · restore points · open alerts · related cohort · action bar. Tabbed. | `ProtectedAsset` |
-| `/products/bcdr` | **BCDR lens** | `/assets` scoped to BCDR with BCDR columns (appliance, chain state, ZFS pool %, last screenshot, offsite sync) + appliance roll-up. | `Appliance` / `ProtectedMachine` |
-| `/products/bcdr/appliances/[applianceId]` | **Appliance detail** | SIRIS/ALTO device health: ZFS pool, inverse chain, local virtualization, offsite sync, protected-machine list. | `Appliance` |
-| `/products/endpoint-backup` | **Endpoint Backup lens** | DEB v1 + v2 agents; migration (v1→v2) status column; direct-to-cloud job health. | `EndpointAgent` |
-| `/products/datto-cloud` | **Datto Cloud DR lens** | Cloud restore/virtualization, test-failover readiness, VPN/IPsec status, retention posture. | `CloudDRWorkload` |
-| `/products/saas-protect` | **SaaS Protect lens** | M365 + Google tenants; OAuth/consent health, seat/license sync, API-throttle state, per-service (Exchange/SharePoint/OneDrive/Teams) coverage. | `SaaSTenant` / `SaaSSeat` |
-| `/products/spanning` | **Spanning lens** | Salesforce + M365 + Google; metadata backup, API rate-limit state, seat sync, sandbox-seeding jobs. | `SpanningConnection` / `SpanningSeat` |
-| `/automation` | **Actions & Playbooks** | Catalog of atomic remediation actions + saved playbooks + auto-remediation policies (three tabs). | `Action` / `Playbook` / `AutoPolicy` |
-| `/automation/playbooks/[playbookId]` | **Playbook detail/editor** | Step sequence, params, scope, approval gates, trigger mode, success rate, run history; "Load into cart". | `Playbook` |
-| `/automation/policies/[policyId]` | **Auto-remediation policy detail** | The "apply always going forward" rule: match conditions, action, scope, gates, kill-switch, recent fires. | `AutoPolicy` |
-| `/automation/runs` | **Run History & Audit** | Immutable feed of every run; per-asset fan-out outcomes; filter by playbook/asset/outcome/date; export. | `Run` |
-| `/automation/runs/[runId]` | **Run detail** | Per-step logs, params used, evidence captured, who/trigger, per-asset breakdown; links back to triggering incident/asset. | `Run` |
-| `/reports` | **Reports** | Recurring-failure trends, SLA/RPO compliance over time, alert-volume, automation coverage/ROI. | aggregates |
-| `/reports/[reportId]` | **Report detail** | A single saved/standard report with its chart + drill-through table. | report |
-| `/setup` | **Setup** (index → tabs) | Tenant config hub. | settings |
-| `/setup/connections` | **Connections** | Integration/credential health per product (OAuth grants, appliance registration, API keys) — themselves a source of failures to remediate. | `Connection` |
-| `/setup/approvals` | **Approval policies** | Which actions require sign-off, by whom, for which scopes. | `ApprovalPolicy` |
-| `/setup/notifications` | **Notification rules** | Routing of incidents/run outcomes to channels. | `NotificationRule` |
-| `/setup/preferences` | **Preferences** | Density, theme default, saved-view defaults, keyboard map. | prefs |
+| `/` | — | Redirect → `/resolution`. | — |
+| `/resolution` | **Resolution Center** | Default landing. Issues grouped by failure category, worst-first; fix once / all-matching / always. | `Issue` (grouped `Alert`s) |
+| `/overview` | **Overview / Command Center** | Fleet health roll-up: backup-health, coverage, open issues, incident preview. Every segment links into a filtered list. | fleet rollup (read-only) |
+| `/fleet` | **Fleet** | The cross-product workhorse asset table. Last-10 dot-strip, bulk toolbar, tenant scope. | `ProtectedAsset` |
+| `/fleet/[assetId]` | **Asset detail** | Single-page troubleshooting surface: "Why is this red?" · backup timeline · restore points · open alerts · Guided / AI fix. Tabbed. | `ProtectedAsset` |
+| `/alerts` | **Alert triage** | Raw alert stream with grouping + bulk triage; promotes to issues/incidents. | `Alert` |
+| `/backups` | **Backups** | Backup-job health + recovery points across the fleet. | `BackupRun` / `RecoveryPoint` |
+| `/incidents/[id]` | **Incident detail** | Grouped alerts (why grouped) · shared "what changed" timeline · affected cohort · suggested fixes. | `Incident` |
+| `/products/[product]` | **Product lens** (`bcdr` · `saas` · `endpoint`) | `/fleet` scoped to a product bucket with product-specific columns + roll-up. | `ProtectedAsset` |
+| `/automation/playbooks` | **Playbooks** | Saved playbook library; load into the action cart. | `Playbook` |
+| `/automation/policies` | **Auto-remediation policies** | The "apply always going forward" rules: match conditions, action, scope, gates, recent fires. | `AutomationPolicy` |
+| `/automation/approvals` | **Approvals** | The approver inbox: pending/decided action-run + policy-fire approvals. | `ApprovalRequest` |
+| `/automation/runs` | **Run History & Audit** | Immutable feed of every run + the who-did-what-when audit trail; filter by playbook/asset/outcome. | `ActionRun` |
+| `/reports` | **Reports** | Recurring-failure trends, SLA/RPO compliance, alert-volume, automation coverage. | aggregates |
+| `/cart` | **Action cart** | Staged multi-step remediation chain; save as a playbook. | `Action[]` |
+| `/settings` | **Settings** | Tenant config, connections health, approval policies, preferences (tabs). | settings |
 
 **Global overlays (route-independent, not in the route map):**
 

@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/organisms/shell/app-sidebar";
 import { TopBar } from "@/components/organisms/shell/top-bar";
 import { CommandPalette } from "@/components/organisms/shell/command-palette";
 import { ActionCart } from "@/components/organisms/automation/action-cart";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { activeNavItem } from "@/config/nav";
 import { useUiStore } from "@/stores/ui";
 
@@ -21,8 +22,14 @@ export default function ConsoleLayout({
 }) {
   const pathname = usePathname();
   const [cmdOpen, setCmdOpen] = React.useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const active = activeNavItem(pathname);
+
+  // Close the mobile drawer whenever the route changes.
+  React.useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -44,9 +51,25 @@ export default function ConsoleLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <AppSidebar activeHref={active?.href ?? pathname} collapsed={collapsed} />
+      {/* Desktop: persistent rail (hidden below md). */}
+      <AppSidebar
+        activeHref={active?.href ?? pathname}
+        collapsed={collapsed}
+        className="hidden md:flex"
+      />
+      {/* Mobile: the same nav as an off-canvas drawer. */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent side="left" className="w-60 p-0 md:hidden">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <AppSidebar activeHref={active?.href ?? pathname} className="w-full" />
+        </SheetContent>
+      </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar breadcrumb={breadcrumb} onSearch={() => setCmdOpen(true)} />
+        <TopBar
+          breadcrumb={breadcrumb}
+          onSearch={() => setCmdOpen(true)}
+          onMenu={() => setMobileNavOpen(true)}
+        />
         <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />

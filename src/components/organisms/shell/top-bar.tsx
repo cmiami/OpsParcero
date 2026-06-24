@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTheme } from "next-themes";
 import {
   PanelLeft,
+  Menu,
   Bell,
   ScanLine,
   Wrench,
@@ -54,6 +55,8 @@ export interface TopBarProps {
   notificationCount?: number;
   /** Opens the global command palette / search overlay. */
   onSearch?: () => void;
+  /** Opens the mobile navigation drawer (rendered only below `md`). */
+  onMenu?: () => void;
   className?: string;
 }
 
@@ -86,6 +89,7 @@ export function TopBar({
   user = DEFAULT_USER,
   notificationCount = 0,
   onSearch,
+  onMenu,
   className,
 }: TopBarProps) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
@@ -98,12 +102,23 @@ export function TopBar({
         className,
       )}
     >
+      {/* Mobile: open the off-canvas nav drawer. */}
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Open navigation menu"
+        onClick={onMenu}
+        className="text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground md:hidden"
+      >
+        <Menu className="size-5" aria-hidden />
+      </Button>
+      {/* Desktop: collapse / expand the persistent rail. */}
       <Button
         variant="ghost"
         size="icon"
         aria-label="Toggle navigation"
         onClick={toggleSidebar}
-        className="text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground"
+        className="hidden text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground md:inline-flex"
       >
         <PanelLeft className="size-5" aria-hidden />
       </Button>

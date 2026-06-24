@@ -84,6 +84,7 @@ export function CategoryGroup({
     <Collapsible
       open={open}
       onOpenChange={setOpen}
+      data-testid="category-group"
       className={cn(
         "overflow-hidden rounded-lg border border-border bg-card",
         className,

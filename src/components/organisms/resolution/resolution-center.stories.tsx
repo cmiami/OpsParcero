@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within } from "storybook/test";
+import { expect, within, userEvent, waitFor } from "storybook/test";
 import { ResolutionCenter } from "./resolution-center";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -36,5 +36,33 @@ export const RendersSpine: Story = {
     await expect(
       canvas.getByRole("heading", { name: /Issues by category/i }),
     ).toBeInTheDocument();
+  },
+};
+
+/**
+ * FiltersBySeverity — the severity filter narrows the issue list. Toggling
+ * "Critical" must drop the category groups to only those with critical issues
+ * (the seed: 15 categories → 11 critical-only), proving the control is wired to
+ * the canonical getIssues({ severities }) filter, not just decorative.
+ */
+export const FiltersBySeverity: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const countGroups = () =>
+      canvasElement.querySelectorAll('[data-testid="category-group"]').length;
+    const before = countGroups();
+    expect(before).toBeGreaterThan(0);
+
+    const crit = canvas.getByRole("button", {
+      name: /Show only Critical issues/i,
+    });
+    await userEvent.click(crit);
+    await waitFor(() => expect(crit).toHaveAttribute("aria-pressed", "true"));
+    // Filtering to critical-only narrows the list.
+    await waitFor(() => expect(countGroups()).toBeLessThan(before));
+
+    // Clearing the filter restores the full list.
+    await userEvent.click(crit);
+    await waitFor(() => expect(countGroups()).toBe(before));
   },
 };

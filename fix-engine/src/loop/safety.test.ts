@@ -1,12 +1,47 @@
 import { describe, it, expect } from "vitest";
 import { runSession } from "./session";
 import { MockProvider } from "../providers/mock";
-import { defaultRegistry } from "../tools/registry";
+import { defaultRegistry, stubRegistry } from "../tools/registry";
 import { DB, getAsset } from "../shared/fleet";
 import type { ActionRun } from "../domain";
+import type { ChatEvent, ModelProvider, ModelInfo } from "../providers/types";
 
 const provider = new MockProvider();
 const failed = DB.assets.find((a) => a.status === "failed")!;
+
+/** A provider that emits SEVERAL tool calls in a single turn, to exercise the
+ *  per-call budget guard. Turn 1 → 3 read calls; turn 2 → done. */
+class BurstProvider implements ModelProvider {
+  id = "mock" as const;
+  label = "Burst";
+  private turn = 0;
+  available() {
+    return true;
+  }
+  listModels(): ModelInfo[] {
+    return [
+      {
+        id: "burst",
+        provider: "mock",
+        label: "Burst",
+        contextWindow: 100_000,
+        supportsTools: true,
+      },
+    ];
+  }
+  async *chat(): AsyncIterable<ChatEvent> {
+    this.turn += 1;
+    if (this.turn === 1) {
+      yield { type: "tool_call", id: "c1", name: "get_diagnostics", input: {} };
+      yield { type: "tool_call", id: "c2", name: "get_diagnostics", input: {} };
+      yield { type: "tool_call", id: "c3", name: "get_diagnostics", input: {} };
+      yield { type: "done", stopReason: "tool_use" };
+    } else {
+      yield { type: "text", delta: "done" };
+      yield { type: "done", stopReason: "end" };
+    }
+  }
+}
 
 describe("fix-engine R2 — safety", () => {
   it("dry-run never mutates the asset and flags every run dryRun", async () => {
@@ -57,5 +92,26 @@ describe("fix-engine R2 — safety", () => {
     }
     const runs = (s as { actionRuns?: ActionRun[] }).actionRuns ?? [];
     expect(runs.some((r) => r.dryRun === false)).toBe(true);
+  });
+
+  it("hard-caps a burst of tool calls in one turn (budget per call)", async () => {
+    const burst = new BurstProvider();
+    const target = DB.assets.find((a) => a.status === "failed")!;
+    const s = await runSession(
+      {
+        assetId: target.id,
+        mode: "ai",
+        model: { provider: "mock", model: "burst" },
+        // One call allowed; the turn emits three.
+        budget: { maxToolCalls: 1 },
+      },
+      // stubRegistry exposes get_diagnostics (read, ALL_KINDS) — the tool the
+      // burst provider calls; the catalog registry doesn't carry that name.
+      { provider: burst, registry: stubRegistry() },
+    );
+    // The 2nd and 3rd calls must NOT execute — without the per-call guard all
+    // three would run (toolCalls === 3, over the cap).
+    expect(s.usage.toolCalls).toBe(1);
+    expect(s.state).toBe("halted");
   });
 });

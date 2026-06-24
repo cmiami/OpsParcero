@@ -368,6 +368,16 @@ export async function runSession(
         setState("halted");
         break;
       }
+      // Budget HARD cap per call: the while-top guard only bounds the next turn,
+      // but one turn can emit several tool calls. Re-check before each so a burst
+      // of calls can't push toolCalls/tokens past the cap and execute (possibly
+      // destructive) writes beyond budget — stop before previewing/running it.
+      const callLimit = budgeter.exceeded(clock.ms());
+      if (callLimit) {
+        push({ kind: "status", text: `Budget exhausted: ${callLimit}` });
+        setState("halted");
+        break;
+      }
       const handler = registry.get(call.name);
       if (!handler) {
         push({ kind: "observation", text: `Unknown tool "${call.name}" — skipped.` });

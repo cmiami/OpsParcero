@@ -3,6 +3,7 @@ import { expect, within, userEvent, waitFor } from "storybook/test";
 import { ActionCart } from "./action-cart";
 import { Toaster } from "@/components/ui/sonner";
 import { useActionCart } from "@/stores/action-cart";
+import { useActivity } from "@/stores/activity";
 import { makeUid } from "@/stores/uid";
 import type { ActionScope } from "@/types";
 
@@ -138,6 +139,48 @@ export const AddRemove: Story = {
     await userEvent.click(remove);
     await waitFor(() =>
       expect(useActionCart.getState().steps.length).toBe(before - 1),
+    );
+  },
+};
+
+/**
+ * DispatchRecords — dispatch must produce DURABLE ActionRun + Audit records the
+ * Run history / Audit surfaces read, and clear the cart on success (R3). Both
+ * steps are `requiresApproval:"never"` + non-destructive, so the chain runs to
+ * completion deterministically (no approval short-circuit).
+ */
+export const DispatchRecords: Story = {
+  decorators: [
+    (Story) => {
+      useActivity.setState({ runs: [], audit: [] });
+      seed({
+        steps: [
+          { actionId: "repair-vss-writers" },
+          { actionId: "restart-agent-service" },
+        ],
+        targets: ["btru-fs1", "btru-erp1"],
+        defaultScope: "all-matching",
+      });
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const runsBefore = useActivity.getState().runs.length;
+    await userEvent.click(canvas.getByRole("button", { name: /Dispatch/ }));
+    // Dispatch persists after a simulated-latency setTimeout, then clears.
+    await waitFor(
+      () =>
+        expect(useActivity.getState().runs.length).toBeGreaterThan(runsBefore),
+      { timeout: 3000 },
+    );
+    await waitFor(
+      () => {
+        // Each ran step → a durable run + audit entry; cart cleared on success.
+        expect(useActivity.getState().audit.length).toBeGreaterThan(0);
+        expect(useActionCart.getState().steps.length).toBe(0);
+      },
+      { timeout: 3000 },
     );
   },
 };

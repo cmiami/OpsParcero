@@ -11,6 +11,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageShell } from "@/components/templates/page-shell";
 
 export const metadata = { title: "Overview · Kaseya Resolution Center" };
 
@@ -23,19 +24,13 @@ export default function OverviewPage() {
     : 0;
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="border-b border-border px-6 py-4">
-        <h1 className="font-display text-xl font-bold tracking-tight">
-          Overview
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Fleet health, active incidents, and what&apos;s trending worse — every
-          number drills into its cohort.
-        </p>
-      </header>
-
-      <div className="min-h-0 flex-1 space-y-6 overflow-auto p-6">
-        <FleetRollup />
+    <PageShell
+      title="Overview"
+      description="Fleet health, active incidents, and what's trending worse — every number drills into its cohort."
+      scroll
+      contentClassName="space-y-6"
+    >
+      <FleetRollup />
 
         <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
           <Card>
@@ -104,7 +99,6 @@ export default function OverviewPage() {
         </div>
 
         <IssueCharts />
-      </div>
-    </div>
+    </PageShell>
   );
 }

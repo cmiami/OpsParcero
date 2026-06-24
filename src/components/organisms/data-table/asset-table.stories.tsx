@@ -1,12 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within, userEvent } from "storybook/test";
+import { expect, within, userEvent, waitFor } from "storybook/test";
 import { AssetTable } from "./asset-table";
 import { getAssets } from "@/mock/query";
+import { useActivity } from "@/stores/activity";
 
 // Seeded slices of the real fleet (mock query is pure/deterministic).
 const ALL = getAssets({}).items;
 const FAILED = getAssets({ statuses: ["failed"] }).items;
 const MIXED = ALL.slice(0, 8);
+const ONE_FAILED = ALL.filter((a) => a.status === "failed").slice(0, 1);
 
 const meta = {
   title: "Organisms/AssetTable",
@@ -52,4 +54,33 @@ export const Empty: Story = {
 
 export const Loading: Story = {
   args: { assets: [], isLoading: true },
+};
+
+/**
+ * ReflectsHeal — regression gate for #9: a fix applied this session (an
+ * assetOverride) must show in the fleet TABLE, not only on the asset-detail page.
+ * Seeds an override healing the one failed asset → its row reads Protected.
+ */
+export const ReflectsHeal: Story = {
+  args: { assets: ONE_FAILED },
+  decorators: [
+    (Story) => {
+      const a = ONE_FAILED[0];
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides: a
+          ? { [a.id]: { status: "protected", resolvedAt: "2026-06-24T00:00:00Z" } }
+          : {},
+      });
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() =>
+      expect(canvas.getByText(/^protected$/i)).toBeInTheDocument(),
+    );
+    expect(canvas.queryByText(/^failed$/i)).not.toBeInTheDocument();
+  },
 };

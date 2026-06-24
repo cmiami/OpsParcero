@@ -6,6 +6,8 @@ import { getAssets } from "@/mock/query";
 import { PRODUCT_BUCKET_BY_KEY } from "@/config/products";
 import { AssetTable } from "@/components/organisms/data-table/asset-table";
 import { KpiTile } from "@/components/molecules/kpi-tile";
+import { useActivity, applyOverrides } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 
 const TYPES_FOR_BUCKET: Record<ProductBucket, ProductType[]> = {
   bcdr: ["bcdr"],
@@ -16,6 +18,10 @@ const TYPES_FOR_BUCKET: Record<ProductBucket, ProductType[]> = {
 export function ProductLensView() {
   const { product } = useParams<{ product: string }>();
   const router = useRouter();
+  // Hooks must run unconditionally (before the early return). Reflect this
+  // session's heals in the lens KPIs + table.
+  const hydrated = useHasHydrated(useActivity);
+  const overrides = useActivity((s) => s.assetOverrides);
   const bucket = product as ProductBucket;
   const cfg = PRODUCT_BUCKET_BY_KEY[bucket];
 
@@ -31,12 +37,13 @@ export function ProductLensView() {
     );
   }
 
-  const assets = getAssets(
+  const rawAssets = getAssets(
     { productTypes: TYPES_FOR_BUCKET[bucket] },
     undefined,
     0,
     100000,
   ).items;
+  const assets = hydrated ? applyOverrides(rawAssets, overrides) : rawAssets;
   const failed = assets.filter((a) => a.status === "failed").length;
   const warning = assets.filter((a) => a.status === "warning").length;
   const Icon = cfg.icon;

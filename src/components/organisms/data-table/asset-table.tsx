@@ -17,6 +17,8 @@ import { relativeTime } from "@/lib/format";
 import { productTypeToBucket, type ProtectedAsset, type BackupRun } from "@/types";
 import { getAssets, getClient } from "@/mock/query";
 import { useActiveClientId } from "@/stores/use-active-client";
+import { useActivity, applyOverrides } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 import { MonoLabel } from "@/components/atoms/mono-label";
 import { StatusBadge } from "@/components/atoms/status-badge";
 import { ProductChip } from "@/components/atoms/product-chip";
@@ -80,14 +82,18 @@ export function AssetTable({
   className,
 }: AssetTableProps) {
   const activeClientId = useActiveClientId();
-  const data = React.useMemo(
-    () =>
+  // Reflect any heals applied this session — a fixed asset must read protected in
+  // the fleet table too, not only on its detail page. Hydration-gated.
+  const hydrated = useHasHydrated(useActivity);
+  const overrides = useActivity((s) => s.assetOverrides);
+  const data = React.useMemo(() => {
+    const base =
       assets ??
       getAssets({
         clientIds: activeClientId ? [activeClientId] : undefined,
-      }).items,
-    [assets, activeClientId],
-  );
+      }).items;
+    return hydrated ? applyOverrides(base, overrides) : base;
+  }, [assets, activeClientId, hydrated, overrides]);
   const clientName = useClientName();
 
   // Built-in bulk behavior so BOTH the toolbar AND the per-row menu are

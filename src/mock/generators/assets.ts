@@ -70,7 +70,10 @@ const ASSET_PLAN: AssetPlan[] = [
   { kind: "endpoint", productType: "endpoint-v2", count: 46 },
   { kind: "saas-seat", productType: "saas-protect", count: 44 },
   { kind: "saas-seat", productType: "spanning", count: 22 },
-  { kind: "salesforce-org", productType: "spanning", count: 8 },
+  // Generated LAST so this count can grow without shifting any other kind's
+  // seeded ids/rng. Sized so every Salesforce-restore mode has a healthy
+  // salesforce-org host (kind-applicable) — no overflow to a mailbox seat (#2).
+  { kind: "salesforce-org", productType: "spanning", count: 12 },
 ];
 
 /** Pick 1–3 tags relevant to a kind/os, deterministic. */

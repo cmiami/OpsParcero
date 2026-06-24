@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within, userEvent, waitFor } from "storybook/test";
 import { AlertTriageList } from "./alert-triage-list";
-import { getOpenAlerts } from "@/mock/query";
+import {
+  getOpenAlerts,
+  getAsset,
+  getActionsForFailureMode,
+} from "@/mock/query";
 
 const alerts = getOpenAlerts();
 
@@ -56,6 +60,36 @@ export const BulkSelect: Story = {
     const ack = within(toolbar).getByRole("button", { name: /Acknowledge/i });
     await userEvent.click(ack);
     await waitFor(() => expect(args.onTriage).toHaveBeenCalled());
+  },
+};
+
+/**
+ * NoImpossibleTargets — fixture-integrity gate (#2): every injected failure must
+ * land on an asset whose kind one of the mode's actions can actually run on (e.g.
+ * never a Salesforce-restore failure on a mailbox seat). Asserts zero impossible
+ * targets across the whole seeded alert set.
+ */
+export const NoImpossibleTargets: Story = {
+  args: { alerts: alerts.slice(0, 1) },
+  play: async () => {
+    let checked = 0;
+    for (const al of getOpenAlerts()) {
+      if (!al.assetId || !al.failureModeId) continue;
+      const asset = getAsset(al.assetId);
+      if (!asset) continue;
+      const kinds = new Set(
+        getActionsForFailureMode(al.failureModeId).flatMap(
+          (a) => a.appliesToKinds,
+        ),
+      );
+      if (kinds.size === 0) continue; // mode has no kind constraint
+      checked++;
+      expect(
+        kinds.has(asset.kind),
+        `${al.failureModeId} landed on ${asset.kind} ${asset.id} — impossible target`,
+      ).toBe(true);
+    }
+    expect(checked).toBeGreaterThan(0);
   },
 };
 

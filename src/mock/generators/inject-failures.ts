@@ -295,14 +295,18 @@ export function injectFailures(
       (a) => inBucket(a) && ofKind(a) && assetMatchesFamily(a, mode),
     );
     const tierKind = assets.filter((a) => inBucket(a) && ofKind(a));
-    const tierBucket = assets.filter(inBucket);
+    // Kind is a HARD floor on every tier: an asset must be a kind the mode's
+    // actions can actually run on, so a Salesforce-restore mode can never land on
+    // a mailbox seat (#2 — zero impossible targets). If the kind is genuinely
+    // exhausted, placeOne returns null (Pass 2 tolerates it) rather than spilling.
+    const tierBucket = assets.filter((a) => inBucket(a) && ofKind(a));
     const pool = tierIdeal.length
       ? tierIdeal
       : tierKind.length
         ? tierKind
         : tierBucket.length
           ? tierBucket
-          : assets.filter(isHealthy);
+          : assets.filter((a) => isHealthy(a) && ofKind(a));
     if (pool.length === 0) return null;
 
     const asset = pool[int(r, 0, pool.length - 1)];

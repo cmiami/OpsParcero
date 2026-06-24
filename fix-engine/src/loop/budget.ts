@@ -43,9 +43,11 @@ export class Budgeter {
 
   /** Returns the first exceeded limit, or null. `nowMs` is the seeded clock. */
   exceeded(nowMs: number): HaltReason | null {
-    if (this.steps > this.budget.maxSteps) return "maxSteps";
-    if (this.toolCalls > this.budget.maxToolCalls) return "maxToolCalls";
-    if (this.tokens > this.budget.maxTokens) return "maxTokens";
+    // Checked at the top of the loop BEFORE the step/call is consumed, so use
+    // >= for a HARD bound: maxSteps:N permits exactly N steps, never N+1.
+    if (this.steps >= this.budget.maxSteps) return "maxSteps";
+    if (this.toolCalls >= this.budget.maxToolCalls) return "maxToolCalls";
+    if (this.tokens >= this.budget.maxTokens) return "maxTokens";
     if (nowMs - this.start > this.budget.maxWallMs) return "maxWallMs";
     return null;
   }

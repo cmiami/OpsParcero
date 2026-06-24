@@ -457,8 +457,9 @@ export async function runSession(
   session.finishedAt = clock.now();
   session.result = {
     healed,
-    summary:
-      session.state === "succeeded"
+    summary: dryRun
+      ? `Dry-run preview complete — no changes applied to ${asset.displayName}.`
+      : session.state === "succeeded"
         ? `Resolved ${asset.displayName} — protection restored.`
         : session.state === "partial"
           ? `Partial: remediation ran on ${asset.displayName} but health not fully confirmed.`

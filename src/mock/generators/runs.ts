@@ -154,7 +154,11 @@ export function generateRuns(
         jobId: job?.id ?? `JOB-${asset.id}`,
         assetId: asset.id,
         startedAt: new Date(startedMs).toISOString(),
-        finishedAt: new Date(startedMs + durationSec * 1000).toISOString(),
+        // Never finish in the future relative to the frozen NOW (a recent run
+        // with a long duration could otherwise overshoot).
+        finishedAt: new Date(
+          Math.min(startedMs + durationSec * 1000, NOW_MS),
+        ).toISOString(),
         state,
         mode: weighted(r, { incremental: 80, full: 8, "differential-merge": 12 }),
         consistency: state === "success-crash-consistent" ? "crash-consistent-dbd" : "application",
@@ -169,7 +173,10 @@ export function generateRuns(
           id: rpId,
           assetId: asset.id,
           takenAt: run.finishedAt!,
-          pointKind: "image-chain",
+          pointKind:
+            asset.kind === "saas-seat" || asset.kind === "salesforce-org"
+              ? "saas-set"
+              : "image-chain",
           bootable: true,
           chainState: "ok",
           localStored: true,

@@ -192,7 +192,15 @@ const RUN_STATE_WEIGHTS: Record<ActionRunState, number> = {
 function summarize(r: Rng, actionId: string, state: ActionRunState, count: number): string {
   const action = ACTION_BY_ID[actionId];
   const label = action?.label ?? actionId;
-  if (state === "partial") return `${label}: succeeded on ${count - int(r, 1, 2)} of ${count} targets`;
+  if (state === "partial") {
+    // Never report a negative/whole success for a partial run: at least one
+    // target failed, at least one (if count > 1) succeeded.
+    const failedN = Math.max(1, Math.min(count - 1, int(r, 1, 2)));
+    const ok = count - failedN;
+    return ok >= 1
+      ? `${label}: succeeded on ${ok} of ${count} targets`
+      : `${label}: partially applied — manual follow-up needed`;
+  }
   if (state === "failed") return `${label} failed on ${count} target${count > 1 ? "s" : ""}`;
   if (state === "rolled-back") return `${label} rolled back after verification regression`;
   if (action?.outcome === "opens-ticket") return `Assembled support package; opened DAT-TKT-${int(r, 80000, 89999)}`;
@@ -292,10 +300,6 @@ export function generateAutomationHistory(
     if (state === "awaiting-approval") {
       const apId = `APR-${(approvals.length + 1).toString().padStart(3, "0")}`;
       run.approvalRequestId = apId;
-      const decisionDraw = weighted(r, { pending: 50, approved: 35, rejected: 15 }) as
-        | "pending"
-        | "approved"
-        | "rejected";
       approvals.push({
         id: apId,
         requestedFor: { kind: "action-run", refId: run.id },
@@ -305,13 +309,9 @@ export function generateAutomationHistory(
           assetCount: targetCount,
           preview: `${action?.label ?? actionId} across ${targetCount} asset${targetCount > 1 ? "s" : ""}`,
         },
-        state: decisionDraw,
-        decidedBy: decisionDraw === "pending" ? undefined : approver.id,
-        decidedAt: decisionDraw === "pending" ? undefined : minToIso(startedMin - int(r, 5, 60)),
-        note:
-          decisionDraw === "rejected"
-            ? "Blast radius too large during business hours — reschedule to the maintenance window."
-            : undefined,
+        // A run still in awaiting-approval MUST have a pending approval — a
+        // decided one would mean the run already proceeded or was halted.
+        state: "pending",
       });
     }
 
@@ -320,7 +320,17 @@ export function generateAutomationHistory(
     // Audit entry for the run.
     audit({
       at: run.startedAt ?? minToIso(startedMin),
-      actor: { kind: triggerKind === "playbook" ? "user" : triggerKind, refId },
+      // A playbook-triggered run is an automated (system) actor, not a user —
+      // refId is a playbook id, which would be nonsensical as a "user".
+      actor: {
+        kind:
+          triggerKind === "user"
+            ? "user"
+            : triggerKind === "policy"
+              ? "policy"
+              : "system",
+        refId,
+      },
       verb: "ran-action",
       subjectRef: targetRefs[0],
       scope,

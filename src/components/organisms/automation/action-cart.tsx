@@ -27,10 +27,24 @@ import { PlaybookStepCard } from "@/components/molecules/playbook-step-card";
 import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { useActionCart } from "@/stores/action-cart";
 import { useUserPlaybooks } from "@/stores/playbooks";
+import { usePolicies } from "@/stores/automation-policies";
+import { useApprovals } from "@/stores/approvals";
+import {
+  recordSimulatedRun,
+  buildAutomationPolicy,
+} from "@/lib/activity-record";
 import { ACTION_BY_ID } from "@/mock/reference";
 import { runChain, type ChainStepInput } from "@/mock/runner";
+import { getUsers } from "@/mock/query";
 import { makeUid } from "@/stores/uid";
-import type { ActionScope, EntityRef, Playbook, PlaybookStep } from "@/types";
+import { productTypeToBucket } from "@/types";
+import type {
+  ActionScope,
+  ApprovalRequestId,
+  EntityRef,
+  Playbook,
+  PlaybookStep,
+} from "@/types";
 import { toast } from "sonner";
 
 export interface ActionCartProps {
@@ -69,24 +83,92 @@ export function ActionCart({ inline, className }: ActionCartProps) {
   function dispatch() {
     if (!ready) return;
     setDispatching(true);
-    const resolved: ChainStepInput[] = steps.flatMap((s) => {
+    // Pair each resolved chain step with its cart step so per-step scope (R4) and
+    // params survive into the runner + the activity records (R3).
+    const pairs = steps.flatMap((s) => {
       const action = ACTION_BY_ID[s.actionId];
-      return action ? [{ action, params: s.params }] : [];
+      return action ? [{ cartStep: s, action }] : [];
     });
-    const refs: EntityRef[] = targets.length
+    const resolved: ChainStepInput[] = pairs.map(({ cartStep, action }) => ({
+      action,
+      params: cartStep.params,
+      scope: cartStep.scope,
+    }));
+    const realTargets = targets.length > 0;
+    const refs: EntityRef[] = realTargets
       ? targets.map((id) => ({ kind: "asset" as const, id }))
       : [{ kind: "asset" as const, id: "preview-asset" }];
     window.setTimeout(() => {
       const outcome = runChain(resolved, refs, defaultScope as ActionScope);
+
+      // Persist every step that RAN as a durable ActionRun + AuditLogEntry the Run
+      // history / Audit surfaces read, honoring that step's own scope, and heal the
+      // real targeted assets it resolved — so a cart dispatch is as durable as the
+      // fix-modal / remediation-panel surfaces (R3).
+      outcome.steps.forEach((stepResult, i) => {
+        const pair = pairs[i];
+        if (!stepResult.ran || !pair) return;
+        recordSimulatedRun({
+          actionId: pair.action.id,
+          actionLabel: pair.action.label,
+          targets: refs,
+          scope: pair.cartStep.scope,
+          params: pair.cartStep.params,
+          outcome: stepResult.outcome,
+          heal:
+            realTargets && stepResult.outcome.healsAsset
+              ? {
+                  assetIds: targets,
+                  status: stepResult.outcome.healedStatus ?? "protected",
+                }
+              : undefined,
+        });
+      });
+
+      // "always"-scoped steps become standing auto-remediation policies the
+      // Policies page reads (R4 — once/all-matching/always semantics are real).
+      for (const { action, cartStep } of pairs) {
+        if (cartStep.scope !== "always") continue;
+        usePolicies.getState().addPolicy(
+          buildAutomationPolicy({
+            category: action.label,
+            actionId: action.id,
+            productBucket: action.productTypes[0]
+              ? productTypeToBucket(action.productTypes[0])
+              : undefined,
+          }),
+        );
+      }
+
       setDispatching(false);
       if (outcome.state === "awaiting-approval") {
+        // Surface in the Approval queue instead of dead-ending the dispatch.
+        const assetCount = realTargets ? targets.length : 1;
+        useApprovals.getState().enqueue({
+          id: makeUid("apr") as ApprovalRequestId,
+          requestedFor: {
+            kind: "action-run",
+            refId: pairs[0]?.action.id ?? "chain",
+          },
+          requestedBy: getUsers()[0]?.id ?? "u-current",
+          reason: pairs.some(({ action }) => action.destructive)
+            ? "destructive"
+            : "over-threshold",
+          blastRadius: {
+            assetCount,
+            preview: `${pairs.length}-step chain across ${assetCount} asset${assetCount === 1 ? "" : "s"}`,
+          },
+          state: "pending",
+        });
         toast.warning("Chain paused for approval", {
-          description: outcome.resultSummary,
+          description: `${outcome.resultSummary} Review it in Automation → Approvals.`,
         });
       } else if (outcome.state === "failed") {
         toast.error("Chain failed", { description: outcome.resultSummary });
       } else {
-        toast.success("Chain dispatched", { description: outcome.resultSummary });
+        toast.success("Chain dispatched", {
+          description: `${outcome.resultSummary} Recorded in Run history and Audit.`,
+        });
         clear();
       }
     }, 700);

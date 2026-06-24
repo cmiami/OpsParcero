@@ -12,10 +12,11 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest run",
+    "test:dark": "VITE_SB_THEME=dark vitest run",
     "test:engine": "pnpm --filter @krc/fix-engine run test && pnpm --filter @krc/fix-engine run typecheck",
     "lint:stories": "node scripts/check-story-coverage.mjs",
     "smoke:fix-client": "fix-engine/node_modules/.bin/tsx --tsconfig ./tsconfig.json scripts/fix-client-smoke.mts",
-    "verify": "pnpm run typecheck && pnpm run lint && pnpm run lint:stories && pnpm run test:engine && pnpm run smoke:fix-client && pnpm run test && pnpm run build && pnpm run build-storybook"
+    "verify": "pnpm run typecheck && pnpm run lint && pnpm run lint:stories && pnpm run test:engine && pnpm run smoke:fix-client && pnpm run test && pnpm run test:dark && pnpm run build && pnpm run build-storybook"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

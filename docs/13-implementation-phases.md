@@ -38,9 +38,9 @@ Milestones are labelled `Mx`. Each maps to one ROADMAP phase; the table in [§9]
 
 Beyond each milestone's specific DoD, *nothing* in a milestone is "done" unless:
 
-- `npm run verify` is green (`typecheck` + `lint` + `lint:stories` + `test` + `test:stories`) — the [CI mirror](11-tech-architecture.md).
+- `pnpm run verify` is green (`typecheck` + `lint` + `lint:stories` + `test:engine` + `smoke:fix-client` + `test` + `test:dark` + `build` + `build-storybook`) — the [CI mirror](11-tech-architecture.md).
 - Every new component file has a sibling `.stories.tsx` (coverage gate passes).
-- Zero axe violations at `error` level, in **both** light and slate dark themes.
+- Zero axe violations at `error` level in **both** light and slate dark themes — `test` (light) + `test:dark` (`VITE_SB_THEME=dark`).
 - No hardcoded hex/px outside `globals.css` (stylelint + eslint literal bans pass).
 - An impeccable review ran on any new UI surface, checking the absolute bans.
 

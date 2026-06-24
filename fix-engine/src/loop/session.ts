@@ -359,6 +359,15 @@ export async function runSession(
     messages.push({ role: "assistant", content: text, toolCalls: calls });
 
     for (const call of calls) {
+      // Operator abort mid-batch: the while-top check only guards the NEXT model
+      // turn, but a single turn can yield several tool calls. Re-check before each
+      // so a fired abort stops the batch before previewing/executing/healing the
+      // remaining calls (setState "halted" is terminal → the while exits too).
+      if (signal?.aborted) {
+        push({ kind: "status", text: "Aborted by operator — halting before further tool calls." });
+        setState("halted");
+        break;
+      }
       const handler = registry.get(call.name);
       if (!handler) {
         push({ kind: "observation", text: `Unknown tool "${call.name}" — skipped.` });
@@ -439,6 +448,15 @@ export async function runSession(
           messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: "REJECTED by approver — not executed" });
           break;
         }
+      }
+
+      // Re-check after the (async) approval gate: an operator may abort WHILE the
+      // approval is pending. Do not execute a (possibly destructive) write once
+      // aborted — the dry-run preview is already on the record, nothing mutated.
+      if (signal?.aborted) {
+        push({ kind: "status", text: "Aborted by operator while awaiting approval — not executing (nothing was changed)." });
+        setState("halted");
+        break;
       }
 
       // 3) Execute — UNLESS this is a dry-run session (then the preview IS the

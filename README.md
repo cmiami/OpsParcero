@@ -110,7 +110,8 @@ npx wrangler pages deploy out   # e.g. Cloudflare Pages
 ## Quality
 
 - **Accessibility:** WCAG 2.2 AA — axe-core runs on **every Storybook story** in light **and**
-  dark (0 serious/critical violations), gated in `npm test`. Status is never color-only
+  dark (0 serious/critical violations): light via `pnpm test`, dark via `pnpm test:dark`
+  (`VITE_SB_THEME=dark`), both gated in `pnpm run verify` / CI. Status is never color-only
   (dot + icon + label).
 - **Type-safe:** `tsc --noEmit` clean. **Storybook coverage:** 89/89 components storied —
   each with a meta + named states, enforced by `scripts/check-story-coverage.mjs`.

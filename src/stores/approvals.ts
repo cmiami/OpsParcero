@@ -11,6 +11,12 @@ import type { ApprovalRequest, ApprovalRequestId } from "@/types";
 export interface ApprovalsState {
   requests: ApprovalRequest[];
   /**
+   * Enqueue a pending request raised by an approval-gated dispatch (e.g. the
+   * action cart), so the Approval queue surfaces it instead of the dispatch being
+   * a dead end. Runtime-only (event handler), never module scope or render.
+   */
+  enqueue: (request: ApprovalRequest) => void;
+  /**
    * Decide a request. Stamps `decidedAt` at decision time — this runs only inside
    * an event-driven action handler (runtime), never at module scope or render,
    * so it is determinism-safe (BUILD-CONTRACT HARD RULE 4).
@@ -26,6 +32,13 @@ export const useApprovals = create<ApprovalsState>()(
   persist(
     (set) => ({
       requests: [],
+
+      enqueue: (request) =>
+        set((s) =>
+          s.requests.some((r) => r.id === request.id)
+            ? s
+            : { requests: [request, ...s.requests] },
+        ),
 
       decide: (id, decision, note) =>
         set((s) => ({

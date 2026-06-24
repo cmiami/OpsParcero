@@ -216,6 +216,8 @@ export interface ChainStepInput {
   params?: Record<string, unknown>;
   runIf?: "always" | "prev-succeeded" | "prev-failed";
   haltOnFailure?: boolean;
+  /** Per-step scope override; falls back to the chain `scope` when unset. */
+  scope?: ActionScope;
 }
 
 /** The aggregate outcome of running a chain of steps over the same targets. */
@@ -267,7 +269,13 @@ export function runChain(
       continue;
     }
 
-    const outcome = simulateRun(step.action, targets, scope, step.params ?? {}, opts);
+    const outcome = simulateRun(
+      step.action,
+      targets,
+      step.scope ?? scope,
+      step.params ?? {},
+      opts,
+    );
     results.push({ actionId: step.action.id, ran: true, outcome });
 
     if (outcome.awaitingApproval) {

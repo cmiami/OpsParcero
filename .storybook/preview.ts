@@ -20,7 +20,11 @@ const preview: Preview = {
   decorators: [
     withThemeByClassName({
       themes: { light: "", dark: "dark" },
-      defaultTheme: "light",
+      // The vitest a11y gate renders each story once; `VITE_SB_THEME=dark` flips
+      // the default so the SAME axe pass runs against the `.dark` token block too
+      // (the `test:dark` script). Storybook UI keeps the light default + toolbar.
+      defaultTheme:
+        import.meta.env.VITE_SB_THEME === "dark" ? "dark" : "light",
     }),
   ],
 };

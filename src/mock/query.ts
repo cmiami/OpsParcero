@@ -344,6 +344,19 @@ export function getActionsForFailureMode(modeId: FailureModeId): RemediationActi
     .filter((a): a is RemediationAction => Boolean(a));
 }
 
+/**
+ * The action "Apply fix" should dispatch for a mode: the self-heal action that
+ * actually resolves the asset, not merely the first catalog entry — which is
+ * often a guidance-only diagnostic (a probe / status check). Falls back to the
+ * first action for insights-only / guidance-only modes that own no self-heal.
+ */
+export function getPrimaryAction(
+  modeId: FailureModeId,
+): RemediationAction | undefined {
+  const actions = getActionsForFailureMode(modeId);
+  return actions.find((a) => a.outcome === "self-heal") ?? actions[0];
+}
+
 export function getFailureModes(): FailureMode[] {
   return FAILURE_MODES;
 }

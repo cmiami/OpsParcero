@@ -22,13 +22,16 @@ import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { WeYouSteps } from "@/components/molecules/we-you-steps";
 import { AiInsightCard } from "@/components/molecules/ai-insight-card";
-import { getIssues, getActionsForFailureMode } from "@/mock/query";
+import { getIssues, getActionsForFailureMode, getUsers } from "@/mock/query";
 import { simulateRun, type RunnerOutcome } from "@/mock/runner";
 import { useActionCart } from "@/stores/action-cart";
 import { usePolicies } from "@/stores/automation-policies";
+import { useApprovals } from "@/stores/approvals";
+import { makeUid } from "@/stores/uid";
 import {
   recordSimulatedRun,
   buildAutomationPolicy,
+  healedAssetIds,
 } from "@/lib/activity-record";
 import type {
   Issue,
@@ -36,7 +39,7 @@ import type {
   FailureMode,
   RemediationAction,
   ActionScope,
-  AssetId,
+  ApprovalRequestId,
   EntityRef,
 } from "@/types";
 import { toast } from "sonner";
@@ -109,7 +112,10 @@ export function RemediationPanel({
     suggestedActions ??
     (issue.failureModeId ? getActionsForFailureMode(issue.failureModeId) : []);
 
-  const primaryAction = actions[0];
+  // Dispatch the self-heal action, not merely the first catalog entry (often a
+  // guidance-only probe). Falls back to actions[0] for guidance/insights modes.
+  const primaryAction =
+    actions.find((a) => a.outcome === "self-heal") ?? actions[0];
   const addAction = useActionCart((s) => s.addAction);
   const setDefaultScope = useActionCart((s) => s.setDefaultScope);
   const addTarget = useActionCart((s) => s.addTarget);
@@ -158,27 +164,45 @@ export function RemediationPanel({
           result.awaitingApproval === true;
         setPhase(ok ? "success" : "failure");
 
-        // Persist a durable ActionRun + AuditLogEntry for any real (non-preview)
-        // dispatch, healing the targeted assets when the run resolves them — so
-        // Run history, Audit, and the fleet asset-state reflect this apply.
-        if (!result.preview) {
+        // Persist a durable ActionRun + AuditLogEntry for any real dispatch that
+        // actually ran — NOT a preview and NOT one paused at the approval gate
+        // (that records nothing until approved) — healing the targeted assets
+        // when the run resolves them, so Run history / Audit / fleet reflect it.
+        if (!result.preview && !result.awaitingApproval) {
           recordSimulatedRun({
             actionId: primaryAction.id,
             actionLabel: primaryAction.label,
             targets: runTargets,
             scope,
             outcome: result,
-            heal: result.healsAsset
-              ? {
-                  assetIds: runTargets.map((t) => t.id as AssetId),
-                  status: result.healedStatus ?? "protected",
-                }
-              : undefined,
+            heal:
+              result.healsAsset && healedAssetIds(result).length
+                ? {
+                    // Only the targets that actually succeeded (partial-safe).
+                    assetIds: healedAssetIds(result),
+                    status: result.healedStatus ?? "protected",
+                  }
+                : undefined,
           });
         }
 
         if (result.awaitingApproval) {
-          toast.warning("Approval required", { description: result.resultSummary });
+          // Enqueue a resumable ApprovalRequest the Approval queue can decide,
+          // instead of dead-ending at a toast (human-in-the-loop contract).
+          useApprovals.getState().enqueue({
+            id: makeUid("apr") as ApprovalRequestId,
+            requestedFor: { kind: "action-run", refId: primaryAction.id },
+            requestedBy: getUsers()[0]?.id ?? "u-current",
+            reason: primaryAction.destructive ? "destructive" : "over-threshold",
+            blastRadius: result.blastRadius ?? {
+              assetCount: runTargets.length,
+              preview: primaryAction.label,
+            },
+            state: "pending",
+          });
+          toast.warning("Approval required", {
+            description: `${result.resultSummary} Review it in Automation → Approvals.`,
+          });
         } else if (result.preview) {
           toast("Dry-run complete", { description: result.resultSummary });
         } else if (ok) {

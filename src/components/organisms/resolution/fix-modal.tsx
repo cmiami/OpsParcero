@@ -24,14 +24,23 @@ import { Label } from "@/components/ui/label";
 import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { FIX_META } from "@/lib/status";
-import { getActionsForFailureMode } from "@/mock/query";
+import { getPrimaryAction, getUsers } from "@/mock/query";
 import { simulateRun } from "@/mock/runner";
 import {
   recordSimulatedRun,
   buildAutomationPolicy,
+  healedAssetIds,
 } from "@/lib/activity-record";
 import { usePolicies } from "@/stores/automation-policies";
-import type { ActionScope, AssetId, EntityRef, Issue } from "@/types";
+import { useApprovals } from "@/stores/approvals";
+import { makeUid } from "@/stores/uid";
+import type {
+  ActionScope,
+  ApprovalRequestId,
+  AssetId,
+  EntityRef,
+  Issue,
+} from "@/types";
 
 export interface FixModalProps {
   /** The issue being remediated. */
@@ -83,11 +92,12 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
   const FixIcon = fix.icon;
   const automatable = issue.fixType === "full" || issue.fixType === "partial";
 
+  // The self-heal action that resolves the asset — not merely actions[0], which
+  // is often a guidance-only diagnostic. getPrimaryAction falls back to the first
+  // action for guidance/insights modes that own no self-heal.
   const action = React.useMemo(
     () =>
-      issue.failureModeId
-        ? getActionsForFailureMode(issue.failureModeId)[0]
-        : undefined,
+      issue.failureModeId ? getPrimaryAction(issue.failureModeId) : undefined,
     [issue.failureModeId],
   );
 
@@ -127,8 +137,33 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         : issue.impactedAssetIds;
     const targets: EntityRef[] = targetIds.map((id) => ({ kind: "asset", id }));
     // Simulate against the deterministic runner; runtime randomness lives here,
-    // inside an event handler, never at module scope (M6).
-    const outcome = simulateRun(action, targets, scope, {}, { approved: true });
+    // inside an event handler, never at module scope (M6). No `approved` override
+    // — the runner's gate must fire for destructive / over-threshold fixes.
+    const outcome = simulateRun(action, targets, scope, {});
+
+    // Approval gate: a destructive / over-threshold dispatch pauses here. Enqueue
+    // a resumable ApprovalRequest the Approval queue can decide — NOT a heal — so
+    // the human-in-the-loop contract holds (same pattern as the action cart).
+    if (outcome.awaitingApproval) {
+      useApprovals.getState().enqueue({
+        id: makeUid("apr") as ApprovalRequestId,
+        requestedFor: { kind: "action-run", refId: action.id },
+        requestedBy: getUsers()[0]?.id ?? "u-current",
+        reason: action.destructive ? "destructive" : "over-threshold",
+        blastRadius: outcome.blastRadius ?? {
+          assetCount: targetIds.length,
+          preview: action.label,
+        },
+        state: "pending",
+      });
+      setResult({
+        tone: "warning",
+        title: "Approval required",
+        detail: `${outcome.resultSummary} Review it in Automation → Approvals.`,
+      });
+      setRunning(false);
+      return;
+    }
 
     // Where the apply landed — the once → all-matching → always scope spine.
     const appliedCount = targetIds.length;
@@ -142,15 +177,19 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
     // Persist a durable ActionRun + AuditLogEntry for the dispatch, and heal the
     // targeted assets when the run resolves them — so Run history, Audit, and the
     // fleet asset-state reflect what just happened (not the frozen seed).
+    // Heal only the targets that actually succeeded — a partial outcome leaves
+    // some failed; healing the whole list would falsely mark them protected.
+    const healed = healedAssetIds(outcome);
     recordSimulatedRun({
       actionId: action.id,
       actionLabel: action.label,
       targets,
       scope,
       outcome,
-      heal: outcome.healsAsset
-        ? { assetIds: targetIds, status: outcome.healedStatus ?? "protected" }
-        : undefined,
+      heal:
+        outcome.healsAsset && healed.length
+          ? { assetIds: healed, status: outcome.healedStatus ?? "protected" }
+          : undefined,
     });
 
     if (alwaysCategory || scope === "always") {
@@ -173,12 +212,6 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         tone: "success",
         title: "Fix applied",
         detail: `Applied to ${where}. ${outcome.resultSummary} Recorded in Run history and Audit.`,
-      });
-    } else if (outcome.awaitingApproval) {
-      setResult({
-        tone: "warning",
-        title: "Approval required",
-        detail: outcome.resultSummary,
       });
     } else {
       setResult({

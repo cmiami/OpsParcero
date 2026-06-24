@@ -32,6 +32,7 @@ import { useApprovals } from "@/stores/approvals";
 import {
   recordSimulatedRun,
   buildAutomationPolicy,
+  healedAssetIds,
 } from "@/lib/activity-record";
 import { ACTION_BY_ID } from "@/mock/reference";
 import { runChain, type ChainStepInput } from "@/mock/runner";
@@ -108,6 +109,11 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       outcome.steps.forEach((stepResult, i) => {
         const pair = pairs[i];
         if (!stepResult.ran || !pair) return;
+        // Heal only the real targets that actually succeeded — a partial step
+        // leaves some failed, and the preview-asset placeholder never heals.
+        const healed = realTargets
+          ? healedAssetIds(stepResult.outcome).filter((id) => targets.includes(id))
+          : [];
         recordSimulatedRun({
           actionId: pair.action.id,
           actionLabel: pair.action.label,
@@ -116,9 +122,9 @@ export function ActionCart({ inline, className }: ActionCartProps) {
           params: pair.cartStep.params,
           outcome: stepResult.outcome,
           heal:
-            realTargets && stepResult.outcome.healsAsset
+            stepResult.outcome.healsAsset && healed.length
               ? {
-                  assetIds: targets,
+                  assetIds: healed,
                   status: stepResult.outcome.healedStatus ?? "protected",
                 }
               : undefined,

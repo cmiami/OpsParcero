@@ -98,6 +98,19 @@ export function buildActivityRecords(input: BuildRecordsInput): {
 }
 
 /**
+ * The asset ids a run actually HEALED — only the per-target results that
+ * succeeded. A `partial` outcome heals some targets and leaves others failed
+ * ("still failing — escalate"); healing the whole target list would flip those
+ * failed assets to protected and make fleet state lie. Callers pass this to the
+ * heal channel instead of the raw target list.
+ */
+export function healedAssetIds(outcome: RunnerOutcome): AssetId[] {
+  return outcome.perTarget
+    .filter((t) => t.state === "succeeded" && t.ref.kind === "asset")
+    .map((t) => t.ref.id as AssetId);
+}
+
+/**
  * Build + persist the records for one simulated apply, optionally healing the
  * targeted assets' health. Returns the created ActionRun.
  */

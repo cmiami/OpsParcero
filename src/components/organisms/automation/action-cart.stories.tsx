@@ -5,7 +5,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { useActionCart } from "@/stores/action-cart";
 import { useActivity } from "@/stores/activity";
 import { makeUid } from "@/stores/uid";
+import { healedAssetIds } from "@/lib/activity-record";
 import type { ActionScope } from "@/types";
+import type { RunnerOutcome } from "@/mock/runner";
 
 function seed(opts: {
   steps?: { actionId: string; scope?: ActionScope }[];
@@ -42,6 +44,40 @@ const meta = {
 } satisfies Meta<typeof ActionCart>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/**
+ * HealsOnlySucceededTargets — regression gate for the partial-heal bug: a partial
+ * outcome heals SOME targets and fails others, so healedAssetIds must return only
+ * the succeeded asset refs (callers heal exactly those, never the whole list).
+ */
+export const HealsOnlySucceededTargets: Story = {
+  decorators: [
+    (Story) => {
+      seed({ steps: [] });
+      return <Story />;
+    },
+  ],
+  play: async () => {
+    const partial = {
+      state: "partial",
+      resultSummary: "2 of 3 healed",
+      healsAsset: true,
+      healedStatus: "protected",
+      perTarget: [
+        { ref: { kind: "asset", id: "AST-A" }, state: "succeeded" },
+        { ref: { kind: "asset", id: "AST-B" }, state: "failed" },
+        { ref: { kind: "asset", id: "AST-C" }, state: "succeeded" },
+      ],
+    } as unknown as RunnerOutcome;
+    expect(healedAssetIds(partial)).toEqual(["AST-A", "AST-C"]);
+    // All targets failed → heal nothing.
+    const allFailed = {
+      ...partial,
+      perTarget: [{ ref: { kind: "asset", id: "AST-B" }, state: "failed" }],
+    } as unknown as RunnerOutcome;
+    expect(healedAssetIds(allFailed)).toEqual([]);
+  },
+};
 
 /** Empty — nothing assembled yet. */
 export const Empty: Story = {

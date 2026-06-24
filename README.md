@@ -6,9 +6,9 @@
 Turn a wall of red "backup failed" alerts into ranked, explained, *fixable* issues —
 and fix them once or forever, without opening a vendor ticket.
 
-![Next.js](https://img.shields.io/badge/Next.js-15-000?logo=nextdotjs&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwindcss&logoColor=white)
 ![Storybook](https://img.shields.io/badge/Storybook-10-FF4785?logo=storybook&logoColor=white)
 ![WCAG 2.2 AA](https://img.shields.io/badge/a11y-WCAG_2.2_AA-2E7D32)
@@ -37,7 +37,7 @@ saved **playbook** → standing **auto-remediation policy**. A simulated runner 
 executes chains, an action cart persists across routes, and approvals gate the risky stuff.
 
 > **This is a front-end mock.** No backend or live product APIs — data comes from a seeded,
-> deterministic generator (**135 real failure modes, 154 remediation actions, ~300 correlated
+> deterministic generator (**135 real failure modes, 154 remediation actions, ~285 correlated
 > assets**) so every screen is populated with believable Datto/Kaseya content.
 
 ## Screenshots
@@ -65,9 +65,10 @@ always-on deterministic Mock (so it runs offline with no keys). Design spec:
 
 ## Tech stack
 
-Next.js 15 (App Router) · TypeScript · Tailwind v4 · shadcn/ui (Radix) · lucide-react ·
-Storybook 10 · TanStack Table · Zustand (+persist) · nuqs · Recharts · Sonner.
-Everything is driven by a **design-token system** in `src/app/globals.css` (light + slate dark).
+Next.js 16 (App Router) · TypeScript 6 · Tailwind v4 · shadcn/ui (Radix) · lucide-react ·
+Storybook 10 · TanStack Table · Zustand (+persist) · nuqs · Recharts · Sonner. Tooling is
+**pnpm 11** (corepack-pinned, supply-chain hardened) on **Node 24 LTS**. Everything is driven
+by a **design-token system** in `src/app/globals.css` (light + slate dark).
 
 ## Where things live
 
@@ -80,30 +81,32 @@ src/
 │  ├─ ui/                32 shadcn primitives (+ a story each)
 │  ├─ atoms/             9 status/mono/fix atoms (StatusBadge, BackupDotStrip…)
 │  ├─ molecules/         15 composed units (We/You steps, apply-scope, KPI tile…)
-│  └─ organisms/         29 app surfaces (DataTable, RemediationPanel, AppSidebar…)
+│  ├─ organisms/         34 app surfaces (DataTable, RemediationPanel, AppSidebar…)
+│  └─ templates/         PageShell — the shared console page frame
 ├─ stories/foundations/  Token / typography / icon / status reference stories
 ├─ mock/                 Seeded engine — generators, fixtures, query, simulated runner
 │  └─ reference/         135 failure modes + 154 remediation actions
-├─ stores/               8 Zustand stores (action cart, playbooks, policies, approvals…)
+├─ stores/               7 Zustand stores (action cart, playbooks, policies, approvals…)
 ├─ lib/ · config/ · types/   status+format helpers · nav/products · domain types
 └─ docs/                 The spec set (vision → personas → data model → page specs)
 ```
 
-The component library is **atomic** (Foundations → Atoms → Molecules → Organisms → Pages)
-and ships as part of the product: **89/89 components have a Storybook story.**
+The component library is **atomic** (Foundations → Atoms → Molecules → Organisms → Templates → Pages)
+and ships as part of the product: **90/90 components have a Storybook story.**
 
 ## Getting started
 
 ```bash
-npm install
-npm run dev            # app on http://localhost:3000
-npm run storybook      # component library on http://localhost:6006
+corepack enable        # pins pnpm 11 via package.json "packageManager"
+pnpm install           # frozen-lockfile, engine-strict (Node 24 LTS)
+pnpm dev               # app on http://localhost:3000
+pnpm storybook         # component library on http://localhost:6006
 ```
 
 ### Build & deploy (static)
 
 ```bash
-npm run build          # static export → ./out  (deploys to any static host)
+pnpm build             # static export → ./out  (deploys to any static host)
 npx wrangler pages deploy out   # e.g. Cloudflare Pages
 ```
 
@@ -113,7 +116,7 @@ npx wrangler pages deploy out   # e.g. Cloudflare Pages
   dark (0 serious/critical violations): light via `pnpm test`, dark via `pnpm test:dark`
   (`VITE_SB_THEME=dark`), both gated in `pnpm run verify` / CI. Status is never color-only
   (dot + icon + label).
-- **Type-safe:** `tsc --noEmit` clean. **Storybook coverage:** 89/89 components storied —
+- **Type-safe:** `tsc --noEmit` clean. **Storybook coverage:** 90/90 components storied —
   each with a meta + named states, enforced by `scripts/check-story-coverage.mjs`.
 - **Tokens only:** no hard-coded colors or `z-index` in component code — **eslint-enforced**
   (`eslint.config.mjs`); spacing & typography are held by the impeccable design hook + review.

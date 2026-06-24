@@ -418,7 +418,7 @@ Hundreds-to-thousands of rows across fleet/backups/alerts/runs. Keep it buttery:
 
 ## 9. Build / run scripts
 
-`package.json` scripts (Node **20.19+ / 22.12+** for Storybook 10):
+`package.json` scripts (Node **24 LTS** for Storybook 10):
 
 | Script | Command | Purpose |
 |---|---|---|

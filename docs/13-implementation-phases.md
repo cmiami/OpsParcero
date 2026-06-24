@@ -79,7 +79,7 @@ M0 Scaffold ─┬─► M1 Design system + Storybook ─► M2 Atoms+Molecules 
 
 ### Tasks
 
-- Scaffold **Next.js 15 App Router + TypeScript** (`create-next-app`, strict TS). Node 20.19+/22.12+.
+- Scaffold **Next.js 15 App Router + TypeScript** (`create-next-app`, strict TS). Node 24 LTS.
 - Install pinned deps: **Tailwind v4**, **shadcn/ui** CLI init, **lucide-react**, **TanStack Table v8** + **@tanstack/react-virtual**, **Zustand** + `persist`, **nuqs**, **react-hook-form + zod**, **Sonner**, **date-fns**, **Recharts v3**. (Tremor tiles deferred — see [open decision](../ROADMAP.md).)
 - Stand up **Storybook 10** (`@storybook/nextjs-vite`) + addons (`addon-docs`, `addon-a11y`, `addon-themes`, `addon-vitest`, `addon-designs`); **do not** install the SB10-folded-in essentials ([storybook §2.2](storybook-design-system.md)).
 - Write `.storybook/main.ts` + `preview.ts` (Vite/Tailwind v4 `viteFinal`, `a11y.test:'error'`, `withThemeByClassName`, `appDirectory:true`) per [storybook §3](storybook-design-system.md).
@@ -98,7 +98,7 @@ M0 Scaffold ─┬─► M1 Design system + Storybook ─► M2 Atoms+Molecules 
 - [ ] Folder tree matches [tech-arch §2](11-tech-architecture.md) exactly; routes are present but thin/empty.
 - [ ] Linters **actively reject** a deliberately-planted `bg-[#0E67F5]` and an inline `style=` (proven, not assumed).
 - [ ] Coverage gate script runs and reports `0/0`.
-- [ ] Node engine pinned ≥20.19/22.12; React single-version pinned in `overrides` ([storybook §13](storybook-design-system.md)).
+- [ ] Node engine pinned >=24 (engines >=24.0.0); React single-version pinned in `overrides` ([storybook §13](storybook-design-system.md)).
 
 ### Risks / notes
 - **Tailwind v4 + Storybook only works on the Vite builder** — never switch to webpack ([storybook §13](storybook-design-system.md)). Verify `@`-parsing in a smoke story before moving on.

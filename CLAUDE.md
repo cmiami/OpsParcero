@@ -71,7 +71,7 @@
 - **Next.js (App Router) + TypeScript** · **Tailwind v4** · **shadcn/ui** (Radix) · **lucide-react** icons.
 - **Storybook 10** (`@storybook/nextjs-vite`) + addons: `addon-docs`, `addon-a11y`, `addon-themes`, `addon-vitest`, `addon-designs`. (Essentials are in core — do not install them.)
 - **Charts:** Recharts (or Tremor for KPI tiles). **Data grids:** TanStack Table. **Client state (action cart / chains / playbooks):** Zustand. **URL state (filters/saved views):** nuqs. **Toasts:** Sonner. **Mock persistence:** localStorage.
-- Node 20.19+ / 22.12+. Pin a single React version across the workspace. Rationale: `docs/research/04-architecture-research.md`, `docs/research/05-storybook-research.md`.
+- Node 24 LTS (engines >=24.0.0). Pin a single React version across the workspace. Rationale: `docs/research/04-architecture-research.md`, `docs/research/05-storybook-research.md`.
 
 ## 5. Project map
 

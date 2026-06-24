@@ -26,7 +26,7 @@
 ## 2. Tokens, components, stack
 
 - **Tokens:** source of truth is `src/app/globals.css` (`:root` + `.dark`) → Tailwind theme → Storybook **Foundations** stories → `DESIGN.md`. Keep in sync; `globals.css` wins. Add tokens, never inline values.
-- **Stack (locked):** Next.js (App Router) + TypeScript · Tailwind v4 · shadcn/ui (Radix) · lucide-react · Storybook 10 (`@storybook/nextjs-vite`; addons docs/a11y/themes/vitest/designs — essentials are in core) · Recharts (+ optional Tremor tiles) · TanStack Table · Zustand (action cart/chains/playbooks) · nuqs (URL/filter state) · Sonner toasts · localStorage. Node 20.19+/22.12+; pin one React version. Rationale: `docs/11-tech-architecture.md`, `docs/research/04-architecture-research.md`, `docs/research/05-storybook-research.md`.
+- **Stack (locked):** Next.js (App Router) + TypeScript · Tailwind v4 · shadcn/ui (Radix) · lucide-react · Storybook 10 (`@storybook/nextjs-vite`; addons docs/a11y/themes/vitest/designs — essentials are in core) · Recharts (+ optional Tremor tiles) · TanStack Table · Zustand (action cart/chains/playbooks) · nuqs (URL/filter state) · Sonner toasts · localStorage. Node 24 LTS (engines >=24.0.0); pin one React version. Rationale: `docs/11-tech-architecture.md`, `docs/research/04-architecture-research.md`, `docs/research/05-storybook-research.md`.
 
 ## 3. Project map
 

@@ -48,7 +48,7 @@ project root
 | `storybook` | `^10.x` (ESM-only) | Core; essentials folded in |
 | `@storybook/nextjs-vite` | `^10.x` | Framework adapter for Next 15 + App Router |
 | `@tailwindcss/vite` | `^4.x` | Vite plugin for Tailwind v4 in `viteFinal` |
-| Node | `≥20.19` or `≥22.12` | Required by SB10; verify CI image |
+| Node | `>=24` (engines >=24.0.0) | Required by SB10; verify CI image |
 | React | pin single version | Next 15 pins React 19; workspace must agree |
 
 ### 2.2 What NOT to install (removed/built-in in SB10)
@@ -826,7 +826,7 @@ This eliminates manual duplication between CVA definitions and Storybook control
 
 | Issue | Mitigation |
 |---|---|
-| **SB10 ESM-only**: CommonJS presets or config files fail silently | Ensure `.storybook/main.ts` and all preset files are ESM; verify CI Node ≥20.19 |
+| **SB10 ESM-only**: CommonJS presets or config files fail silently | Ensure `.storybook/main.ts` and all preset files are ESM; verify CI Node >=24 |
 | **React 19 / Next 15 version mismatch**: Vitest addon may resolve a different React than Next's bundled React | Pin a single React version in `package.json` `resolutions`/`overrides`; re-test each Next minor |
 | **`next/font` in stories**: `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` env var needed or fonts silently skip | Set in `.env.test` or Storybook env; import fonts via `<link>` in `preview-head.html` as fallback |
 | **`next/image`**: static imports return objects in Storybook | Use `parameters.nextjs.images` in preview or wrap with a `<NextImage>` decorator |

@@ -25,7 +25,7 @@ jobs:
       # --frozen-lockfile: fail if pnpm-lock.yaml doesn't match the manifests
       # (no silent drift). Build scripts run only for the reviewed allow-list in
       # pnpm-workspace.yaml; the 5-day minimumReleaseAge cooldown is enforced here.
-      - name: Install (workspace: app + fix-engine)
+      - name: "Install (workspace: app + fix-engine)"
         run: pnpm install --frozen-lockfile
       # Supply-chain gate: fail the build on known vulnerabilities.
       - name: Audit

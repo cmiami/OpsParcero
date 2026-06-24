@@ -29,6 +29,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { DataTable, type BulkAction } from "./data-table";
+import { toast } from "sonner";
+import { useActionCart } from "@/stores/action-cart";
 import { selectionColumn } from "./columns";
 
 export interface AssetTableProps {
@@ -202,11 +204,35 @@ export function AssetTable({
     [clientName, onOpenAsset, onBulk],
   );
 
+  // Built-in bulk behavior so the toolbar is functional on every surface (the
+  // page can still override via onBulk): "cart" stages the assets in the action
+  // cart; the rest simulate a dispatch with a toast.
+  const addTarget = useActionCart((s) => s.addTarget);
+  const handleBulk = React.useCallback(
+    (id: string, rows: ProtectedAsset[]) => {
+      if (onBulk) return onBulk(id, rows);
+      const n = rows.length;
+      const suffix = `${n} asset${n === 1 ? "" : "s"}`;
+      if (id === "cart") {
+        rows.forEach((a) => addTarget(a.id));
+        toast.success(`Added ${suffix} to the action cart`);
+      } else {
+        const LABEL: Record<string, string> = {
+          retry: "Retry queued",
+          playbook: "Playbook started",
+          ticket: "Ticket opened",
+        };
+        toast.success(LABEL[id] ?? "Action dispatched", { description: suffix });
+      }
+    },
+    [onBulk, addTarget],
+  );
+
   const bulkActions: BulkAction<ProtectedAsset>[] = [
-    { id: "retry", label: "Retry", icon: RefreshCw, onClick: (rows) => onBulk?.("retry", rows) },
-    { id: "playbook", label: "Run playbook", icon: Workflow, onClick: (rows) => onBulk?.("playbook", rows) },
-    { id: "cart", label: "Add to cart", icon: Plus, onClick: (rows) => onBulk?.("cart", rows) },
-    { id: "ticket", label: "Open ticket", icon: Ticket, onClick: (rows) => onBulk?.("ticket", rows) },
+    { id: "retry", label: "Retry", icon: RefreshCw, onClick: (rows) => handleBulk("retry", rows) },
+    { id: "playbook", label: "Run playbook", icon: Workflow, onClick: (rows) => handleBulk("playbook", rows) },
+    { id: "cart", label: "Add to cart", icon: Plus, onClick: (rows) => handleBulk("cart", rows) },
+    { id: "ticket", label: "Open ticket", icon: Ticket, onClick: (rows) => handleBulk("ticket", rows) },
   ];
 
   return (

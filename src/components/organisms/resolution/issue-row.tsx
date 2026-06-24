@@ -61,8 +61,9 @@ export function IssueRow({
 
   return (
     <div
+      id={`issue-${issue.id}`}
       className={cn(
-        "border-b border-border last:border-b-0",
+        "scroll-mt-24 border-b border-border last:border-b-0",
         open && "bg-subtle/60",
         className,
       )}

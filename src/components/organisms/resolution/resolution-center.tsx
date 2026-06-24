@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OutageBanner } from "@/components/molecules/outage-banner";
@@ -49,6 +50,25 @@ export function ResolutionCenter({ className }: ResolutionCenterProps) {
 
   const [panelIssue, setPanelIssue] = React.useState<Issue | null>(null);
 
+  // Deep-link from the command palette (/resolution?issue=…): expand that issue's
+  // category and scroll it into view. Read-only URL state via next's
+  // useSearchParams (mocked by the Storybook nextjs framework — no extra adapter).
+  const focusIssueId = useSearchParams().get("issue");
+  const focusCategory = React.useMemo(
+    () =>
+      focusIssueId
+        ? groups.find((g) => g.issues.some((i) => i.id === focusIssueId))
+            ?.category
+        : undefined,
+    [focusIssueId, groups],
+  );
+  React.useEffect(() => {
+    if (!focusIssueId) return;
+    document
+      .getElementById(`issue-${focusIssueId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusIssueId]);
+
   return (
     <div className={cn("flex flex-col", className)}>
       <StatBar stats={stats} outage={outage ?? null} />
@@ -81,7 +101,11 @@ export function ResolutionCenter({ className }: ResolutionCenterProps) {
           {groups.length > 0 ? (
             <div className="flex flex-col gap-3">
               {groups.map((group) => (
-                <CategoryGroup key={group.category} group={group} />
+                <CategoryGroup
+                  key={group.category}
+                  group={group}
+                  defaultOpen={group.category === focusCategory ? true : undefined}
+                />
               ))}
             </div>
           ) : (

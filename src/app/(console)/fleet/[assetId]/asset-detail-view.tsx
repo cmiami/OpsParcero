@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryState, parseAsStringEnum } from "nuqs";
 import { ArrowLeft, Wrench, Sparkles } from "lucide-react";
 import type { AssetId } from "@/types";
 import { productTypeToBucket } from "@/types";
@@ -48,6 +49,13 @@ export function AssetDetailView() {
   const router = useRouter();
   const [fixOpen, setFixOpen] = React.useState<null | "guided" | "ai">(null);
   const id = params.assetId as AssetId;
+  // The active tab lives in the URL so a shared/refreshed link reopens it.
+  const [tab, setTab] = useQueryState(
+    "tab",
+    parseAsStringEnum(["overview", "points", "alerts", "runs"]).withDefault(
+      "overview",
+    ),
+  );
   const asset = getAsset(id);
   // A fix applied this session may have healed this asset — reflect it.
   const hydrated = useHasHydrated(useActivity);
@@ -115,7 +123,13 @@ export function AssetDetailView() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto p-6">
-        <Tabs defaultValue="overview" className="flex flex-col gap-4">
+        <Tabs
+          value={tab}
+          onValueChange={(v) =>
+            setTab(v as "overview" | "points" | "alerts" | "runs")
+          }
+          className="flex flex-col gap-4"
+        >
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="points">

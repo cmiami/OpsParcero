@@ -90,6 +90,36 @@ export function AssetTable({
   );
   const clientName = useClientName();
 
+  // Built-in bulk behavior so BOTH the toolbar AND the per-row menu are
+  // functional on every surface (the page can still override via onBulk): "cart"
+  // stages the assets in the action cart, "peek" opens the asset, the rest
+  // simulate a dispatch with a toast. Declared before the columns memo so the
+  // per-row RowActions can use it (the toolbar bulkActions use it too).
+  const addTarget = useActionCart((s) => s.addTarget);
+  const handleBulk = React.useCallback(
+    (id: string, rows: ProtectedAsset[]) => {
+      if (onBulk) return onBulk(id, rows);
+      if (id === "peek") {
+        if (rows[0]) onOpenAsset?.(rows[0]);
+        return;
+      }
+      const n = rows.length;
+      const suffix = `${n} asset${n === 1 ? "" : "s"}`;
+      if (id === "cart") {
+        rows.forEach((a) => addTarget(a.id));
+        toast.success(`Added ${suffix} to the action cart`);
+      } else {
+        const LABEL: Record<string, string> = {
+          retry: "Retry queued",
+          playbook: "Playbook started",
+          ticket: "Ticket opened",
+        };
+        toast.success(LABEL[id] ?? "Action dispatched", { description: suffix });
+      }
+    },
+    [onBulk, addTarget, onOpenAsset],
+  );
+
   const columns = React.useMemo<ColumnDef<ProtectedAsset>[]>(
     () => [
       selectionColumn<ProtectedAsset>(),
@@ -196,37 +226,14 @@ export function AssetTable({
           <RowActions
             asset={row.original}
             onOpen={onOpenAsset}
-            onBulk={onBulk}
+            onBulk={handleBulk}
           />
         ),
       },
     ],
-    [clientName, onOpenAsset, onBulk],
+    [clientName, onOpenAsset, handleBulk],
   );
 
-  // Built-in bulk behavior so the toolbar is functional on every surface (the
-  // page can still override via onBulk): "cart" stages the assets in the action
-  // cart; the rest simulate a dispatch with a toast.
-  const addTarget = useActionCart((s) => s.addTarget);
-  const handleBulk = React.useCallback(
-    (id: string, rows: ProtectedAsset[]) => {
-      if (onBulk) return onBulk(id, rows);
-      const n = rows.length;
-      const suffix = `${n} asset${n === 1 ? "" : "s"}`;
-      if (id === "cart") {
-        rows.forEach((a) => addTarget(a.id));
-        toast.success(`Added ${suffix} to the action cart`);
-      } else {
-        const LABEL: Record<string, string> = {
-          retry: "Retry queued",
-          playbook: "Playbook started",
-          ticket: "Ticket opened",
-        };
-        toast.success(LABEL[id] ?? "Action dispatched", { description: suffix });
-      }
-    },
-    [onBulk, addTarget],
-  );
 
   const bulkActions: BulkAction<ProtectedAsset>[] = [
     { id: "retry", label: "Retry", icon: RefreshCw, onClick: (rows) => handleBulk("retry", rows) },

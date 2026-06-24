@@ -13,6 +13,7 @@ import {
   Monitor,
 } from "lucide-react";
 
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,10 @@ export interface TopBarProps {
   onSearch?: () => void;
   /** Opens the mobile navigation drawer (rendered only below `md`). */
   onMenu?: () => void;
+  /** Re-scan the fleet for new failures. Defaults to a toast acknowledgement. */
+  onScan?: () => void;
+  /** Auto-fix every end-to-end-fixable issue. Defaults to a toast acknowledgement. */
+  onFixAll?: () => void;
   className?: string;
 }
 
@@ -90,10 +95,27 @@ export function TopBar({
   notificationCount = 0,
   onSearch,
   onMenu,
+  onScan,
+  onFixAll,
   className,
 }: TopBarProps) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const hasUnread = notificationCount > 0;
+
+  // The two action buttons are functional everywhere: a host can supply real
+  // handlers, otherwise they give an honest acknowledgement (front-end mock).
+  const handleScan =
+    onScan ??
+    (() =>
+      toast("Scan started", {
+        description: "Re-checking the fleet for new failures…",
+      }));
+  const handleFixAll =
+    onFixAll ??
+    (() =>
+      toast("End-to-end fix queued", {
+        description: "Auto-fixing every end-to-end-fixable issue across the fleet.",
+      }));
 
   return (
     <header
@@ -171,6 +193,7 @@ export function TopBar({
         <Button
           variant="ghost"
           size="sm"
+          onClick={handleScan}
           className="hidden gap-1.5 border border-topbar-foreground/40 text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground lg:inline-flex"
         >
           <ScanLine className="size-4" aria-hidden />
@@ -180,6 +203,7 @@ export function TopBar({
         <Button
           variant="ghost"
           size="sm"
+          onClick={handleFixAll}
           className="hidden gap-1.5 border border-topbar-foreground/40 text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground lg:inline-flex"
         >
           <Wrench className="size-4" aria-hidden />

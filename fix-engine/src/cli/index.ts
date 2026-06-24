@@ -34,7 +34,7 @@ import {
 
 const PROVIDER_IDS: ProviderId[] = ["anthropic", "openai", "google", "local", "mock"];
 const SCOPES: ActionScope[] = ["once", "all-matching", "always"];
-const BCDR_PRODUCTS: ProductType[] = ["bcdr", "datto-cloud"];
+const BCDR_PRODUCTS: ProductType[] = ["bcdr"];
 
 function die(message: string, code = 1): never {
   process.stderr.write(c.red(`error: ${message}`) + "\n");

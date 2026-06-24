@@ -85,7 +85,6 @@ export type ProductType =
   | "bcdr"
   | "endpoint-v1"
   | "endpoint-v2"
-  | "datto-cloud"
   | "saas-protect"
   | "spanning";
 
@@ -225,7 +224,6 @@ export function productTypeToBucket(p: ProductType): ProductBucket {
     case "endpoint-v2":
       return "endpoint";
     case "bcdr":
-    case "datto-cloud":
     default:
       return "bcdr";
   }

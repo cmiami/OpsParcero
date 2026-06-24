@@ -826,7 +826,7 @@ const ROWS: Row[] = [
 
   // ── Datto Cloud / DR ─────────────────────────────────────────────────────────
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "offsite-replication-backlog-roundtrip",
     title: "Off-site replication falls behind; backlog grows until a RoundTrip seed is required",
     cat: "Cloud Sync",
@@ -837,7 +837,7 @@ const ROWS: Row[] = [
     act: ["resume-offsite-sync", "raise-transmit-limit", "request-roundtrip-seed", "show-sync-backlog-trend"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "paused-cloud-sync-silent",
     title: "Cloud synchronization paused, silently stopping new points from reaching the cloud",
     cat: "Cloud Sync",
@@ -848,7 +848,7 @@ const ROWS: Row[] = [
     act: ["resume-offsite-sync", "enable-cloud-backups", "show-sync-backlog-trend"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "agent-communication-error",
     title: "Agent communication failure stops backups so no fresh point reaches the cloud",
     cat: "Agent Communication",
@@ -859,7 +859,7 @@ const ROWS: Row[] = [
     act: ["repair-agent-comms", "restart-agent-service", "probe-comms-ports", "run-backup-now", "reinstall-agent"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "screenshot-bsod-0x7b-storage-controller",
     title: "Cloud virtualization / screenshot boots to BSOD 0x0000007B (INACCESSIBLE_BOOT_DEVICE)",
     cat: "Local Virtualization",
@@ -870,7 +870,7 @@ const ROWS: Row[] = [
     act: ["change-storage-controller", "force-merge", "take-new-full-backup", "launch-local-virtualization"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "screenshot-blank-black-timing",
     title: "Screenshot false-failure: blank / black image, screensaver, or wait-time too short",
     cat: "Screenshot/Local Verification",
@@ -882,7 +882,7 @@ const ROWS: Row[] = [
     cosmetic: true,
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "screenshot-getting-devices-ready",
     title: "Screenshot stuck on 'Getting Devices Ready' / extended boot",
     cat: "Screenshot/Local Verification",
@@ -894,7 +894,7 @@ const ROWS: Row[] = [
     cosmetic: true,
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "screenshot-hostname-nic-edge-cases",
     title: "Screenshot edge cases: long hostname, NIC-required boot, multiple bootloaders",
     cat: "Screenshot/Local Verification",
@@ -906,7 +906,7 @@ const ROWS: Row[] = [
     cosmetic: true,
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "linux-dracut-emergency-shell",
     title: "Linux cloud virtualization drops to Dracut Emergency Shell (HIR can't reach dracut)",
     cat: "Local Virtualization",
@@ -917,7 +917,7 @@ const ROWS: Row[] = [
     act: ["force-merge", "linux-dracut-runbook", "assemble-support-package"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "encrypted-agent-passphrase-cloud-virt",
     title: "Encrypted-agent cloud virtualization stalls on passphrase / fails to unseal",
     cat: "Local Virtualization",
@@ -928,7 +928,7 @@ const ROWS: Row[] = [
     act: ["unseal-encrypted-agent", "enable-temp-troubleshooting-access", "launch-local-virtualization"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "cloud-virt-networking-rfc1918-conflicts",
     title: "Cloud virtualization networking conflicts: reserved subnets, RFC1918 rules, gateway 0.0.0.0",
     cat: "Networking",
@@ -939,7 +939,7 @@ const ROWS: Row[] = [
     act: ["validate-cloud-subnet-plan", "configure-port-forward", "pre-dr-readiness-check"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "ipsec-vpn-tunnel-failure",
     title: "Site-to-site IPsec VPN to the Datto Cloud won't establish (Phase 1/2 mismatch, FIPS cipher removal)",
     cat: "Networking",
@@ -950,7 +950,7 @@ const ROWS: Row[] = [
     act: ["show-ipsec-tunnel-status", "validate-cloud-subnet-plan", "assemble-support-package"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "public-ip-port-forward-limit",
     title: "Public IP / port-forwarding access to cloud VMs fails or is constrained (1 public IP per VM)",
     cat: "Networking",
@@ -961,7 +961,7 @@ const ROWS: Row[] = [
     act: ["configure-port-forward", "validate-cloud-subnet-plan", "guidance-runbook"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "virtualized-dc-domain-trust-failure",
     title: "Virtualized domain controller / domain-joined VM fails authentication during failover",
     cat: "Local Virtualization",
@@ -972,7 +972,7 @@ const ROWS: Row[] = [
     act: ["pre-dr-readiness-check", "ad-trust-repair-runbook", "launch-local-virtualization"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "one-click-dr-plan-gaps",
     title: "1-Click DR plan replay has manual gaps: boot order, passphrases, VPN, IP overlap",
     cat: "BMR",
@@ -983,7 +983,7 @@ const ROWS: Row[] = [
     act: ["orchestrate-ordered-boot", "validate-cloud-subnet-plan", "show-ipsec-tunnel-status", "unseal-encrypted-agent"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "cloud-deletion-defense-recovery",
     title: "Cloud snapshots deleted with agent / share; recovery needs Cloud Deletion Defense + Support",
     cat: "Backup Chain",
@@ -994,7 +994,7 @@ const ROWS: Row[] = [
     act: ["request-cdd-recovery", "lock-recovery-point", "mark-safe-recovery-point"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "retention-removed-cloud-dr-point",
     title: "Retention silently expired the cloud DR point you needed",
     cat: "Backup Chain",
@@ -1005,7 +1005,7 @@ const ROWS: Row[] = [
     act: ["extend-retention-schedule", "lock-recovery-point", "mark-safe-recovery-point"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "cloud-file-restore-mount-failure",
     title: "Cloud file restore / image export fails to mount or only one allowed at a time",
     cat: "File Restore",
@@ -1016,7 +1016,7 @@ const ROWS: Row[] = [
     act: ["unmount-existing-cloud-restore", "retry-file-restore-mount", "force-merge", "assemble-support-package"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "bmr-code-9999-driver-failure",
     title: "Bare Metal Restore into hardware fails on missing NIC / MSD drivers in WinPE (Code 9999)",
     cat: "BMR",
@@ -1027,7 +1027,7 @@ const ROWS: Row[] = [
     act: ["bmr-driver-injection-checklist", "escalate-bmr-code-9999", "bmr-readiness-precheck"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "cloud-virt-resource-limits",
     title: "Cloud VM throttled / can't scale past 8 vCPU & 16 GB without a Support request",
     cat: "Local Virtualization",
@@ -1038,7 +1038,7 @@ const ROWS: Row[] = [
     act: ["right-size-cloud-vm", "request-cloud-resource-increase"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "cloud-virt-30day-timeout-deletion",
     title: "Cloud virtualization auto-powers-off and is deleted after 30 days / test data wiped",
     cat: "Local Virtualization",
@@ -1049,7 +1049,7 @@ const ROWS: Row[] = [
     act: ["toggle-30day-poweroff", "guidance-runbook"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "failback-return-to-production-irreversible",
     title: "Failback / return-to-production is slow, manual, and irreversible (reverse-send / RoundTrip)",
     cat: "Cloud Sync",
@@ -1060,7 +1060,7 @@ const ROWS: Row[] = [
     act: ["failback-readiness-check", "request-roundtrip-seed", "assemble-support-package"],
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "filesystem-integrity-chain-diffmerge",
     title: "Filesystem / integrity check fails on the cloud point; chain needs differential merge",
     cat: "Backup Chain",
@@ -1072,7 +1072,7 @@ const ROWS: Row[] = [
     auto: true,
   },
   {
-    pt: "datto-cloud",
+    pt: "bcdr",
     id: "post-kaseya-support-ui-regression",
     title: "Slow support and new-portal UI regressions slow real-time DR troubleshooting",
     cat: "Licensing/Seats",

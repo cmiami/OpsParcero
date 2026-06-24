@@ -19,7 +19,6 @@ const ALL_PRODUCTS: ProductType[] = [
   "bcdr",
   "endpoint-v1",
   "endpoint-v2",
-  "datto-cloud",
   "saas-protect",
   "spanning",
 ];

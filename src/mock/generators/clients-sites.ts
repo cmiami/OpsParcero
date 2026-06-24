@@ -58,14 +58,14 @@ const CLIENT_PLANS: ClientPlan[] = [
   {
     name: CLIENT_NAMES[0], // Acme Dental Group
     code: CLIENT_CODES[0],
-    products: ["bcdr", "datto-cloud", "endpoint-v2", "saas-protect", "spanning"],
+    products: ["bcdr", "endpoint-v2", "saas-protect", "spanning"],
     siteCount: 4,
     saas: { m365: M365_DOMAINS[0], google: GOOGLE_DOMAINS[0], authStatus: "authorized" },
   },
   {
     name: CLIENT_NAMES[1], // Contoso Health
     code: CLIENT_CODES[1],
-    products: ["bcdr", "datto-cloud", "saas-protect"],
+    products: ["bcdr", "saas-protect"],
     siteCount: 6,
     saas: { m365: M365_DOMAINS[1], authStatus: "reauth-required" },
   },
@@ -78,7 +78,7 @@ const CLIENT_PLANS: ClientPlan[] = [
   {
     name: CLIENT_NAMES[6], // Globex Manufacturing
     code: CLIENT_CODES[6],
-    products: ["bcdr", "datto-cloud", "endpoint-v2"],
+    products: ["bcdr", "endpoint-v2"],
     siteCount: 7,
   },
   {
@@ -138,7 +138,7 @@ export function generateClientsSites(): ClientsSitesResult {
 
   CLIENT_PLANS.forEach((plan) => {
     const clientId = `CLI-${plan.code}`;
-    const hasBcdr = plan.products.some((p) => p === "bcdr" || p === "datto-cloud");
+    const hasBcdr = plan.products.some((p) => p === "bcdr");
 
     const clientSites: Site[] = [];
     for (let s = 0; s < plan.siteCount; s += 1) {

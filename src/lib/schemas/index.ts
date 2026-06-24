@@ -34,7 +34,6 @@ export const productTypeSchema = z.enum([
   "bcdr",
   "endpoint-v1",
   "endpoint-v2",
-  "datto-cloud",
   "saas-protect",
   "spanning",
 ]);

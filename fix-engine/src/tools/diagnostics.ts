@@ -37,7 +37,6 @@ const ALL_PRODUCTS: ProductType[] = [
   "bcdr",
   "endpoint-v1",
   "endpoint-v2",
-  "datto-cloud",
   "saas-protect",
   "spanning",
 ];
@@ -200,7 +199,7 @@ const getZfsPool: ToolHandler = {
     requiresApproval: false,
     reversible: true,
     appliesToKinds: BCDR_HOST_KINDS,
-    productTypes: ["bcdr", "datto-cloud"],
+    productTypes: ["bcdr"],
     actionId: "show-zfs-pool-health",
   },
   async run(_input, ctx): Promise<ToolResult> {
@@ -364,7 +363,7 @@ const getBackupChain: ToolHandler = {
     requiresApproval: false,
     reversible: true,
     appliesToKinds: AGENTLIKE_KINDS,
-    productTypes: ["bcdr", "datto-cloud", "endpoint-v1", "endpoint-v2"],
+    productTypes: ["bcdr", "endpoint-v1", "endpoint-v2"],
     actionId: "show-merge-progress",
   },
   async run(_input, ctx): Promise<ToolResult> {
@@ -636,7 +635,7 @@ const getScreenshotResult: ToolHandler = {
     requiresApproval: false,
     reversible: true,
     appliesToKinds: BCDR_HOST_KINDS,
-    productTypes: ["bcdr", "datto-cloud"],
+    productTypes: ["bcdr"],
     actionId: "classify-screenshot-failure",
   },
   async run(_input, ctx): Promise<ToolResult> {

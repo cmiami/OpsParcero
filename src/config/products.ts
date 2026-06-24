@@ -66,14 +66,13 @@ export interface ProductTypeConfig {
   legacy?: boolean;
 }
 
-/** The six surfaced product types → label + bucket. */
+/**
+ * The product types → label + bucket. Per docs/00-vision-and-scope.md §4, the
+ * surfaced products are SaaS / BCDR / Endpoint-v2; "Datto Cloud" is NOT a product
+ * (it is a recovery *target* — see RecoveryTarget), and Endpoint v1 is legacy.
+ */
 export const PRODUCT_TYPES: Record<ProductType, ProductTypeConfig> = {
   bcdr: { key: "bcdr", label: "Datto BCDR", bucket: "bcdr" },
-  "datto-cloud": {
-    key: "datto-cloud",
-    label: "Datto Cloud DR",
-    bucket: productTypeToBucket("datto-cloud"),
-  },
   "saas-protect": {
     key: "saas-protect",
     label: "SaaS Protect",

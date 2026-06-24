@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { SummaryCardsRow } from "./summary-cards-row";
 import { getFleetStats } from "@/mock/query";
 
@@ -21,6 +21,14 @@ type Story = StoryObj<typeof meta>;
 /** Default — the non-uniform summary tile row (top problem spans two columns). */
 export const Default: Story = {
   args: { stats, onSelectTopProblem: fn() },
+  // Interactive: the top-problem tile drills into the issue → onSelectTopProblem.
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Top problem of the day/i }),
+    );
+    await expect(args.onSelectTopProblem).toHaveBeenCalled();
+  },
 };
 
 /** CleanFleet — no open issues; the top-problem card reads "No open issues". */

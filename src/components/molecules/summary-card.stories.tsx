@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { SummaryCard } from "./summary-card";
 
 const meta = {
@@ -34,6 +34,13 @@ export const TopProblem: Story = {
     sublabel: "23 agents · Storage/ZFS",
     tone: "default",
     onClick: fn(),
+  },
+  // Interactive: an onClick card renders as a keyboard-operable button and
+  // drills through — clicking it fires onClick.
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button"));
+    await expect(args.onClick).toHaveBeenCalled();
   },
 };
 

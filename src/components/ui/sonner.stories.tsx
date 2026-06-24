@@ -7,6 +7,22 @@ const meta = {
   title: "Atoms/Sonner",
   component: Toaster,
   tags: ["autodocs"],
+  // Toaster forwards sonner's ToasterProps — document the ones a host tunes.
+  argTypes: {
+    position: {
+      control: "select",
+      options: [
+        "top-left",
+        "top-center",
+        "top-right",
+        "bottom-left",
+        "bottom-center",
+        "bottom-right",
+      ],
+    },
+    richColors: { control: "boolean" },
+    closeButton: { control: "boolean" },
+  },
   parameters: { layout: "centered" },
 } satisfies Meta<typeof Toaster>;
 export default meta;

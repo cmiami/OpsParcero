@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { PlaybookCard } from "./playbook-card";
 import { getPlaybooks } from "@/mock/query";
 import type { Playbook } from "@/types";
@@ -57,6 +57,14 @@ export const Manual: Story = {
     trigger: "manual",
     successRate: 94,
     source: "msp-authored",
+  },
+  // Interactive: "Load into cart" stages the playbook → fires onLoadIntoCart.
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Load into cart/i }),
+    );
+    await expect(args.onLoadIntoCart).toHaveBeenCalled();
   },
 };
 

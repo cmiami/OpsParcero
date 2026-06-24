@@ -7,6 +7,9 @@ const meta = {
   title: "Organisms/ResolutionCenter",
   component: ResolutionCenter,
   tags: ["autodocs"],
+  argTypes: {
+    className: { control: "text" },
+  },
   parameters: { layout: "fullscreen" },
   decorators: [
     (Story) => (

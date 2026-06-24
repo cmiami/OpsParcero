@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { fn } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { PlaybookStepCard } from "./playbook-step-card";
 import type { PlaybookStep } from "@/types";
 
@@ -41,6 +41,12 @@ export const Default: Story = {
     index: 0,
     onRemove: fn(),
     onMoveDown: fn(),
+  },
+  // Interactive: the icon-only controls are wired — removing fires onRemove.
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Remove step" }));
+    await expect(args.onRemove).toHaveBeenCalled();
   },
 };
 

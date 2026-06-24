@@ -21,6 +21,7 @@ import type {
 import { TERMINAL_STATES } from "../types";
 import { DEFAULT_BUDGET, Budgeter } from "./budget";
 import { SeededClock } from "../shared/clock";
+import { redact, redactDeep, redactTurn } from "../shared/redact";
 import { getAsset, getIssue, primaryIssueForAsset } from "../shared/fleet";
 import { pickToolsForAsset, type ToolsForAsset } from "../tools/catalog";
 import type { ToolHandler } from "../tools/types";
@@ -254,7 +255,9 @@ export async function runSession(
   let anyWrite = false;
 
   function push(turn: Omit<FixTranscriptTurn, "at">) {
-    const full: FixTranscriptTurn = { at: clock.tick(), ...turn };
+    // Redact secrets at the single chokepoint — covers the transcript, the SSE
+    // projection (onTurn), and the returned session in one place.
+    const full = redactTurn({ at: clock.tick(), ...turn } as FixTranscriptTurn);
     session.transcript.push(full);
     deps.onTurn?.(full);
   }
@@ -372,7 +375,7 @@ export async function runSession(
       if (isRead) {
         const result = await handler.run(call.input, ctx);
         push({ kind: "tool_result", toolResult: result });
-        messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: result.output });
+        messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: redact(result.output) });
         continue;
       }
 
@@ -425,12 +428,14 @@ export async function runSession(
         triggeredBy: { kind: "ai", refId: session.id },
         scope,
         targetRefs: [{ kind: "asset", id: asset.id, label: asset.displayName }],
-        paramsUsed: (call.input ?? {}) as Record<string, unknown>,
+        paramsUsed: redactDeep((call.input ?? {}) as Record<string, unknown>),
         state: runState,
         dryRun,
         startedAt: session.startedAt,
         finishedAt: clock.now(),
-        resultSummary: dryRun ? `[dry-run] ${result.summary}` : result.summary,
+        resultSummary: redact(
+          dryRun ? `[dry-run] ${result.summary}` : result.summary,
+        ),
         auditLogEntryIds: [auditId as unknown as AuditLogEntry["id"]],
       };
       actionRuns.push(run);
@@ -443,14 +448,14 @@ export async function runSession(
         subjectRef: { kind: "asset", id: asset.id, label: asset.displayName },
         scope,
         outcome: runState,
-        detail: dryRun ? `[dry-run] ${result.summary}` : result.summary,
+        detail: redact(dryRun ? `[dry-run] ${result.summary}` : result.summary),
       });
       push({
         kind: dryRun ? "observation" : "verification",
         text: dryRun ? `[dry-run] ${result.summary}` : result.summary,
         toolResult: result,
       });
-      messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: result.output });
+      messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: redact(result.output) });
     }
   }
 

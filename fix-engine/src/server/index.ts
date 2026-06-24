@@ -182,6 +182,8 @@ app.post("/sessions", async (c) => {
     scope,
     dryRun: body.dryRun ?? false,
     budget: body.budget,
+    // The loop's session.id must equal the id we already returned to the client.
+    sessionId,
   };
 
   // Run the loop in the background; project its turns onto the SSE event stream.
@@ -196,8 +198,8 @@ app.post("/sessions", async (c) => {
         signal: abort.signal,
         // Approval gate over the wire: announce the request, then block on the
         // store's per-session deferred until /approve (or abort) resolves it.
-        approve: async (step: FixPlanStep) => {
-          store.emit(sessionId, { type: "approval-request", step });
+        approve: async (step: FixPlanStep, preview) => {
+          store.emit(sessionId, { type: "approval-request", step, preview });
           return store.openApproval(sessionId, step);
         },
         // Every transcript turn → a `turn` event; emit the plan once it exists

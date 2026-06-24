@@ -117,6 +117,9 @@ export interface RunSessionRequest {
   budget?: Partial<FixBudget>;
   /** Preview only: compute every diff but never execute / mutate / heal. */
   dryRun?: boolean;
+  /** Caller-supplied id so the session id matches the one the caller returned
+   *  (the server returns this before the loop builds the session). */
+  sessionId?: string;
 }
 
 /** Streamed to the front-end (SSE live) or yielded by the in-browser sim path. */
@@ -124,10 +127,17 @@ export type FixSessionEvent =
   | { type: "state"; state: FixState }
   | { type: "plan"; plan: FixPlan }
   | { type: "turn"; turn: FixTranscriptTurn }
-  | { type: "approval-request"; step: FixPlanStep }
+  // The approval gate carries the dry-run PREVIEW (diff + blast-radius) so the
+  // approver decides on evidence, not bare intent.
+  | {
+      type: "approval-request";
+      step: FixPlanStep;
+      preview?: import("./tools/types").ToolResult;
+    }
   | { type: "done"; session: FixSession };
 
 /** Resolves an approval gate (server/CLI/front-end inject this; tests stub it). */
 export type ApprovalResolver = (
   step: FixPlanStep,
+  preview?: import("./tools/types").ToolResult,
 ) => Promise<"approve" | "reject">;

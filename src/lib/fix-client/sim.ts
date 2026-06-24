@@ -167,11 +167,11 @@ export class SimFixClient implements FixClient {
       provider: new MockProvider(),
       registry: defaultRegistry(),
       // ApprovalResolver: surface the gate, then block on the UI's decision.
-      approve: async (step: FixPlanStep) => {
+      approve: async (step: FixPlanStep, preview) => {
         if (sim.aborted) return "reject";
         const gate = createDeferred<ApprovalDecision>();
         sim.pendingApproval = { stepId: step.id, gate };
-        queue.push({ type: "approval-request", step });
+        queue.push({ type: "approval-request", step, preview });
         try {
           return await gate.promise;
         } catch {

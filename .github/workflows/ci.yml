@@ -5,20 +5,35 @@ on:
     branches: [main]
   pull_request:
 
+# Least-privilege: the verify job only needs to read the repo.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # corepack pins the package manager to package.json's `packageManager`
+      # field (pnpm@11.9.0) — the runner can't silently use a different pnpm.
+      - name: Enable corepack
+        run: corepack enable
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: npm
-      # App + fix-engine dependencies (the engine has its own package).
-      - run: npm ci
-      - run: npm --prefix fix-engine ci
+          node-version-file: ".nvmrc" # Node 24 LTS
+          cache: pnpm
+      # --frozen-lockfile: fail if pnpm-lock.yaml doesn't match the manifests
+      # (no silent drift). Build scripts run only for the reviewed allow-list in
+      # pnpm-workspace.yaml; the 5-day minimumReleaseAge cooldown is enforced here.
+      - name: Install (workspace: app + fix-engine)
+        run: pnpm install --frozen-lockfile
+      # Supply-chain gate: fail the build on known vulnerabilities.
+      - name: Audit
+        run: pnpm audit --audit-level=high
       # Story tests run play fns + axe in headless Chromium.
-      - run: npx playwright install --with-deps chromium
-      # The full gate: typecheck · lint · story coverage · engine tests · fix-client
-      # smoke · story tests (play + axe) · static build · storybook build.
-      - run: npm run verify
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      # The full gate: typecheck · lint · story coverage · engine tests ·
+      # fix-client smoke · story tests (play + axe) · static build · storybook build.
+      - name: Verify
+        run: pnpm run verify

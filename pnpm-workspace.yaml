@@ -1,0 +1,26 @@
+packages:
+  - fix-engine
+
+# ── Supply-chain hardening (npm/PyPI attack wave, 2026) ─────────────────────
+# Only install a version that has been public for ≥ 5 days, so a freshly
+# published compromised release can't be pulled in immediately (value = minutes).
+minimumReleaseAge: 7200
+# Never delay our own internal package(s).
+minimumReleaseAgeExclude:
+  - "@krc/fix-engine"
+
+# pnpm does NOT run a dependency's lifecycle (postinstall) scripts unless it is
+# explicitly allowed here — the primary npm supply-chain vector. Reviewed
+# allow-list: only widely-used packages that legitimately compile a native /
+# binary artifact or run codegen. EVERY other dependency's install scripts stay
+# blocked (false / absent).
+allowBuilds:
+  esbuild: true # bundler native binary (vite/vitest/storybook)
+  sharp: true # native image lib (next build)
+  unrs-resolver: true # native module resolver (tooling)
+  protobufjs: true # google protobuf codegen
+  "@google/genai": true # gemini sdk (protobuf-backed)
+
+# Strict, reproducible resolution.
+autoInstallPeers: true
+dedupePeerDependents: true

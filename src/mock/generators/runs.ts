@@ -28,6 +28,8 @@ import { NOW_MS } from "../seed";
 
 /** How many image-chain assets get full history (the deep drill-down). */
 const FOCUS_COUNT = 30;
+/** Deep-history sample size for non-BCDR kinds (endpoint, saas-seat, share, …). */
+const PER_KIND_FOCUS = 14;
 /** Recent-run strip length per asset. */
 const STRIP_LEN = 10;
 
@@ -103,16 +105,30 @@ export function generateRuns(
   const recoveryPoints: RecoveryPoint[] = [];
   const screenshotVerifications: ScreenshotVerification[] = [];
 
-  // Focus set: image-chain (agent/agentless) assets get full history, biased to
-  // ones already in a non-protected baseline so the drill-down has substance.
-  const imageChainAssets = assets.filter(
-    (a) => a.kind === "agent" || a.kind === "agentless",
-  );
-  const ranked = imageChainAssets
-    .map((a, i) => ({ a, key: (a.status === "protected" ? 1 : 0) + i / 10000 }))
-    .sort((x, y) => x.key - y.key)
-    .map((x) => x.a);
-  const focusAssetIds = new Set<AssetId>(ranked.slice(0, FOCUS_COUNT).map((a) => a.id));
+  // Focus set: a representative sample of EVERY asset kind gets full deep history
+  // + recovery points (not just BCDR image-chain), so every product surface has
+  // restore-point coverage to drill into (SaaS seats → saas-set points, endpoint
+  // / share → image-chain). Within each kind, bias toward non-protected assets so
+  // the drill-down has substance.
+  const byKind = new Map<string, ProtectedAsset[]>();
+  for (const a of assets) {
+    const list = byKind.get(a.kind);
+    if (list) list.push(a);
+    else byKind.set(a.kind, [a]);
+  }
+  const focusAssetIds = new Set<AssetId>();
+  for (const [kind, list] of byKind) {
+    const ranked = list
+      .map((a, i) => ({ a, key: (a.status === "protected" ? 1 : 0) + i / 10000 }))
+      .sort((x, y) => x.key - y.key)
+      .map((x) => x.a);
+    // BCDR machine kinds keep the larger share; everything else gets a solid sample.
+    const take =
+      kind === "agent" || kind === "agentless"
+        ? FOCUS_COUNT
+        : Math.min(list.length, PER_KIND_FOCUS);
+    for (const a of ranked.slice(0, take)) focusAssetIds.add(a.id);
+  }
 
   for (const asset of assets) {
     const job = jobByAsset.get(asset.id);

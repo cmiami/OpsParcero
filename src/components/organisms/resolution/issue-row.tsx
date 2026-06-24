@@ -10,7 +10,7 @@ import { SeverityBadge } from "@/components/atoms/severity-badge";
 import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { OccurrenceCount } from "@/components/atoms/occurrence-count";
 import { AiButton } from "@/components/atoms/ai-badge";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Wrench } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AiFixConsole } from "@/components/organisms/fix/ai-fix-console";
+import { GuidedFixPanel } from "@/components/organisms/fix/guided-fix-panel";
 import { getAsset } from "@/mock/query";
 import { FIX_META } from "@/lib/status";
 import type { Issue } from "@/types";
@@ -56,6 +57,7 @@ export function IssueRow({
 
   const [impactOpen, setImpactOpen] = React.useState(false);
   const [fixOpen, setFixOpen] = React.useState(false);
+  const [guidedOpen, setGuidedOpen] = React.useState(false);
   const [aiOpen, setAiOpen] = React.useState(false);
 
   // The interactive AI/guided panels act on one concrete asset; the issue's first
@@ -65,7 +67,18 @@ export function IssueRow({
 
   const fix = FIX_META[issue.fixType];
   const automatable = issue.fixType === "full" || issue.fixType === "partial";
-  const fixLabel = automatable ? "Fix" : "Runbook";
+  // The primary button's LABEL matches the classification and OPENS what it names:
+  // Guided fix → the streaming GuidedFixPanel; End-to-end → the FixModal confirm;
+  // Insights → the runbook. So "Guided fix" is a real clickable action, not a
+  // badge sitting in a confirm dialog.
+  const opensGuidedPanel = issue.fixType === "partial" && Boolean(focusAsset);
+  const fixLabel = opensGuidedPanel
+    ? "Guided fix"
+    : automatable
+      ? "Fix"
+      : "Runbook";
+  const onPrimaryFix = () =>
+    opensGuidedPanel ? setGuidedOpen(true) : setFixOpen(true);
   const detailId = `issue-detail-${issue.id}`;
 
   function toggle() {
@@ -131,7 +144,7 @@ export function IssueRow({
             type="button"
             size="sm"
             variant={automatable ? "default" : "outline"}
-            onClick={() => setFixOpen(true)}
+            onClick={onPrimaryFix}
           >
             <fix.icon aria-hidden className="size-4" />
             {fixLabel}
@@ -152,6 +165,26 @@ export function IssueRow({
       />
       <FixModal issue={issue} open={fixOpen} onOpenChange={setFixOpen} />
 
+      {/* Guided fix → the existing streaming GuidedFixPanel (records + heals via
+          its own recordAgentRun). The button labeled "Guided fix" opens THIS. */}
+      <Dialog open={guidedOpen} onOpenChange={(o) => !o && setGuidedOpen(false)}>
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="size-4 text-primary" aria-hidden /> Guided fix —{" "}
+              {issue.title}
+            </DialogTitle>
+          </DialogHeader>
+          {focusAsset && (
+            <GuidedFixPanel
+              asset={focusAsset}
+              issue={issue}
+              matchCount={issue.impactedAssetIds.length}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Ask AI → the existing autonomous AI fix console (records as triggeredBy:ai
           and heals the asset via its own recordAgentRun — no recording here). */}
       <Dialog open={aiOpen} onOpenChange={(o) => !o && setAiOpen(false)}>
@@ -168,7 +201,8 @@ export function IssueRow({
               issue={issue}
               onSwitchToGuided={() => {
                 setAiOpen(false);
-                setFixOpen(true);
+                if (opensGuidedPanel) setGuidedOpen(true);
+                else setFixOpen(true);
               }}
             />
           )}

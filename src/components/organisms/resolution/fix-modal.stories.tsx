@@ -10,6 +10,7 @@ import {
 } from "@/mock/query";
 import { useApprovals } from "@/stores/approvals";
 import { useActivity } from "@/stores/activity";
+import { usePolicies } from "@/stores/automation-policies";
 
 const issues = getIssues();
 const full = issues.find((i) => i.fixType === "full") ?? issues[0];
@@ -23,6 +24,16 @@ const approvalIssue =
   issues.find((i) => {
     const a = i.failureModeId ? getPrimaryAction(i.failureModeId) : undefined;
     return a && (a.destructive || a.requiresApproval === "always");
+  }) ?? full;
+// A full issue whose "always" apply WON'T hit the approval gate (< 5 impacted,
+// non-destructive, not always-approval) — so confirming "always" creates a
+// policy deterministically.
+const policyIssue =
+  issues.find((i) => {
+    if (i.fixType !== "full" || !i.failureModeId) return false;
+    if (i.impactedAssetIds.length >= 5) return false;
+    const a = getPrimaryAction(i.failureModeId);
+    return Boolean(a && !a.destructive && a.requiresApproval !== "always");
   }) ?? full;
 
 const meta = {
@@ -75,6 +86,68 @@ export const ConfirmsFix: Story = {
         expect(await body.findByText(/Fix applied|Fix dispatched|policy/i)).toBeInTheDocument(),
       { timeout: 3000 },
     );
+  },
+};
+
+/**
+ * OneAlwaysControl — regression gate: there is exactly ONE "always" affordance
+ * (the scope radio). The old redundant "Always fix this category" SWITCH is gone.
+ */
+export const OneAlwaysControl: Story = {
+  args: { issue: full },
+  play: async () => {
+    const body = within(document.body);
+    expect(body.queryByRole("switch")).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * CreatesTypePolicy — "Always auto-fix" with the default breadth creates a
+ * standing policy scoped to THIS failure mode (trigger.failureModeId set).
+ */
+export const CreatesTypePolicy: Story = {
+  args: { issue: policyIssue },
+  play: async () => {
+    usePolicies.setState({ policies: [] });
+    const body = within(document.body);
+    await userEvent.click(
+      await body.findByRole("radio", { name: /Always auto-fix/i }),
+    );
+    await userEvent.click(
+      await body.findByRole("button", { name: /Create policy/i }),
+    );
+    await waitFor(() =>
+      expect(usePolicies.getState().policies.length).toBe(1),
+    );
+    expect(usePolicies.getState().policies[0].trigger.failureModeId).toBe(
+      policyIssue.failureModeId,
+    );
+  },
+};
+
+/**
+ * CreatesCategoryPolicy — choosing the "Whole category" breadth creates a
+ * category-wide policy (failureModeId omitted → ""), preserving the capability
+ * the deleted switch had, now as a sub-choice of the single "always" control.
+ */
+export const CreatesCategoryPolicy: Story = {
+  args: { issue: policyIssue },
+  play: async () => {
+    usePolicies.setState({ policies: [] });
+    const body = within(document.body);
+    await userEvent.click(
+      await body.findByRole("radio", { name: /Always auto-fix/i }),
+    );
+    await userEvent.click(
+      await body.findByRole("radio", { name: /Whole .* category/i }),
+    );
+    await userEvent.click(
+      await body.findByRole("button", { name: /Create policy/i }),
+    );
+    await waitFor(() =>
+      expect(usePolicies.getState().policies.length).toBe(1),
+    );
+    expect(usePolicies.getState().policies[0].trigger.failureModeId).toBe("");
   },
 };
 

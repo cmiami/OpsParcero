@@ -70,10 +70,10 @@ export const SelectScope: Story = {
   render: () => <Controlled initial="once" matchCount={14} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const always = canvas.getByLabelText(/Always fix this type/i);
+    const always = canvas.getByLabelText(/Always auto-fix/i);
     await userEvent.click(always);
     await expect(
-      canvas.getByText(/Standing policy/i),
+      canvas.getByText(/runs automatically going forward/i),
     ).toBeInTheDocument();
   },
 };

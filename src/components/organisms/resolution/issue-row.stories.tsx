@@ -91,3 +91,42 @@ export const AskAiOpensConsole: Story = {
     await expect(body.getByRole("dialog")).toHaveTextContent(/Fix with AI/i);
   },
 };
+
+/**
+ * GuidedFixOpensPanel — regression gate for "Guided fix isn't clickable": on a
+ * partial issue the primary button reads "Guided fix" and opens the STREAMING
+ * GuidedFixPanel (its "Start guided fix" run button), not the FixModal confirm.
+ */
+export const GuidedFixOpensPanel: Story = {
+  args: { issue: partial },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /^Guided fix$/i }));
+    const body = within(document.body);
+    await waitFor(() => expect(body.getByRole("dialog")).toBeInTheDocument());
+    await expect(
+      body.getByRole("button", { name: /Start guided (fix|dry run)/i }),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * EndToEndOpensModal — an end-to-end (full) issue's "Fix" opens the quick
+ * FixModal confirm, NOT the streaming panel — proving the routing branches both
+ * ways by classification.
+ */
+export const EndToEndOpensModal: Story = {
+  args: { issue: full },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /^Fix$/i }));
+    const body = within(document.body);
+    await waitFor(() => expect(body.getByRole("dialog")).toBeInTheDocument());
+    await expect(
+      body.getByRole("button", { name: /Confirm fix|Create policy/i }),
+    ).toBeInTheDocument();
+    expect(
+      body.queryByRole("button", { name: /Start guided/i }),
+    ).not.toBeInTheDocument();
+  },
+};

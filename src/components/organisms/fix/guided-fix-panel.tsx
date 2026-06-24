@@ -17,7 +17,11 @@ import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { FixTranscriptView } from "@/components/organisms/fix/fix-transcript-view";
 import { FIX_STATE_META } from "@/components/organisms/fix/fix-state-meta";
 import { getFixClientSync, TERMINAL_STATES } from "@/lib/fix-client";
-import { recordAgentRun } from "@/lib/activity-record";
+import {
+  recordAgentRun,
+  buildAutomationPolicy,
+} from "@/lib/activity-record";
+import { usePolicies } from "@/stores/automation-policies";
 import type {
   FixClient,
   FixSessionEvent,
@@ -310,6 +314,20 @@ export function GuidedFixPanel({
         summary: run.resultSummary ?? "The issue was resolved.",
         heal: { status: "protected" },
       });
+      // "Always" creates the standing policy here too — once the guided fix has
+      // actually proven out on this asset — so "always" means a policy on every
+      // surface, not just the FixModal. (The breadth sub-choice stays in the
+      // modal; the guided flow always creates the precise failure-mode policy.)
+      if (scope === "always" && issue) {
+        usePolicies.getState().addPolicy(
+          buildAutomationPolicy({
+            failureModeId: issue.failureModeId,
+            category: issue.category,
+            actionId: "agent-fix",
+            productBucket: issue.productBucket,
+          }),
+        );
+      }
     }
   }, [run.phase, run.healed, run.resultSummary, dryRun, scope, asset.id, issue]);
 

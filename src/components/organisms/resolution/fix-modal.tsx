@@ -1,14 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  CheckCircle2,
-  ListChecks,
-  Layers,
-  FolderCog,
-  AlertTriangle,
-  Info,
-} from "lucide-react";
+import { CheckCircle2, ListChecks, AlertTriangle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,10 +12,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
-import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
+import {
+  ApplyScopeControl,
+  type PolicyBreadth,
+} from "@/components/molecules/apply-scope-control";
 import { FIX_META } from "@/lib/status";
 import { getPrimaryAction, getUsers } from "@/mock/query";
 import { simulateRun } from "@/mock/runner";
@@ -102,7 +96,9 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
   );
 
   const [scope, setScope] = React.useState<ActionScope>("once");
-  const [alwaysCategory, setAlwaysCategory] = React.useState(false);
+  // When scope is "always", whether the policy covers this failure type or the
+  // whole category (replaces the old separate "always fix category" toggle).
+  const [policyBreadth, setPolicyBreadth] = React.useState<PolicyBreadth>("type");
   const [running, setRunning] = React.useState(false);
   const [result, setResult] = React.useState<FixResult | null>(null);
 
@@ -110,7 +106,7 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
   React.useEffect(() => {
     if (open) {
       setScope("once");
-      setAlwaysCategory(false);
+      setPolicyBreadth("type");
       setRunning(false);
       setResult(null);
     }
@@ -192,11 +188,14 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
           : undefined,
     });
 
-    if (alwaysCategory || scope === "always") {
-      // Create a standing policy that the Policies page reads from the store.
+    if (scope === "always") {
+      // Standing policy. Breadth decides what it covers: "type" → just this
+      // failure mode; "category" → every failure in the category (failureModeId
+      // omitted). One control, one meaning — no separate category toggle.
+      const wholeCategory = policyBreadth === "category";
       usePolicies.getState().addPolicy(
         buildAutomationPolicy({
-          failureModeId: issue.failureModeId,
+          failureModeId: wholeCategory ? undefined : issue.failureModeId,
           category: issue.category,
           actionId: action.id,
           productBucket: issue.productBucket,
@@ -205,7 +204,9 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
       setResult({
         tone: "warning",
         title: "Auto-remediation policy created",
-        detail: `Future "${issue.category}" failures will be fixed automatically. ${outcome.resultSummary} See Automation → Policies.`,
+        detail: wholeCategory
+          ? `Every future "${issue.category}" failure will be fixed automatically. ${outcome.resultSummary} See Automation → Policies.`
+          : `This failure will be fixed automatically going forward. ${outcome.resultSummary} See Automation → Policies.`,
       });
     } else if (outcome.healsAsset) {
       setResult({
@@ -258,49 +259,15 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         </section>
 
         {automatable && !result && (
-          <>
-            <ApplyScopeControl
-              value={scope}
-              onChange={setScope}
-              matchCount={matchCount}
-              disabled={running}
-            />
-
-            <Label
-              htmlFor="fix-always-category"
-              className={cn(
-                "flex items-start justify-between gap-3 rounded-md border border-border bg-surface p-3 transition-colors hover:bg-subtle",
-                alwaysCategory && "border-warning bg-warning-tint",
-              )}
-            >
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="flex items-center gap-1.5 text-sm font-bold text-card-foreground">
-                  {alwaysCategory ? (
-                    <FolderCog
-                      aria-hidden
-                      className="size-3.5 shrink-0 text-warning"
-                    />
-                  ) : (
-                    <Layers
-                      aria-hidden
-                      className="size-3.5 shrink-0 text-muted-foreground"
-                    />
-                  )}
-                  Always fix this category automatically
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Auto-remediate every future {issue.category} failure across the
-                  fleet.
-                </span>
-              </span>
-              <Switch
-                id="fix-always-category"
-                checked={alwaysCategory}
-                onCheckedChange={setAlwaysCategory}
-                disabled={running}
-              />
-            </Label>
-          </>
+          <ApplyScopeControl
+            value={scope}
+            onChange={setScope}
+            matchCount={matchCount}
+            disabled={running}
+            policyBreadth={policyBreadth}
+            onPolicyBreadthChange={setPolicyBreadth}
+            categoryLabel={issue.category}
+          />
         )}
 
         {result &&
@@ -351,7 +318,7 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
               <Button size="sm" onClick={handleConfirm} disabled={running}>
                 <CheckCircle2 aria-hidden className="size-4" />
                 {automatable
-                  ? scope === "always" || alwaysCategory
+                  ? scope === "always"
                     ? "Create policy"
                     : "Confirm fix"
                   : "Open runbook"}

@@ -12,6 +12,7 @@ import type {
   ToolResult,
 } from "@/lib/fix-client";
 import { getAssets, getIssues } from "@/mock/query";
+import { usePolicies } from "@/stores/automation-policies";
 
 // ── Real fixtures so the panel reads like the product ────────────────────────
 const ASSET = getAssets().items[0];
@@ -273,6 +274,7 @@ export const Succeeded: Story = {
     />
   ),
   play: async ({ canvasElement }) => {
+    usePolicies.setState({ policies: [] });
     const canvas = within(canvasElement);
     const start = await canvas.findByRole("button", { name: /start guided/i });
     await userEvent.click(start);
@@ -282,6 +284,65 @@ export const Succeeded: Story = {
     await expect(
       canvas.getByRole("button", { name: /run again/i }),
     ).toBeInTheDocument();
+    // Default scope "once" creates NO standing policy.
+    expect(usePolicies.getState().policies.length).toBe(0);
+  },
+};
+
+/**
+ * AlwaysCreatesPolicy — closes the gap: picking "Always auto-fix" scope before a
+ * successful guided run creates the standing policy (was silently a no-op).
+ */
+export const AlwaysCreatesPolicy: Story = {
+  args: { asset: ASSET, issue: ISSUE, matchCount: 9 },
+  render: (args) => (
+    <GuidedFixPanel
+      {...args}
+      client={
+        new ScriptedClient([
+          { type: "plan", plan: PLAN },
+          {
+            type: "turn",
+            turn: turn({
+              kind: "verification",
+              text: "Next incremental backup completed cleanly.",
+            }),
+          },
+          {
+            type: "done",
+            session: {
+              state: "succeeded",
+              plan: PLAN,
+              result: {
+                healed: true,
+                summary: "OAuth grant reauthorized; the next M365 backup completed.",
+                actionRunIds: [],
+              },
+            } as unknown as FixSession,
+          },
+        ])
+      }
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    usePolicies.setState({ policies: [] });
+    const canvas = within(canvasElement);
+    // Pick "Always auto-fix" BEFORE running.
+    await userEvent.click(
+      canvas.getByRole("radio", { name: /Always auto-fix/i }),
+    );
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /start guided/i }),
+    );
+    await waitFor(() =>
+      expect(canvas.getByText(/reauthorized/i)).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(usePolicies.getState().policies.length).toBe(1),
+    );
+    expect(usePolicies.getState().policies[0].trigger.failureModeId).toBe(
+      ISSUE.failureModeId ?? "",
+    );
   },
 };
 

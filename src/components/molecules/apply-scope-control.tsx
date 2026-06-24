@@ -7,6 +7,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import type { ActionScope } from "@/types";
 
+/** When scope is "always", whether the standing policy covers just this failure
+ *  type or the whole category. */
+export type PolicyBreadth = "type" | "category";
+
 export interface ApplyScopeControlProps {
   /** Selected scope on the once → all → always spine. */
   value: ActionScope;
@@ -16,6 +20,16 @@ export interface ApplyScopeControlProps {
   matchCount?: number;
   /** Disable the whole control (e.g. while a run is executing). */
   disabled?: boolean;
+  /**
+   * Standing-policy breadth, shown ONLY when scope === "always" and a handler is
+   * supplied. Omit both to hide the sub-choice (the policy then covers this
+   * failure type). Replaces the old separate "always fix this category" toggle.
+   */
+  policyBreadth?: PolicyBreadth;
+  onPolicyBreadthChange?: (breadth: PolicyBreadth) => void;
+  /** Labels for the breadth sub-choice copy. */
+  categoryLabel?: string;
+  failureModeLabel?: string;
   className?: string;
 }
 
@@ -47,8 +61,9 @@ const SCOPES: ScopeOption[] = [
   {
     value: "always",
     icon: AlertTriangle,
-    title: "Always fix this type",
-    helper: () => "Creates a standing auto-remediation policy.",
+    title: "Always auto-fix",
+    helper: () =>
+      "Creates a standing policy so this is fixed automatically going forward.",
     warning: true,
   },
 ];
@@ -66,16 +81,22 @@ export function ApplyScopeControl({
   onChange,
   matchCount,
   disabled,
+  policyBreadth = "type",
+  onPolicyBreadthChange,
+  categoryLabel,
+  failureModeLabel,
   className,
 }: ApplyScopeControlProps) {
+  const showBreadth = value === "always" && Boolean(onPolicyBreadthChange);
   return (
-    <RadioGroup
-      value={value}
-      onValueChange={(v) => onChange(v as ActionScope)}
-      disabled={disabled}
-      aria-label="Apply scope"
-      className={cn("gap-2", className)}
-    >
+    <div className={cn("flex flex-col gap-2", className)}>
+      <RadioGroup
+        value={value}
+        onValueChange={(v) => onChange(v as ActionScope)}
+        disabled={disabled}
+        aria-label="Apply scope"
+        className="gap-2"
+      >
       {SCOPES.map((opt) => {
         const selected = value === opt.value;
         const Icon = opt.icon;
@@ -124,6 +145,60 @@ export function ApplyScopeControl({
           </Label>
         );
       })}
-    </RadioGroup>
+      </RadioGroup>
+
+      {/* Breadth sub-choice — appears only after "always" is picked, so the
+          type-vs-category decision is a step, never a second parallel toggle. */}
+      {showBreadth && (
+        <div className="ml-8 flex flex-col gap-1.5">
+          <span className="text-2xs font-bold uppercase tracking-eyebrow text-warning">
+            Policy covers
+          </span>
+          <RadioGroup
+            value={policyBreadth}
+            onValueChange={(v) => onPolicyBreadthChange?.(v as PolicyBreadth)}
+            disabled={disabled}
+            aria-label="Policy breadth"
+            className="gap-1.5"
+          >
+            {(["type", "category"] as PolicyBreadth[]).map((b) => {
+              const selected = policyBreadth === b;
+              const id = `policy-breadth-${b}`;
+              const title =
+                b === "type"
+                  ? "This issue type"
+                  : `Whole ${categoryLabel ?? "category"} category`;
+              const helper =
+                b === "type"
+                  ? failureModeLabel
+                    ? `Just ${failureModeLabel} failures.`
+                    : "Only this specific failure type."
+                  : `Every future ${categoryLabel ?? "category"} failure across the fleet.`;
+              return (
+                <Label
+                  key={b}
+                  htmlFor={id}
+                  className={cn(
+                    "flex cursor-pointer items-start gap-2 rounded-md border border-border bg-surface p-2 transition-colors hover:bg-subtle",
+                    selected && "border-warning bg-warning-tint",
+                    disabled && "cursor-not-allowed opacity-60",
+                  )}
+                >
+                  <RadioGroupItem id={id} value={b} className="mt-0.5" />
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-xs font-bold text-card-foreground">
+                      {title}
+                    </span>
+                    <span className="text-2xs text-muted-foreground">
+                      {helper}
+                    </span>
+                  </div>
+                </Label>
+              );
+            })}
+          </RadioGroup>
+        </div>
+      )}
+    </div>
   );
 }

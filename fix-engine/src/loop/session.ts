@@ -40,6 +40,8 @@ export interface RunDeps {
   clock?: SeededClock;
   /** Optional sink for streaming (server/sim wire this). */
   onTurn?: (turn: FixTranscriptTurn) => void;
+  /** Abort signal — when fired, the loop halts and the in-flight model call is cancelled. */
+  signal?: AbortSignal;
 }
 
 const SYSTEM_PREAMBLE = (mode: string) =>
@@ -204,7 +206,7 @@ export async function runSession(
   deps: RunDeps,
 ): Promise<FixSession> {
   const clock = deps.clock ?? new SeededClock();
-  const { provider, registry } = deps;
+  const { provider, registry, signal } = deps;
   const approve = deps.approve ?? (async () => "approve" as const);
 
   const asset = getAsset(req.assetId);
@@ -212,6 +214,13 @@ export async function runSession(
   const issue = req.issueId ? getIssue(req.issueId) : primaryIssueForAsset(req.assetId);
 
   const budget = { ...DEFAULT_BUDGET[req.mode], ...req.budget };
+  // The loop is a PER-ASSET executor: it diagnoses and fixes req.assetId only.
+  // `scope` is recorded on each run for traceability, but the loop never fans
+  // out — applying a fix across all matching assets / promoting it to an
+  // "always" policy is orchestrated by the app + policy layer (FixModal /
+  // RemediationPanel target every impacted asset; an "always" apply writes an
+  // AutomationPolicy). targetRefs below therefore honestly lists the single
+  // asset the loop acted on, never an unexecuted cohort.
   const scope = req.scope ?? "once";
   const dryRun = req.dryRun ?? false;
 
@@ -262,6 +271,12 @@ export async function runSession(
   const toolSpecs = registry.specs();
 
   while (!TERMINAL_STATES.has(session.state)) {
+    // Operator abort: stop the loop before the next model turn.
+    if (signal?.aborted) {
+      push({ kind: "status", text: "Aborted by operator." });
+      setState("halted");
+      break;
+    }
     const limit = budgeter.exceeded(clock.ms());
     if (limit) {
       push({ kind: "status", text: `Budget exhausted: ${limit}` });
@@ -275,12 +290,15 @@ export async function runSession(
     let text = "";
     const calls: { id: string; name: string; input: unknown }[] = [];
     try {
-      for await (const ev of provider.chat({
-        model: req.model.model,
-        system,
-        messages,
-        tools: toolSpecs,
-      })) {
+      for await (const ev of provider.chat(
+        {
+          model: req.model.model,
+          system,
+          messages,
+          tools: toolSpecs,
+        },
+        signal,
+      )) {
         if (ev.type === "text") text += ev.delta;
         else if (ev.type === "tool_call") calls.push({ id: ev.id, name: ev.name, input: ev.input });
         else if (ev.type === "usage") {

@@ -419,27 +419,16 @@ function DataRow<T>({
     <TableRow
       data-state={selected ? "selected" : undefined}
       aria-selected={selected || undefined}
+      // Row click is a MOUSE convenience only. We deliberately do NOT put
+      // role="button"/tabIndex on the <tr>: the row contains interactive
+      // controls (checkbox, ⋯ menu), and a button must not nest interactive
+      // descendants (axe "nested-interactive"). Keyboard users reach the detail
+      // via the focusable link in the row's primary cell (see column defs).
       onClick={clickable ? () => onRowClick?.(row.original) : undefined}
-      role={clickable ? "button" : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onKeyDown={
-        clickable
-          ? (e) => {
-              // Activate on Enter/Space only when the row itself is focused —
-              // never when a key comes from an inner control (checkbox, ⋯ menu).
-              if (e.target !== e.currentTarget) return;
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onRowClick?.(row.original);
-              }
-            }
-          : undefined
-      }
       className={cn(
         rowHeight,
         "border-0 transition-colors",
-        clickable &&
-          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        clickable && "cursor-pointer",
         selected
           ? "bg-primary-tint hover:bg-primary-tint"
           : "hover:bg-subtle",

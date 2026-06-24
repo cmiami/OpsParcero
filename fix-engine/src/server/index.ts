@@ -191,6 +191,9 @@ app.post("/sessions", async (c) => {
         provider,
         registry: tools,
         clock: new SeededClock(),
+        // POST /sessions/:id/abort fires this controller — now the loop observes
+        // it and cancels the in-flight model call, not just a pending gate.
+        signal: abort.signal,
         // Approval gate over the wire: announce the request, then block on the
         // store's per-session deferred until /approve (or abort) resolves it.
         approve: async (step: FixPlanStep) => {

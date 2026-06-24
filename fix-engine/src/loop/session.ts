@@ -8,7 +8,7 @@
  */
 import type { ChatMessage, ModelProvider } from "../providers/types";
 import type { ToolRegistry } from "../tools/registry";
-import type { ToolContext, ToolResult } from "../tools/types";
+import type { ToolContext } from "../tools/types";
 import type {
   FixSession,
   FixState,

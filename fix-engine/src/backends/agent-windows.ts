@@ -9,7 +9,7 @@
  * owns healing). Same (kind, target, lang, source) ⇒ byte-identical output.
  */
 import type { ProtectedAsset } from "../domain";
-import type { ScriptArtifact, ExecResult, StateDiff } from "../tools/types";
+import type { ExecResult, StateDiff } from "../tools/types";
 import {
   type Backend,
   draw,

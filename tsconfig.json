@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -11,13 +15,21 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "verbatimModuleSyntax": false,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@fix-engine/*": ["./fix-engine/src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@fix-engine/*": [
+        "./fix-engine/src/*"
+      ]
     }
   },
   "include": [
@@ -25,7 +37,12 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".storybook/**/*.ts"
+    ".storybook/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "vitest.config.ts", "fix-engine"]
+  "exclude": [
+    "node_modules",
+    "vitest.config.ts",
+    "fix-engine"
+  ]
 }

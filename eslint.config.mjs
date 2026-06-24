@@ -1,21 +1,27 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+// Native flat config (ESLint 10 + eslint-config-next 16). The old FlatCompat
+// bridge breaks under ESLint 10, so we spread eslint-config-next's flat arrays
+// directly — no @eslint/eslintrc.
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import nextTypeScript from "eslint-config-next/typescript";
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...nextCoreWebVitals,
+  ...nextTypeScript,
   {
     ignores: [
       "node_modules/**",
+      "**/node_modules/**",
       ".next/**",
+      "out/**",
+      "coverage/**",
       "storybook-static/**",
+      "fix-engine/**", // separate Node package — covered by its own tsc + tests
+      // Vendored agent/skill script mirrors — not our source.
+      ".agents/**",
+      ".claude/**",
+      ".codex/**",
+      ".cursor/**",
+      ".windsurf/**",
       "!.storybook",
     ],
   },
@@ -27,6 +33,15 @@ const eslintConfig = [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      // React-Compiler-era rules (react-hooks v6, new in eslint-config-next 16):
+      // advisory for this existing codebase — they flag INTENTIONAL patterns
+      // here (SSR hydration gates, controlled resets, the TanStack Table store).
+      // The classic hooks rules (rules-of-hooks, exhaustive-deps) stay enforced;
+      // adopting React Compiler is a separate, dedicated pass.
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/incompatible-library": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/static-components": "off",
     },
   },
   // M1 — tokens only. Ban hardcoded colors, arbitrary z-index, arbitrary font

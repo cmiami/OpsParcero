@@ -26,11 +26,6 @@ export default function ConsoleLayout({
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const active = activeNavItem(pathname);
 
-  // Close the mobile drawer whenever the route changes.
-  React.useEffect(() => {
-    setMobileNavOpen(false);
-  }, [pathname]);
-
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
@@ -61,7 +56,15 @@ export default function ConsoleLayout({
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-60 p-0 md:hidden">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <AppSidebar activeHref={active?.href ?? pathname} className="w-full" />
+          {/* Close the drawer when a nav link is tapped (no setState-in-effect). */}
+          <div
+            className="h-full"
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("a")) setMobileNavOpen(false);
+            }}
+          >
+            <AppSidebar activeHref={active?.href ?? pathname} className="w-full" />
+          </div>
         </SheetContent>
       </Sheet>
       <div className="flex min-w-0 flex-1 flex-col">

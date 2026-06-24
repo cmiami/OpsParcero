@@ -28,7 +28,6 @@ import type {
 } from "openai/resources/chat/completions";
 import type {
   ChatEvent,
-  ChatMessage,
   ChatRequest,
   ChatStopReason,
   ModelInfo,

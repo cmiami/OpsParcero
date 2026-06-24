@@ -54,7 +54,7 @@ function parsePlan(system: string): PlannedCall[] {
 }
 
 /** Narrate the phase for a planned call (deterministic, plausible). */
-function narration(call: PlannedCall, idx: number, total: number): string {
+function narration(call: PlannedCall, idx: number, _total: number): string {
   switch (call.phase) {
     case "triage":
       return idx === 0

@@ -58,3 +58,25 @@ export const BulkSelect: Story = {
     await waitFor(() => expect(args.onTriage).toHaveBeenCalled());
   },
 };
+
+/**
+ * BulkFixFires — regression gate for the "Fix" verb specifically: it must call
+ * onTriage("fix", alert) so the page/asset-view can open the real GuidedFixPanel.
+ * Previously both call sites omitted onTriage, so Fix did nothing.
+ */
+export const BulkFixFires: Story = {
+  args: { alerts: alerts.slice(0, 5) },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("checkbox", { name: /Select all alerts/i }),
+    );
+    const toolbar = await canvas.findByRole("toolbar", {
+      name: /Bulk triage actions/i,
+    });
+    await userEvent.click(within(toolbar).getByRole("button", { name: /^Fix$/i }));
+    await waitFor(() =>
+      expect(args.onTriage).toHaveBeenCalledWith("fix", expect.anything()),
+    );
+  },
+};

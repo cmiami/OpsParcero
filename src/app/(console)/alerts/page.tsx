@@ -1,5 +1,5 @@
-import { AlertTriageList } from "@/components/organisms/triage/alert-triage-list";
 import { PageShell } from "@/components/templates/page-shell";
+import { AlertsView } from "./alerts-view";
 
 export const metadata = { title: "Alerts · Kaseya Resolution Center" };
 
@@ -10,7 +10,7 @@ export default function AlertsPage() {
       title="Alerts"
       description="Deduped and grouped by root cause — cosmetic noise sorts below real failures."
     >
-      <AlertTriageList groupBy="category" />
+      <AlertsView />
     </PageShell>
   );
 }

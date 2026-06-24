@@ -342,7 +342,7 @@ export function AiFixConsole({
           <div className="flex flex-col gap-4">
             {issue?.aiInsight && <AiInsightCard insight={issue.aiInsight} />}
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Model
               </span>
               {selectedModel && (
@@ -557,7 +557,7 @@ function EscalationPanel({
       </div>
 
       <div className="flex flex-col gap-2 rounded-md bg-surface p-3">
-        <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+        <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
           What I tried
         </span>
         {attempts.length > 0 ? (

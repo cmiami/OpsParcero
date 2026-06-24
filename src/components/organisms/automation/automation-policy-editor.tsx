@@ -115,7 +115,7 @@ export function AutomationPolicyEditor({
 
         {/* Trigger */}
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+          <legend className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
             Trigger
           </legend>
           <RadioGroup
@@ -159,7 +159,7 @@ export function AutomationPolicyEditor({
 
         {/* Match filter + live count */}
         <div className="flex flex-col gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+          <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
             Match filter (dynamic)
           </span>
           <p className="text-xs text-muted-foreground">
@@ -202,7 +202,7 @@ export function AutomationPolicyEditor({
 
         {/* Gating */}
         <div className="flex flex-col gap-3">
-          <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+          <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
             Gating
           </span>
           <div className="flex items-center justify-between gap-3">
@@ -274,7 +274,7 @@ export function AutomationPolicyEditor({
       {/* Stats + kill-switch rail */}
       <aside className="flex h-fit flex-col gap-4 rounded-lg border border-border bg-card p-4">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+          <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
             Stats & kill-switch
           </span>
           <span

@@ -263,7 +263,7 @@ export function RemediationPanel({
               <Zap aria-hidden className="size-4 text-primary" />
             </span>
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Suggested fix
               </span>
               <span className="text-sm font-bold text-card-foreground">
@@ -313,7 +313,7 @@ export function RemediationPanel({
 
       {/* Scope */}
       <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+        <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
           Apply scope
         </span>
         <ApplyScopeControl

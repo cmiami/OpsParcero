@@ -75,7 +75,7 @@ export function KpiTile({
 
   return (
     <div className={cn("rounded-lg border border-border bg-card p-4", className)}>
-      <p className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+      <p className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
         {label}
       </p>
 

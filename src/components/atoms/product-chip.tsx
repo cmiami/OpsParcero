@@ -27,7 +27,7 @@ export function ProductChip({ bucket, size = "md", className }: ProductChipProps
       className={cn(
         "inline-flex items-center rounded-full border border-border bg-surface font-bold",
         meta.textClass,
-        sm ? "gap-1 px-2 py-0.5 text-[10px]" : "gap-1.5 px-2.5 py-0.5 text-xs",
+        sm ? "gap-1 px-2 py-0.5 text-2xs" : "gap-1.5 px-2.5 py-0.5 text-xs",
         className,
       )}
     >

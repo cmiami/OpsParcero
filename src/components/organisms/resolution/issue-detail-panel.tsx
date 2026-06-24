@@ -51,7 +51,7 @@ export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
     >
       {/* Problem — plain language */}
       <section className="flex flex-col gap-1.5">
-        <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+        <h3 className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
           <FileText aria-hidden className="size-3.5 shrink-0" />
           What&apos;s wrong
         </h3>
@@ -63,7 +63,7 @@ export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
 
       {/* We / You runbook */}
       <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+        <h3 className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
           <Wrench aria-hidden className="size-3.5 shrink-0" />
           How it gets fixed
         </h3>

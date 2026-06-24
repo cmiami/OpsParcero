@@ -108,16 +108,16 @@ export function CategoryGroup({
 
         {/* Roll-up badges */}
         <span className="flex shrink-0 items-center gap-2">
-          <span className="rounded-full border border-border bg-subtle px-2 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground">
+          <span className="rounded-full border border-border bg-subtle px-2 py-0.5 text-2xs font-bold tabular-nums text-muted-foreground">
             {group.totalIssues} {group.totalIssues === 1 ? "issue" : "issues"}
           </span>
           {group.endToEndFixable > 0 && (
-            <span className="rounded-full bg-fix-endtoend-tint px-2 py-0.5 text-[10px] font-bold tabular-nums text-fix-endtoend">
+            <span className="rounded-full bg-fix-endtoend-tint px-2 py-0.5 text-2xs font-bold tabular-nums text-fix-endtoend">
               {group.endToEndFixable} end-to-end
             </span>
           )}
           {group.criticalCount > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-critical-tint px-2 py-0.5 text-[10px] font-bold tabular-nums text-critical">
+            <span className="inline-flex items-center gap-1 rounded-full bg-critical-tint px-2 py-0.5 text-2xs font-bold tabular-nums text-critical">
               <OctagonAlert aria-hidden className="size-3 shrink-0" />
               {group.criticalCount} critical
             </span>

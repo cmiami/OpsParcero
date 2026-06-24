@@ -129,7 +129,7 @@ export function FleetRollup({ stats, size = "md", className }: FleetRollupProps)
           <span className="font-display text-2xl font-bold tabular-nums leading-none text-foreground">
             {total}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+          <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
             assets
           </span>
         </div>
@@ -137,7 +137,7 @@ export function FleetRollup({ stats, size = "md", className }: FleetRollupProps)
 
       <div className="flex min-w-0 flex-col gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+          <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
             Fleet status
           </span>
           <StatusBadge state={worst} size="sm" />

@@ -30,7 +30,7 @@ export const Default: Story = {
   render: () => (
     <ScrollArea className="h-56 w-72 rounded-lg border border-border bg-card">
       <div className="p-3">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+        <p className="mb-2 text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
           Recovery points · SIRIS-NYC-01
         </p>
         <ul className="flex flex-col">

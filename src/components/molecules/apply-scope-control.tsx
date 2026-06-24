@@ -106,7 +106,7 @@ export function ApplyScopeControl({
                 />
                 {opt.title}
                 {isAll && matchCount != null && (
-                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold leading-none text-primary-foreground">
+                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-2xs font-bold leading-none text-primary-foreground">
                     {matchCount}
                   </span>
                 )}

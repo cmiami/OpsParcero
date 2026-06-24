@@ -308,7 +308,7 @@ export function DataTable<T>({
                       key={header.id}
                       aria-sort={canSort ? aria : undefined}
                       className={cn(
-                        "h-9 border-b border-border bg-subtle text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground",
+                        "h-9 border-b border-border bg-subtle text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground",
                         cellPad,
                         meta?.numeric && "text-right",
                         stickyClass(header.column.id, true),
@@ -319,7 +319,7 @@ export function DataTable<T>({
                           type="button"
                           onClick={header.column.getToggleSortingHandler()}
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-sm uppercase tracking-[0.07em] transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "inline-flex items-center gap-1 rounded-sm uppercase tracking-eyebrow transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             meta?.numeric && "flex-row-reverse",
                           )}
                         >

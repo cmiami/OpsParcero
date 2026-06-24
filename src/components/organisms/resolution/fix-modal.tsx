@@ -209,7 +209,7 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
           aria-label="What will happen"
           className="flex flex-col gap-2 rounded-md border border-border bg-subtle p-3"
         >
-          <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+          <h3 className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
             <ListChecks aria-hidden className="size-3.5 shrink-0" />
             What will happen
           </h3>

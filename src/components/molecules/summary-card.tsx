@@ -52,7 +52,7 @@ export function SummaryCard({
       <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            "text-[10px] font-bold uppercase tracking-[0.07em]",
+            "text-2xs font-bold uppercase tracking-eyebrow",
             t.label,
           )}
         >

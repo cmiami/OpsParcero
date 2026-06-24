@@ -128,7 +128,7 @@ export function ActionCart({ inline, className }: ActionCartProps) {
           <div className="flex flex-col gap-4 px-1 py-1">
             {/* Targets */}
             <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Targets
               </span>
               {targets.length === 0 ? (
@@ -152,7 +152,7 @@ export function ActionCart({ inline, className }: ActionCartProps) {
 
             {/* Steps */}
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Steps ({steps.length})
               </span>
               {steps.map((s, i) => (
@@ -178,7 +178,7 @@ export function ActionCart({ inline, className }: ActionCartProps) {
 
             {/* Default scope */}
             <div className="flex flex-col gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Default apply scope
               </span>
               <ApplyScopeControl
@@ -264,7 +264,7 @@ export function ActionCart({ inline, className }: ActionCartProps) {
           <ShoppingCart aria-hidden className="size-4" />
           Action cart
           {ready && (
-            <span className="ml-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+            <span className="ml-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-2xs font-bold leading-none text-primary-foreground">
               {steps.length}
             </span>
           )}

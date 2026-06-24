@@ -148,7 +148,7 @@ export function TopBar({
         >
           <ScanLine className="size-4" aria-hidden />
           <span>Search…</span>
-          <kbd className="rounded-sm border border-topbar-foreground/30 px-1.5 py-0.5 font-mono text-[10px] font-bold">
+          <kbd className="rounded-sm border border-topbar-foreground/30 px-1.5 py-0.5 font-mono text-2xs font-bold">
             f
           </kbd>
         </button>
@@ -184,7 +184,7 @@ export function TopBar({
         >
           <Bell className="size-5" aria-hidden />
           {hasUnread && (
-            <span className="absolute right-1 top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-critical px-1 text-[10px] font-bold tabular-nums leading-none text-critical-foreground">
+            <span className="absolute right-1 top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-critical px-1 text-2xs font-bold tabular-nums leading-none text-critical-foreground">
               {notificationCount}
             </span>
           )}

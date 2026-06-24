@@ -130,7 +130,7 @@ export function ImpactedAssetsPanel({
           <div className="flex flex-col gap-5 p-5">
             {groups.map(([group, rows]) => (
               <section key={group} className="flex flex-col gap-1">
-                <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+                <h3 className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                   <Layers aria-hidden className="size-3.5 shrink-0" />
                   {group}
                   <span className="ml-1 tabular-nums text-muted-foreground">

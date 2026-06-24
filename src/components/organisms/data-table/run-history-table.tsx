@@ -182,7 +182,7 @@ const COLUMNS: ColumnDef<RunRow>[] = [
     meta: { label: "Scope" },
     cell: ({ row }) =>
       row.original.scope ? (
-        <span className="inline-flex items-center rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
+        <span className="inline-flex items-center rounded-full border border-border bg-surface px-2 py-0.5 text-2xs font-bold uppercase tracking-eyebrow text-muted-foreground">
           {SCOPE_LABEL[row.original.scope]}
         </span>
       ) : null,

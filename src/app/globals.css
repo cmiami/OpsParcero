@@ -228,6 +228,11 @@
     system-ui, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
 
+  /* type scale extensions (DESIGN.md) — micro-label / eyebrow style, tokenized
+     so it is never expressed as arbitrary text-2xs / tracking-eyebrow (M1). */
+  --text-2xs: 10px;
+  --tracking-eyebrow: 0.07em;
+
   /* radius scale (DESIGN.md) */
   --radius-sm: 4px;
   --radius-md: 6px;

@@ -71,7 +71,7 @@ export function ApprovalQueue({
       <h3 className="flex items-center gap-1.5 text-base font-bold text-card-foreground">
         <Inbox aria-hidden className="size-4 shrink-0 text-primary" />
         Approval queue
-        <span className="rounded-full bg-warning-tint px-1.5 py-0.5 text-[10px] font-bold text-warning tabular-nums">
+        <span className="rounded-full bg-warning-tint px-1.5 py-0.5 text-2xs font-bold text-warning tabular-nums">
           {requests.filter((r) => r.state === "pending").length} pending
         </span>
       </h3>

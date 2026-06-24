@@ -29,11 +29,13 @@ const eslintConfig = [
       ],
     },
   },
-  // M1 — tokens only. Ban hardcoded colors + arbitrary z-index in component/page
-  // code. Colors/z come from design tokens (CSS vars in globals.css) surfaced as
-  // semantic Tailwind classes — never a hex/rgb/hsl literal or a `*-[#…]`/`z-[…]`
-  // arbitrary value. Story docs are exempt (a Foundations swatch may print a hex
-  // value as documentation); globals.css is the token source and isn't linted here.
+  // M1 — tokens only. Ban hardcoded colors, arbitrary z-index, arbitrary font
+  // sizes / letter-spacing, and px spacing/radius in component/page code. These
+  // all come from design tokens (CSS vars in globals.css / the Tailwind scale)
+  // surfaced as semantic classes — never a hex/rgb/hsl literal, `z-[…]`,
+  // `text-[10px]`, `tracking-[…]`, or `p-[13px]`/`rounded-[7px]`. Story docs are
+  // exempt (a Foundations swatch may print a value as documentation); globals.css
+  // is the token source and isn't linted here.
   {
     files: ["src/components/**/*.{ts,tsx}", "src/app/**/*.{ts,tsx}"],
     ignores: ["**/*.stories.tsx"],
@@ -64,6 +66,38 @@ const eslintConfig = [
           selector: "TemplateElement[value.raw=/z-\\[/]",
           message:
             "M1: no arbitrary z-index (z-[…]). Add a token / use a semantic z-index class.",
+        },
+        {
+          selector: "Literal[value=/\\btext-\\[[0-9.]+px\\]/]",
+          message:
+            "M1: no arbitrary font sizes (e.g. text-[10px]). Use a type-scale token (text-2xs … text-xl).",
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\btext-\\[[0-9.]+px\\]/]",
+          message:
+            "M1: no arbitrary font sizes (e.g. text-[10px]). Use a type-scale token (text-2xs … text-xl).",
+        },
+        {
+          selector: "Literal[value=/\\btracking-\\[/]",
+          message:
+            "M1: no arbitrary letter-spacing (tracking-[…]). Use tracking-tight / tracking-eyebrow.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\btracking-\\[/]",
+          message:
+            "M1: no arbitrary letter-spacing (tracking-[…]). Use tracking-tight / tracking-eyebrow.",
+        },
+        {
+          selector:
+            "Literal[value=/\\b(p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y|rounded[a-z-]*)-\\[[0-9.]+px\\]/]",
+          message:
+            "M1: no arbitrary px spacing/radius (e.g. p-[13px], rounded-[7px]). Use the spacing/radius scale.",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/\\b(p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y|rounded[a-z-]*)-\\[[0-9.]+px\\]/]",
+          message:
+            "M1: no arbitrary px spacing/radius (e.g. p-[13px], rounded-[7px]). Use the spacing/radius scale.",
         },
       ],
     },

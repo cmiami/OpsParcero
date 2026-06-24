@@ -52,7 +52,7 @@ export function SearchField({
       {shortcut && (
         <kbd
           aria-hidden
-          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold text-muted-foreground"
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-2xs font-bold text-muted-foreground"
         >
           {shortcut}
         </kbd>

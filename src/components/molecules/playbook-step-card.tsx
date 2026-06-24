@@ -83,13 +83,13 @@ export function PlaybookStepCard({
         <span className="flex items-center gap-2 truncate text-sm font-bold text-card-foreground">
           {label}
           {isErrorStep && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning-tint px-1.5 py-0.5 text-[10px] font-bold text-warning">
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning-tint px-1.5 py-0.5 text-2xs font-bold text-warning">
               <ShieldAlert aria-hidden className="size-3 shrink-0" />
               On failure
             </span>
           )}
           {isGated && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-critical-tint px-1.5 py-0.5 text-[10px] font-bold text-critical">
+            <span className="inline-flex items-center gap-1 rounded-full bg-critical-tint px-1.5 py-0.5 text-2xs font-bold text-critical">
               <ShieldAlert aria-hidden className="size-3 shrink-0" />
               Halts on error
             </span>

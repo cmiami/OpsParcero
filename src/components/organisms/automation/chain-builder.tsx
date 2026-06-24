@@ -203,7 +203,7 @@ export function ChainBuilder({
 
       {/* Scope + save */}
       <div className="flex flex-col gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+        <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
           Default apply scope
         </span>
         <ApplyScopeControl value={scope} onChange={setScope} />
@@ -212,7 +212,7 @@ export function ChainBuilder({
       <div className="flex flex-col gap-2">
         <label
           htmlFor="chain-name"
-          className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground"
+          className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground"
         >
           Playbook name
         </label>

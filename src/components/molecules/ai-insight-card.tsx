@@ -40,7 +40,7 @@ export function AiInsightCard({ insight, className }: AiInsightCardProps) {
             aria-hidden
             className="row-span-2 mt-0.5 size-3.5 shrink-0 text-ai"
           />
-          <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
+          <dt className="text-2xs font-bold uppercase tracking-eyebrow text-ai">
             Root cause
           </dt>
           <dd className="min-w-0 text-sm text-card-foreground">
@@ -53,7 +53,7 @@ export function AiInsightCard({ insight, className }: AiInsightCardProps) {
             aria-hidden
             className="row-span-2 mt-0.5 size-3.5 shrink-0 text-ai"
           />
-          <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ai">
+          <dt className="text-2xs font-bold uppercase tracking-eyebrow text-ai">
             Recommendation
           </dt>
           <dd className="min-w-0 text-sm text-card-foreground">

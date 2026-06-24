@@ -118,7 +118,7 @@ export function AppSidebar({
             <span className="font-display text-sm font-bold tracking-tight">
               Kaseya
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+            <span className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
               Cyber Resilience
             </span>
           </span>
@@ -208,7 +208,7 @@ export function AppSidebar({
         {NAV.map((section) => (
           <div key={section.id} className="mb-2">
             {!collapsed && (
-              <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <p className="px-3 pb-1 pt-2 text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 {section.label}
               </p>
             )}
@@ -302,7 +302,7 @@ function NavRow({
         </span>
       ) : null}
       {!collapsed && countBadge != null ? (
-        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary-foreground">
+        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-2xs font-bold tabular-nums text-primary-foreground">
           {countBadge}
         </span>
       ) : null}

@@ -186,7 +186,7 @@ export function AlertTriageList({
         {groups.map((group) => (
           <div key={group.key}>
             {groupBy === "category" && (
-              <div className="sticky top-0 z-10 border-b border-border bg-subtle px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <div className="sticky top-0 z-10 border-b border-border bg-subtle px-3 py-1.5 text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 {group.label} ({group.items.length})
               </div>
             )}

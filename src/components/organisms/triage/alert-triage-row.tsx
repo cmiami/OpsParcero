@@ -107,7 +107,7 @@ export function AlertTriageRow({
         <span className="flex items-center gap-2 truncate text-sm font-bold text-card-foreground">
           {alert.title}
           {alert.isCosmetic && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-2xs font-bold text-muted-foreground">
               <Lightbulb aria-hidden className="size-3 shrink-0" />
               Cosmetic
             </span>

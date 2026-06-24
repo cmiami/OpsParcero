@@ -80,19 +80,19 @@ function ModelOptionRow({
           {model.label}
         </span>
         {model.local && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-success-tint px-1.5 py-0.5 text-[10px] font-bold leading-none text-success">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success-tint px-1.5 py-0.5 text-2xs font-bold leading-none text-success">
             <HardDriveDownload aria-hidden className="size-2.5 shrink-0" />
             Local
           </span>
         )}
         {unavailable && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold leading-none text-muted-foreground">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-2xs font-bold leading-none text-muted-foreground">
             <CircleSlash aria-hidden className="size-2.5 shrink-0" />
             Unavailable
           </span>
         )}
       </span>
-      <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+      <span className="flex items-center gap-2 text-2xs text-muted-foreground">
         <span className="inline-flex items-center gap-1">
           <Gauge aria-hidden className="size-3 shrink-0" />
           {formatContext(model.contextWindow)}
@@ -160,7 +160,7 @@ function SingleModelSelect({
                   {selected.label}
                 </span>
                 {selected.local && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-success-tint px-1.5 py-0.5 text-[10px] font-bold leading-none text-success">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success-tint px-1.5 py-0.5 text-2xs font-bold leading-none text-success">
                     <HardDriveDownload aria-hidden className="size-2.5" />
                     Local
                   </span>
@@ -252,7 +252,7 @@ export function ModelPicker({
         />
       )}
       {split && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-2xs text-muted-foreground">
           A cheaper or local model can triage and verify while a stronger model
           plans the remediation.
         </p>

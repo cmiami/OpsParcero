@@ -113,7 +113,7 @@ export function OutageBanner({ incident, onOpen, className }: OutageBannerProps)
 
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex flex-col gap-0.5">
-              <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <dt className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Scope
               </dt>
               <dd className="font-bold text-card-foreground capitalize">
@@ -121,7 +121,7 @@ export function OutageBanner({ incident, onOpen, className }: OutageBannerProps)
               </dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <dt className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Correlated alerts
               </dt>
               <dd className="font-bold text-card-foreground">
@@ -129,7 +129,7 @@ export function OutageBanner({ incident, onOpen, className }: OutageBannerProps)
               </dd>
             </div>
             <div className="flex flex-col gap-0.5">
-              <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+              <dt className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                 Started
               </dt>
               <dd className="font-bold text-card-foreground">
@@ -138,7 +138,7 @@ export function OutageBanner({ incident, onOpen, className }: OutageBannerProps)
             </div>
             {incident.vendorStatusRef && (
               <div className="flex flex-col gap-0.5">
-                <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-faint-foreground">
+                <dt className="text-2xs font-bold uppercase tracking-eyebrow text-faint-foreground">
                   Status reference
                 </dt>
                 <dd className="font-mono text-xs text-card-foreground">

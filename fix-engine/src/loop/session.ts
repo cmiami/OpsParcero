@@ -8,7 +8,7 @@
  */
 import type { ChatMessage, ModelProvider } from "../providers/types";
 import type { ToolRegistry } from "../tools/registry";
-import type { ToolContext } from "../tools/types";
+import type { ToolContext, ToolResult } from "../tools/types";
 import type {
   FixSession,
   FixState,
@@ -70,6 +70,28 @@ interface PlannedCall {
   phase: "triage" | "remediate" | "verify";
   toolName: string;
   input: Record<string, unknown>;
+}
+
+/**
+ * Run a tool handler so a thrown error becomes a redacted FAILED ToolResult the
+ * loop already records (result.ok === false → run "failed"), instead of escaping
+ * runSession to the server's terminal catch — where its message, possibly echoing
+ * a raw auth header / connection string, would be emitted. The success path is
+ * untouched, so this only adds behaviour on the (otherwise-unhandled) throw path.
+ */
+async function runHandlerSafely(
+  fn: () => Promise<ToolResult>,
+  what: string,
+): Promise<ToolResult> {
+  try {
+    return await fn();
+  } catch (e) {
+    return {
+      ok: false,
+      summary: `${what} failed`,
+      output: redact((e as Error)?.message ?? String(e)),
+    };
+  }
 }
 
 /** Supply valid default inputs for tools whose inputSchema marks fields required. */
@@ -373,7 +395,7 @@ export async function runSession(
       const ctx: ToolContext = { asset, issue, dryRun, scope, emit: () => {} };
 
       if (isRead) {
-        const result = await handler.run(call.input, ctx);
+        const result = await runHandlerSafely(() => handler.run(call.input, ctx), call.name);
         push({ kind: "tool_result", toolResult: result });
         messages.push({ role: "tool", toolCallId: call.id, name: call.name, content: redact(result.output) });
         continue;
@@ -382,7 +404,10 @@ export async function runSession(
       // ── Write tool ──
       // 1) PREVIEW (dry-run) first so the diff / blast-radius is on the record
       //    BEFORE any approval decision (approvers approve evidence, not intent).
-      const preview = await handler.preview(call.input, { ...ctx, dryRun: true });
+      const preview = await runHandlerSafely(
+        () => handler.preview(call.input, { ...ctx, dryRun: true }),
+        call.name,
+      );
       push({ kind: "observation", text: `Dry-run preview: ${preview.summary}`, toolResult: preview });
 
       // 2) Gate AFTER the preview. Destructive + over-threshold + guided "you"
@@ -419,7 +444,9 @@ export async function runSession(
       // 3) Execute — UNLESS this is a dry-run session (then the preview IS the
       //    result and nothing is mutated/healed).
       anyWrite = true;
-      const result = dryRun ? preview : await handler.run(call.input, ctx);
+      const result = dryRun
+        ? preview
+        : await runHandlerSafely(() => handler.run(call.input, ctx), call.name);
       if (!dryRun && result.healed) healed = true;
 
       const auditId = mk("aud");

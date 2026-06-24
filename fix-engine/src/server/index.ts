@@ -39,6 +39,7 @@ import { defaultProviderRegistry } from "../providers/registry";
 import { defaultRegistry } from "../tools/registry";
 import { SeededClock } from "../shared/clock";
 import { getAsset } from "../shared/fleet";
+import { redactTurn } from "../shared/redact";
 import type { ProviderId } from "../providers/types";
 import type {
   FixMode,
@@ -231,13 +232,16 @@ app.post("/sessions", async (c) => {
         state: "halted",
         finishedAt: new Date().toISOString(),
       };
+      // This turn is built OUTSIDE the loop's redacting push(), so an SDK/backend
+      // error message echoing a raw auth header / connection string would leak to
+      // the SSE stream and persisted events. Route it through redactTurn here.
       store.emit(sessionId, {
         type: "turn",
-        turn: {
+        turn: redactTurn({
           at: new Date().toISOString(),
           kind: "status",
           text: `Server error running session: ${(err as Error).message}`,
-        },
+        }),
       });
       store.emit(sessionId, { type: "done", session: snapshot });
     } finally {

@@ -21,6 +21,8 @@ allowBuilds:
   protobufjs: true # google protobuf codegen
   "@google/genai": true # gemini sdk (protobuf-backed)
 
-# Strict, reproducible resolution.
+# Strict, reproducible resolution + integrity verification before scripts run.
 autoInstallPeers: true
 dedupePeerDependents: true
+verifyDepsBeforeRun: true
+preferFrozenLockfile: true

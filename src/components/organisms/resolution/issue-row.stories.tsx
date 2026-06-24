@@ -101,6 +101,9 @@ export const GuidedFixOpensPanel: Story = {
   args: { issue: partial },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // "Guided fix" appears exactly ONCE — as the clickable button, not also as a
+    // redundant non-interactive classification tag.
+    expect(canvas.getAllByText(/^Guided fix$/i)).toHaveLength(1);
     await userEvent.click(canvas.getByRole("button", { name: /^Guided fix$/i }));
     const body = within(document.body);
     await waitFor(() => expect(body.getByRole("dialog")).toBeInTheDocument());
@@ -119,7 +122,9 @@ export const EndToEndOpensModal: Story = {
   args: { issue: full },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: /^Fix$/i }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: /^End-to-end fix$/i }),
+    );
     const body = within(document.body);
     await waitFor(() => expect(body.getByRole("dialog")).toBeInTheDocument());
     await expect(

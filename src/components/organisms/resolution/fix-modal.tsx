@@ -12,7 +12,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import {
   ApplyScopeControl,
   type PolicyBreadth,
@@ -247,14 +246,11 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
             <ListChecks aria-hidden className="size-3.5 shrink-0" />
             What will happen
           </h3>
-          <div className="flex items-center gap-2">
-            <FixTypeBadge type={issue.fixType} size="sm" />
-            <span className="text-sm text-card-foreground">
-              {action ? action.label : "Diagnostic runbook"} on{" "}
-              <span className="font-bold tabular-nums">{matchCount}</span>{" "}
-              {matchCount === 1 ? "asset" : "assets"}.
-            </span>
-          </div>
+          <p className="text-sm text-card-foreground">
+            {action ? action.label : "Diagnostic runbook"} on{" "}
+            <span className="font-bold tabular-nums">{matchCount}</span>{" "}
+            {matchCount === 1 ? "asset" : "assets"}.
+          </p>
           <p className="text-xs text-muted-foreground">{issue.problem}</p>
         </section>
 

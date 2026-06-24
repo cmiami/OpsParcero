@@ -40,3 +40,10 @@ tmp/
 .impeccable/cache/
 .impeccable/*.log
 .impeccable/hook.cache.json
+
+# scratch driver scripts (never commit)
+/drive-*.mjs
+/cap.mjs
+/probe.mjs
+/scratch-*.mjs
+/scratch-*.mts

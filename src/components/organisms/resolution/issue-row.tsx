@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { MonoLabel } from "@/components/atoms/mono-label";
 import { ProductChip } from "@/components/atoms/product-chip";
 import { SeverityBadge } from "@/components/atoms/severity-badge";
-import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { OccurrenceCount } from "@/components/atoms/occurrence-count";
 import { AiButton } from "@/components/atoms/ai-badge";
 import { Sparkles, Wrench } from "lucide-react";
@@ -67,16 +66,17 @@ export function IssueRow({
 
   const fix = FIX_META[issue.fixType];
   const automatable = issue.fixType === "full" || issue.fixType === "partial";
-  // The primary button's LABEL matches the classification and OPENS what it names:
-  // Guided fix → the streaming GuidedFixPanel; End-to-end → the FixModal confirm;
-  // Insights → the runbook. So "Guided fix" is a real clickable action, not a
-  // badge sitting in a confirm dialog.
+  // The primary button is the SINGLE fix affordance: its icon + label carry the
+  // classification (so no separate, non-clickable "Guided fix" tag), and it opens
+  // what it names — Guided fix → the streaming GuidedFixPanel; End-to-end → the
+  // FixModal confirm; Insights → the runbook.
   const opensGuidedPanel = issue.fixType === "partial" && Boolean(focusAsset);
-  const fixLabel = opensGuidedPanel
-    ? "Guided fix"
-    : automatable
-      ? "Fix"
-      : "Runbook";
+  const fixLabel =
+    issue.fixType === "full"
+      ? "End-to-end fix"
+      : issue.fixType === "partial"
+        ? "Guided fix"
+        : "Runbook";
   const onPrimaryFix = () =>
     opensGuidedPanel ? setGuidedOpen(true) : setFixOpen(true);
   const detailId = `issue-detail-${issue.id}`;
@@ -130,7 +130,6 @@ export function IssueRow({
             count={issue.impactedAssetIds.length}
             onClick={() => setImpactOpen(true)}
           />
-          <FixTypeBadge type={issue.fixType} size="sm" />
         </div>
 
         {/* Actions */}

@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { AiButton } from "@/components/atoms/ai-badge";
 import { WeYouSteps } from "@/components/molecules/we-you-steps";
 import { AiInsightCard } from "@/components/molecules/ai-insight-card";
@@ -99,16 +98,16 @@ export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
 
       <Separator />
 
-      {/* Fix CTA row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <FixTypeBadge type={issue.fixType} size="sm" />
-        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setImpactOpen(true)}
-          >
+      {/* Fix CTA row — the CTA button itself names the classification
+          ("End-to-end fix all" / "Run guided fix" / "View runbook"), so no
+          separate (non-clickable) fix-type tag. */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setImpactOpen(true)}
+        >
             <Users aria-hidden className="size-4" />
             View {issue.impactedAssetIds.length} impacted
           </Button>
@@ -128,7 +127,6 @@ export function IssueDetailPanel({ issue, className }: IssueDetailPanelProps) {
             <fix.icon aria-hidden className="size-4" />
             {ctaLabel}
           </Button>
-        </div>
       </div>
 
       <FixModal issue={issue} open={fixOpen} onOpenChange={setFixOpen} />

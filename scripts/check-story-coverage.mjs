@@ -15,6 +15,11 @@
 import { readdirSync, existsSync, statSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  hasProps,
+  isInteractive,
+  isPrimitiveComponent,
+} from "./story-coverage-detect.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const componentsDir = join(root, "src", "components");
@@ -42,26 +47,6 @@ function walk(dir) {
     }
   }
   return files;
-}
-
-/** Does the component declare props (so the story must document them via argTypes)? */
-function hasProps(src) {
-  return (
-    /(interface|type)\s+\w*Props\b/.test(src) ||
-    // A component whose only export takes a typed `{ ... }: SomeProps` param.
-    /:\s*\w*Props\b/.test(src)
-  );
-}
-
-/** Is the component interactive (so the story must exercise it with a play fn)? */
-function isInteractive(src) {
-  return (
-    /\bon[A-Z]\w*\s*[?:]/.test(src) || // a handler PROP is declared
-    /\b(useState|useReducer)\b/.test(src) || // owns interactive state
-    /\son(Click|Change|Select|ValueChange|CheckedChange|OpenChange|Submit)=/.test(
-      src,
-    ) // binds a handler in JSX
-  );
 }
 
 function storyFacets(storyPath) {
@@ -96,8 +81,13 @@ for (const component of components) {
   const src = readFileSync(component, "utf8");
   const reasons = [];
   if (!f.hasMeta || !f.hasNamedStory) reasons.push("stub (no meta / named story)");
-  if (hasProps(src) && !f.hasArgTypes) reasons.push("missing argTypes (component has props)");
-  if (isInteractive(src) && !f.hasPlay) reasons.push("missing play (component is interactive)");
+  // Thin shadcn ui/ primitives re-export upstream-typed props — meta + story is
+  // enough; argTypes/play are enforced on PRODUCT components (#19).
+  const primitive = isPrimitiveComponent(rel);
+  if (!primitive && hasProps(src) && !f.hasArgTypes)
+    reasons.push("missing argTypes (component has props)");
+  if (!primitive && isInteractive(src) && !f.hasPlay)
+    reasons.push("missing play (component is interactive)");
   if (reasons.length) offenders.push({ component: rel, reasons });
 }
 

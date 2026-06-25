@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
 import tailwindcss from "@tailwindcss/vite";
@@ -23,6 +23,9 @@ export default defineConfig({
   },
   test: {
     name: "storybook",
+    // Node-env unit tests (*.unit.test.ts) belong to vitest.unit.config.ts — keep
+    // them out of the browser project.
+    exclude: [...configDefaults.exclude, "**/*.unit.test.ts"],
     browser: {
       enabled: true,
       provider: playwright(),

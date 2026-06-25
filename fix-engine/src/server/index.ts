@@ -182,8 +182,23 @@ app.post("/sessions", async (c) => {
   const abort = new AbortController();
   const entry: SessionEntry = {
     id: sessionId,
-    // Placeholder until runSession constructs the real session; replaced below.
-    session: {} as FixSession,
+    // A real (empty-transcript) snapshot from the start, so an in-flight GET
+    // /sessions/:id returns a populated session — not {} — until onTurn fills the
+    // transcript and the terminal replaces it (#17).
+    session: {
+      id: sessionId,
+      mode,
+      assetId: assetId as AssetId,
+      issueId: body.issueId,
+      model,
+      triageModel,
+      scope,
+      state: "triaging",
+      budget: { maxSteps: 0, maxToolCalls: 0, maxTokens: 0, maxWallMs: 0 },
+      transcript: [],
+      usage: { inputTokens: 0, outputTokens: 0, toolCalls: 0, steps: 0 },
+      startedAt: new Date().toISOString(),
+    } as FixSession,
     events: [],
     subscribers: new Set(),
     abort,
@@ -229,10 +244,17 @@ app.post("/sessions", async (c) => {
         // Every transcript turn → a `turn` event; emit the plan once it exists
         // and re-emit a `state` event whenever a status turn carries a new state.
         onTurn: (turn) => {
-          const live = store.get(sessionId)?.session;
-          if (!planEmitted && live?.plan) {
+          const live = store.get(sessionId);
+          // Accumulate the in-flight snapshot so GET /sessions/:id reflects
+          // progress (transcript + state) instead of an empty {} until the
+          // terminal replaces it (#17).
+          if (live) {
+            live.session.transcript = [...(live.session.transcript ?? []), turn];
+            if (turn.state) live.session.state = turn.state;
+          }
+          if (!planEmitted && live?.session.plan) {
             planEmitted = true;
-            store.emit(sessionId, { type: "plan", plan: live.plan });
+            store.emit(sessionId, { type: "plan", plan: live.session.plan });
           }
           if (turn.state && turn.state !== lastState) {
             lastState = turn.state;

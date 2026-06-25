@@ -63,6 +63,17 @@ describe("server CSRF / origin guard (P1-1)", () => {
   });
 });
 
+describe("in-flight session snapshot (#17)", () => {
+  it("GET /sessions/:id returns a populated session (id + state), not {}", async () => {
+    const r = await jsonPost("/sessions", { assetId }, { Origin: APP_ORIGIN });
+    const { id } = (await r.json()) as { id: string };
+    const snap = await app.request(`/sessions/${id}`, { method: "GET" });
+    const body = (await snap.json()) as { session?: { id?: string; state?: string } };
+    expect(body.session?.id).toBe(id);
+    expect(typeof body.session?.state).toBe("string");
+  });
+});
+
 describe("budget clamp (P2-3)", () => {
   it("clamps an astronomical client budget to <= 4x the mode default", () => {
     const clamped = clampBudget(

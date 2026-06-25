@@ -44,6 +44,7 @@ import {
 import { GuidedFixPanel } from "@/components/organisms/fix/guided-fix-panel";
 import { AiFixConsole } from "@/components/organisms/fix/ai-fix-console";
 import { useActivity, applyAlertOverrides } from "@/stores/activity";
+import { recordAlertTriage } from "@/lib/activity-record";
 import { useHasHydrated } from "@/stores/use-has-hydrated";
 
 export function AssetDetailView() {
@@ -101,9 +102,9 @@ export function AssetDetailView() {
     : getIssues().find((i) => i.impactedAssetIds.includes(id));
 
   // The Alerts-tab rows all target THIS asset, so "Fix" reuses the guided dialog
-  // already mounted on this page; the other triage verbs give honest mock feedback
-  // (no fix-panel needed). This is the cheapest reuse — no new surface.
-  function onAlertTriage(action: TriageAction, alertTitle: string) {
+  // already mounted on this page; resolve / acknowledge leave a durable audit
+  // (and resolve closes the alert), while snooze / assign stay toast-only (P3-7).
+  function onAlertTriage(action: TriageAction, alert: { id: string; title: string }) {
     if (action === "fix") {
       setFixOpen("guided");
       return;
@@ -114,7 +115,15 @@ export function AssetDetailView() {
       snooze: "snoozed",
       resolve: "resolved",
     }[action];
-    toast.success(`Alert ${verb}`, { description: alertTitle });
+    if (action === "resolve" || action === "acknowledge") {
+      recordAlertTriage({
+        alertId: alert.id,
+        alertTitle: alert.title,
+        assetId: id,
+        verb: action === "resolve" ? "resolved" : "acknowledged",
+      });
+    }
+    toast.success(`Alert ${verb}`, { description: alert.title });
   }
 
   return (
@@ -256,7 +265,7 @@ export function AssetDetailView() {
             {alerts.length ? (
               <AlertTriageList
                 alerts={alerts}
-                onTriage={(action, alert) => onAlertTriage(action, alert.title)}
+                onTriage={(action, alert) => onAlertTriage(action, alert)}
               />
             ) : (
               <p className="text-sm text-muted-foreground">No open alerts.</p>

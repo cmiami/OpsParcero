@@ -6,7 +6,8 @@ import {
   getAsset,
   getActionsForFailureMode,
 } from "@/mock/query";
-import { applyAlertOverrides } from "@/stores/activity";
+import { applyAlertOverrides, useActivity } from "@/stores/activity";
+import { recordAlertTriage } from "@/lib/activity-record";
 
 const alerts = getOpenAlerts();
 
@@ -118,6 +119,59 @@ export const AlertOverlayResolves: Story = {
     const open = overlaid.filter((a) => a.state !== "resolved");
     expect(open).toHaveLength(sample.length - 1);
     expect(open.some((a) => a.id === sample[0].id)).toBe(false);
+  },
+};
+
+/**
+ * RealVerbsRecord — regression gate for P3-7: manual "resolve" leaves a durable
+ * audit AND closes the alert (alertOverrides); "acknowledge" audits but does NOT
+ * close it. (snooze/assign stay toast-only — not asserted here.) Hermetic: the
+ * activity store is restored afterward so it can't leak into other stories.
+ */
+export const RealVerbsRecord: Story = {
+  args: { alerts: alerts.slice(0, 1) },
+  play: async () => {
+    const before = useActivity.getState();
+    try {
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides: {},
+        alertOverrides: {},
+      });
+      const a0 = getOpenAlerts()[0];
+      recordAlertTriage({
+        alertId: a0.id,
+        alertTitle: a0.title,
+        assetId: a0.assetId,
+        verb: "resolved",
+      });
+      expect(
+        useActivity.getState().audit.some((e) => /Resolved alert/.test(e.detail)),
+      ).toBe(true);
+      expect(useActivity.getState().alertOverrides[a0.id]).toBeDefined();
+
+      const a1 = getOpenAlerts()[1];
+      recordAlertTriage({
+        alertId: a1.id,
+        alertTitle: a1.title,
+        verb: "acknowledged",
+      });
+      expect(
+        useActivity
+          .getState()
+          .audit.some((e) => /Acknowledged alert/.test(e.detail)),
+      ).toBe(true);
+      // Acknowledge audits but does not close the alert.
+      expect(useActivity.getState().alertOverrides[a1.id]).toBeUndefined();
+    } finally {
+      useActivity.setState({
+        runs: before.runs,
+        audit: before.audit,
+        assetOverrides: before.assetOverrides,
+        alertOverrides: before.alertOverrides,
+      });
+    }
   },
 };
 

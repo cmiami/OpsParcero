@@ -145,12 +145,27 @@ export function AssetTable({
           const a = row.original;
           return (
             <div className="flex min-w-0 flex-col gap-0.5">
-              <MonoLabel
-                title={assetIdentifier(a)}
-                className="max-w-xs"
-              >
-                {assetIdentifier(a)}
-              </MonoLabel>
+              {onOpenAsset ? (
+                // A real, keyboard-focusable activator for the row (P3-4) — the
+                // row-click is mouse-only, so this is how keyboard users open the
+                // detail. stopPropagation so it coexists with the row click.
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenAsset(a);
+                  }}
+                  className="max-w-xs rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+                >
+                  <MonoLabel title={assetIdentifier(a)} className="max-w-xs">
+                    {assetIdentifier(a)}
+                  </MonoLabel>
+                </button>
+              ) : (
+                <MonoLabel title={assetIdentifier(a)} className="max-w-xs">
+                  {assetIdentifier(a)}
+                </MonoLabel>
+              )}
               <span className="truncate text-xs text-muted-foreground">
                 {a.displayName}
               </span>

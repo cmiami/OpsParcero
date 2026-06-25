@@ -79,6 +79,27 @@ export const HealsOnlySucceededTargets: Story = {
   },
 };
 
+/**
+ * EmptyTargetsBlocksDispatch — regression gate for P3-3: a chain with steps but
+ * NO target asset must not be dispatchable (no phantom "preview-asset" record).
+ * Save-as-playbook stays available — it is target-independent.
+ */
+export const EmptyTargetsBlocksDispatch: Story = {
+  decorators: [
+    (Story) => {
+      seed({ steps: [{ actionId: "repair-vss-writers" }], targets: [] });
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.getByRole("button", { name: /Dispatch/ })).toBeDisabled();
+    expect(
+      canvas.getByRole("button", { name: /Save as playbook/i }),
+    ).toBeEnabled();
+  },
+};
+
 /** Empty — nothing assembled yet. */
 export const Empty: Story = {
   decorators: [

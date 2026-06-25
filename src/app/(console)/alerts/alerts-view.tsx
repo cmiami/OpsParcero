@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { getAsset, getIssues } from "@/mock/query";
+import { recordAlertTriage } from "@/lib/activity-record";
 import type { Alert, Issue, ProtectedAsset } from "@/types";
 
 /**
@@ -51,6 +52,16 @@ export function AlertsView() {
       snooze: "snoozed",
       resolve: "resolved",
     }[action];
+    // Real-semantic verbs (resolve / acknowledge) leave a durable audit + (for
+    // resolve) close the alert; snooze / assign stay toast-only (P3-7).
+    if (action === "resolve" || action === "acknowledge") {
+      recordAlertTriage({
+        alertId: alert.id,
+        alertTitle: alert.title,
+        assetId: alert.assetId,
+        verb: action === "resolve" ? "resolved" : "acknowledged",
+      });
+    }
     toast.success(`Alert ${verb}`, { description: alert.title });
   }
 

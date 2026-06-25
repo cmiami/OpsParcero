@@ -80,10 +80,14 @@ export function ActionCart({ inline, className }: ActionCartProps) {
 
   const mixedScopes =
     new Set([defaultScope, ...steps.map((s) => s.scope)]).size > 1;
+  // `ready` gates save-as-playbook / clear (target-independent). Dispatch needs
+  // at least one real target — a chain run must act on an asset, not a phantom
+  // placeholder that would persist a dangling run/audit record (P3-3).
   const ready = steps.length > 0;
+  const canDispatch = ready && targets.length > 0;
 
   function dispatch() {
-    if (!ready) return;
+    if (!canDispatch) return;
     setDispatching(true);
     // Pair each resolved chain step with its cart step so per-step scope (R4) and
     // params survive into the runner + the activity records (R3).
@@ -96,10 +100,8 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       params: cartStep.params,
       scope: cartStep.scope,
     }));
-    const realTargets = targets.length > 0;
-    const refs: EntityRef[] = realTargets
-      ? targets.map((id) => ({ kind: "asset" as const, id }))
-      : [{ kind: "asset" as const, id: "preview-asset" }];
+    // canDispatch guarantees ≥1 real target — no placeholder asset is ever used.
+    const refs: EntityRef[] = targets.map((id) => ({ kind: "asset" as const, id }));
     window.setTimeout(() => {
       const outcome = runChain(resolved, refs, defaultScope as ActionScope);
 
@@ -110,11 +112,11 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       outcome.steps.forEach((stepResult, i) => {
         const pair = pairs[i];
         if (!stepResult.ran || !pair) return;
-        // Heal only the real targets that actually succeeded — a partial step
-        // leaves some failed, and the preview-asset placeholder never heals.
-        const healed = realTargets
-          ? healedAssetIds(stepResult.outcome).filter((id) => targets.includes(id))
-          : [];
+        // Heal only the targets that actually succeeded — a partial step leaves
+        // some failed.
+        const healed = healedAssetIds(stepResult.outcome).filter((id) =>
+          targets.includes(id),
+        );
         recordSimulatedRun({
           actionId: pair.action.id,
           actionLabel: pair.action.label,
@@ -150,7 +152,7 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       setDispatching(false);
       if (outcome.state === "awaiting-approval") {
         // Surface in the Approval queue instead of dead-ending the dispatch.
-        const assetCount = realTargets ? targets.length : 1;
+        const assetCount = targets.length;
         useApprovals.getState().enqueue({
           id: makeUid("apr") as ApprovalRequestId,
           requestedFor: {
@@ -235,7 +237,7 @@ export function ActionCart({ inline, className }: ActionCartProps) {
               </span>
               {targets.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  No targets selected — applies to this asset at dispatch.
+                  No targets selected — add a target asset to dispatch.
                 </p>
               ) : (
                 <ul className="flex flex-wrap gap-1.5">
@@ -305,7 +307,7 @@ export function ActionCart({ inline, className }: ActionCartProps) {
     <div className="flex w-full flex-col gap-2">
       <Button
         variant="default"
-        disabled={!ready || dispatching}
+        disabled={!canDispatch || dispatching}
         onClick={dispatch}
         className="w-full"
       >

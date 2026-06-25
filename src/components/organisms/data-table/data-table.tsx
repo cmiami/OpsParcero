@@ -423,7 +423,8 @@ function DataRow<T>({
       // role="button"/tabIndex on the <tr>: the row contains interactive
       // controls (checkbox, ⋯ menu), and a button must not nest interactive
       // descendants (axe "nested-interactive"). Keyboard users reach the detail
-      // via the focusable link in the row's primary cell (see column defs).
+      // via the focusable activator in the row's primary cell (e.g. the
+      // asset-name button in asset-table's column defs).
       onClick={clickable ? () => onRowClick?.(row.original) : undefined}
       className={cn(
         rowHeight,

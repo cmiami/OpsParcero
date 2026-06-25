@@ -18,6 +18,7 @@ import type {
   ActionScope,
   ActionRunState,
   ApprovalPayload,
+  AlertId,
   EntityRef,
   AssetId,
   AssetStatus,
@@ -224,6 +225,39 @@ export function recordPolicyCreated(input: {
         detail: `Created standing policy "${input.policyName}" — paused pending approval.`,
       },
     ],
+  });
+}
+
+/**
+ * Record a manual alert-triage decision (P3-7) so real-semantic verbs leave a
+ * durable trail like the fix path — not just a toast. "resolved" also closes the
+ * alert everywhere (alertOverrides); "acknowledged" only audits (acknowledged
+ * alerts stay in the queue). snooze / assign stay toast-only (no modeled state).
+ */
+export function recordAlertTriage(input: {
+  alertId: AlertId;
+  alertTitle: string;
+  assetId?: AssetId;
+  verb: "resolved" | "acknowledged";
+}): void {
+  const now = new Date().toISOString();
+  const resolves = input.verb === "resolved";
+  useActivity.getState().record({
+    runs: [],
+    audit: [
+      {
+        id: makeUid("aud") as AuditLogEntry["id"],
+        at: now,
+        actor: { kind: "user", refId: currentUserRef() },
+        verb: resolves ? "suppressed-alert" : "overrode",
+        subjectRef: input.assetId
+          ? { kind: "asset", id: input.assetId }
+          : { kind: "alert", id: input.alertId },
+        outcome: "succeeded",
+        detail: `${resolves ? "Resolved" : "Acknowledged"} alert: ${input.alertTitle}`,
+      },
+    ],
+    resolveAlertIds: resolves ? [input.alertId] : undefined,
   });
 }
 

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, within, userEvent, waitFor } from "storybook/test";
+import { expect, fn, within, userEvent, waitFor } from "storybook/test";
 import { AssetTable } from "./asset-table";
 import { getAssets } from "@/mock/query";
 import { useActivity } from "@/stores/activity";
@@ -9,6 +9,15 @@ const ALL = getAssets({}).items;
 const FAILED = getAssets({ statuses: ["failed"] }).items;
 const MIXED = ALL.slice(0, 8);
 const ONE_FAILED = ALL.filter((a) => a.status === "failed").slice(0, 1);
+// An asset whose identifier === displayName (agent-style), so the asset-name
+// button is queryable by its visible text.
+const NAMED =
+  ALL.find(
+    (a) =>
+      a.kind !== "saas-seat" &&
+      a.kind !== "salesforce-org" &&
+      a.kind !== "share",
+  ) ?? ALL[0];
 
 const meta = {
   title: "Organisms/AssetTable",
@@ -42,6 +51,23 @@ export const Default: Story = {
 
 export const AllFailed: Story = {
   args: { assets: FAILED.length > 0 ? FAILED : ALL.filter((a) => a.status === "failed") },
+};
+
+/**
+ * OpensFromAssetName — regression gate for P3-4: the asset name is a real,
+ * keyboard-focusable activator (not an inert label), so clicking/Enter opens the
+ * detail via onOpenAsset. (axe also gates against nested-interactive here.)
+ */
+export const OpensFromAssetName: Story = {
+  args: { assets: [NAMED], onOpenAsset: fn() },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const btn = canvas.getByRole("button", { name: NAMED.displayName });
+    await userEvent.click(btn);
+    await waitFor(() =>
+      expect(args.onOpenAsset).toHaveBeenCalledWith(NAMED),
+    );
+  },
 };
 
 export const MixedFleet: Story = {

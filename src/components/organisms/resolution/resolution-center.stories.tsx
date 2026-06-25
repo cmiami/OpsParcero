@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within, userEvent, waitFor } from "storybook/test";
 import { ResolutionCenter } from "./resolution-center";
 import { Toaster } from "@/components/ui/sonner";
-import { getIssues } from "@/mock/query";
+import { getIssues, getOpenAlerts, getFleetStats } from "@/mock/query";
 import { applyIssueResolution } from "@/stores/activity";
 
 const meta = {
@@ -66,6 +66,40 @@ export const FiltersBySeverity: Story = {
     // Clearing the filter restores the full list.
     await userEvent.click(crit);
     await waitFor(() => expect(countGroups()).toBe(before));
+  },
+};
+
+/**
+ * StatsOverlayDropsCounts — regression gate for #4: getFleetStats with the
+ * activity store's overrides recomputes the KPI counts (not just the lists), so
+ * the stat bar / cards / charts / nav badges drop in lockstep with a heal — no
+ * frozen-seed contradiction. Tests the overlay-aware aggregate directly.
+ */
+export const StatsOverlayDropsCounts: Story = {
+  play: async () => {
+    const seed = getFleetStats();
+    const issue = getIssues().find((i) => i.impactedAssetIds.length > 0)!;
+    const assetOverrides = Object.fromEntries(
+      issue.impactedAssetIds.map((id) => [
+        id,
+        { status: "protected" as const, resolvedAt: "2026-06-25T00:00:00Z" },
+      ]),
+    );
+    const healed = getFleetStats(undefined, { assetOverrides });
+    // The fully-healed issue is no longer counted, and the healed assets read
+    // protected — counts move, not just the list.
+    expect(healed.openIssues).toBeLessThan(seed.openIssues);
+    expect(healed.protectedAssets).toBeGreaterThanOrEqual(seed.protectedAssets);
+
+    // Resolving an OPEN alert drops the open-alert count by exactly one.
+    const openAlert = getOpenAlerts().find((a) => a.state === "open");
+    expect(openAlert).toBeDefined();
+    const withAlert = getFleetStats(undefined, {
+      alertOverrides: {
+        [openAlert!.id]: { state: "resolved", resolvedAt: "2026-06-25T00:00:00Z" },
+      },
+    });
+    expect(withAlert.openAlerts).toBe(seed.openAlerts - 1);
   },
 };
 

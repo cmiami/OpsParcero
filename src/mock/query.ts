@@ -42,6 +42,13 @@ import type {
 import { productTypeToBucket } from "@/types";
 import { compareStatus } from "@/lib/status";
 import { relativeTime } from "@/lib/format";
+import {
+  applyOverrides,
+  applyAlertOverrides,
+  applyIssueResolution,
+  type AssetOverride,
+  type AlertOverride,
+} from "@/lib/overrides";
 import { DB } from "./fixtures";
 import { buildIssues, groupIssuesByCategory, type IssueCategoryGroup } from "./issues";
 import { ACTION_CATALOG, ACTION_BY_ID } from "./reference/action-catalog";
@@ -468,20 +475,45 @@ export interface FleetStats {
   lastResolvedRelative?: string;
 }
 
-/** KPI rollups for the Resolution Center home + product tiles. */
-export function getFleetStats(clientId?: ClientId): FleetStats {
+/**
+ * KPI rollups for the Resolution Center home + product tiles.
+ *
+ * Pass `overrides` (the activity store's assetOverrides/alertOverrides) to make
+ * the aggregate counts reflect heals applied THIS session — so the KPI tiles,
+ * charts, and nav badges drop in lockstep with the now-overlaid lists instead of
+ * staying frozen on the seed (#4). Omit it for the seed snapshot (server render).
+ * The overlay helpers are pure (no store import), so this stays SSR-safe.
+ */
+export function getFleetStats(
+  clientId?: ClientId,
+  overrides?: {
+    assetOverrides?: Record<string, AssetOverride>;
+    alertOverrides?: Record<string, AlertOverride>;
+  },
+): FleetStats {
+  const assetOverrides = overrides?.assetOverrides;
+  const alertOverrides = overrides?.alertOverrides;
   // Tenant scope: when a client is active, every KPI counts only that client's
   // assets / issues / alerts (issues belong to a client via their impacted assets).
-  const assets = clientId
+  const scopedAssets = clientId
     ? DB.assets.filter((a) => a.clientId === clientId)
     : DB.assets;
+  const assets = assetOverrides
+    ? applyOverrides(scopedAssets, assetOverrides)
+    : scopedAssets;
   const assetIds = clientId ? new Set(assets.map((a) => a.id)) : null;
-  const issues = assetIds
+  const scopedIssues = assetIds
     ? ISSUES.filter((i) => i.impactedAssetIds.some((id) => assetIds.has(id)))
     : ISSUES;
-  const alerts = clientId
+  const issues = assetOverrides
+    ? applyIssueResolution(scopedIssues, assetOverrides)
+    : scopedIssues;
+  const scopedAlerts = clientId
     ? DB.alerts.filter((a) => a.clientId === clientId)
     : DB.alerts;
+  const alerts = alertOverrides
+    ? applyAlertOverrides(scopedAlerts, alertOverrides)
+    : scopedAlerts;
 
   const protectedAssets = assets.filter((a) => a.status === "protected").length;
   const failedAssets = assets.filter((a) => a.status === "failed").length;

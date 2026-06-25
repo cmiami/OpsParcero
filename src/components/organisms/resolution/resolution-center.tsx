@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/toggle-group";
 import { OutageBanner } from "@/components/molecules/outage-banner";
 import {
-  getFleetStats,
   getIssues,
   getActiveOutage,
   type FleetStats,
@@ -19,6 +18,7 @@ import {
 import { SEVERITY_META } from "@/lib/status";
 import { useActiveClientId } from "@/stores/use-active-client";
 import { useActivity, applyIssueResolution } from "@/stores/activity";
+import { useFleetStats } from "@/stores/use-fleet-stats";
 import { useHasHydrated } from "@/stores/use-has-hydrated";
 import type { Incident, Issue, Severity } from "@/types";
 import { groupIssuesByCategory, type IssueCategoryGroup } from "@/mock/issues";
@@ -43,10 +43,9 @@ export interface ResolutionCenterProps {
  */
 export function ResolutionCenter({ className }: ResolutionCenterProps) {
   const activeClientId = useActiveClientId();
-  const stats: FleetStats = React.useMemo(
-    () => getFleetStats(activeClientId),
-    [activeClientId],
-  );
+  // Overlay-aware KPIs so the stat bar / summary cards / charts drop in lockstep
+  // with the overlaid issue list below them after a heal — no same-page lie (#4).
+  const stats: FleetStats = useFleetStats(activeClientId);
   // Severity filter (local state — drives the canonical getIssues severities
   // filter; kept off nuqs so this storied surface needs no URL adapter).
   const [severities, setSeverities] = React.useState<Severity[]>([]);

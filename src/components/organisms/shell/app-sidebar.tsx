@@ -12,6 +12,11 @@ import { getClients, getOpenAlerts, getIssues } from "@/mock/query";
 import { useUiStore } from "@/stores/ui";
 import { useActiveClientId } from "@/stores/use-active-client";
 import { useActionCart } from "@/stores/action-cart";
+import {
+  useActivity,
+  applyAlertOverrides,
+  applyIssueResolution,
+} from "@/stores/activity";
 import { useHasHydrated } from "@/stores/use-has-hydrated";
 import { SeverityDot } from "@/components/atoms/severity-dot";
 import {
@@ -68,11 +73,22 @@ export function AppSidebar({
   const hydrated = useHasHydrated();
   const cartCount = useActionCart((s) => s.steps.length);
 
-  // Live badges, derived deterministically from the mock layer.
+  // Overlay this session's heals so the nav badges shrink when alerts/issues are
+  // resolved, instead of inflating the counts forever on frozen seed (#4).
+  const activityHydrated = useHasHydrated(useActivity);
+  const assetOverrides = useActivity((s) => s.assetOverrides);
+  const alertOverrides = useActivity((s) => s.alertOverrides);
+
+  // Live badges, derived deterministically from the mock layer (+ heal overlay).
   const badges = React.useMemo(() => {
     const map = new Map<string, NavBadge>();
 
-    const openAlerts = getOpenAlerts();
+    const rawAlerts = getOpenAlerts();
+    const openAlerts = activityHydrated
+      ? applyAlertOverrides(rawAlerts, alertOverrides).filter(
+          (a) => a.state === "open" || a.state === "acknowledged",
+        )
+      : rawAlerts;
     if (openAlerts.length) {
       const worst = rollupStatus(
         openAlerts.map((a) =>
@@ -82,7 +98,10 @@ export function AppSidebar({
       map.set("/alerts", { worst, count: openAlerts.length });
     }
 
-    const issues = getIssues();
+    const rawIssues = getIssues();
+    const issues = activityHydrated
+      ? applyIssueResolution(rawIssues, assetOverrides)
+      : rawIssues;
     if (issues.length) {
       const worst = rollupStatus(
         issues.map((i) => (i.severity === "critical" ? "failed" : "warning")),
@@ -91,7 +110,7 @@ export function AppSidebar({
     }
 
     return map;
-  }, []);
+  }, [activityHydrated, alertOverrides, assetOverrides]);
 
   return (
     <nav

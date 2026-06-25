@@ -19,6 +19,12 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  actionRunEntrySchema,
+  auditLogEntrySchema,
+  assetOverrideSchema,
+  alertOverrideSchema,
+} from "@/lib/schemas";
 import type {
   ActionRun,
   AuditLogEntry,
@@ -167,28 +173,44 @@ export const useActivity = create<ActivityState>()(
         assetOverrides: s.assetOverrides,
         alertOverrides: s.alertOverrides,
       }),
-      // Don't trust localStorage verbatim: drop malformed/stale entries so a
-      // corrupt payload can't distort Run history / Audit / asset state.
+      // Don't trust localStorage verbatim: DEEP-validate each rehydrated entry
+      // against its zod schema (P2-5/P3-6) and drop anything malformed, so a
+      // corrupt/spoofed payload can't distort Run history / Audit / asset state.
       merge: (persisted, current) => {
         const p = persisted as Partial<ActivityState> | undefined;
-        const hasId = (x: unknown): boolean =>
-          !!x && typeof (x as { id?: unknown }).id === "string";
+        const keepArray = <T>(
+          arr: unknown,
+          schema: { safeParse: (v: unknown) => { success: boolean } },
+        ): T[] =>
+          Array.isArray(arr)
+            ? (arr.filter((x) => schema.safeParse(x).success) as T[]).slice(
+                0,
+                200,
+              )
+            : [];
+        const keepRecord = <T>(
+          obj: unknown,
+          schema: { safeParse: (v: unknown) => { success: boolean } },
+        ): Record<string, T> => {
+          if (!obj || typeof obj !== "object") return {};
+          const out: Record<string, T> = {};
+          for (const [k, v] of Object.entries(obj)) {
+            if (schema.safeParse(v).success) out[k] = v as T;
+          }
+          return out;
+        };
         return {
           ...current,
-          runs: Array.isArray(p?.runs)
-            ? (p!.runs.filter(hasId) as ActionRun[]).slice(0, 200)
-            : [],
-          audit: Array.isArray(p?.audit)
-            ? (p!.audit.filter(hasId) as AuditLogEntry[]).slice(0, 200)
-            : [],
-          assetOverrides:
-            p?.assetOverrides && typeof p.assetOverrides === "object"
-              ? p.assetOverrides
-              : {},
-          alertOverrides:
-            p?.alertOverrides && typeof p.alertOverrides === "object"
-              ? p.alertOverrides
-              : {},
+          runs: keepArray<ActionRun>(p?.runs, actionRunEntrySchema),
+          audit: keepArray<AuditLogEntry>(p?.audit, auditLogEntrySchema),
+          assetOverrides: keepRecord<AssetOverride>(
+            p?.assetOverrides,
+            assetOverrideSchema,
+          ),
+          alertOverrides: keepRecord<AlertOverride>(
+            p?.alertOverrides,
+            alertOverrideSchema,
+          ),
         };
       },
     },

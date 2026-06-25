@@ -13,12 +13,17 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Actions pinned to full commit SHAs (not mutable tags) so a re-pointed tag
+      # can't silently change CI; persist-credentials:false keeps GITHUB_TOKEN out
+      # of .git/config for later steps (incl. dependency install scripts).
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
       # corepack pins the package manager to package.json's `packageManager`
       # field (pnpm@11.9.0) — the runner can't silently use a different pnpm.
       - name: Enable corepack
         run: corepack enable
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: ".nvmrc" # Node 24 LTS
           cache: pnpm

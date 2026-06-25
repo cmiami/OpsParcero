@@ -92,7 +92,8 @@ src/
 ```
 
 The component library is **atomic** (Foundations → Atoms → Molecules → Organisms → Templates → Pages)
-and ships as part of the product: **90/90 components have a Storybook story.**
+and ships as part of the product: **every component has a Storybook story.** Route pages compose
+these organisms with the Next runtime; they're tracked for coverage separately (see Quality).
 
 ## Getting started
 
@@ -116,10 +117,13 @@ npx wrangler pages deploy out   # e.g. Cloudflare Pages
   dark (0 serious/critical violations): light via `pnpm test`, dark via `pnpm test:dark`
   (`VITE_SB_THEME=dark`), both gated in `pnpm run verify` / CI. Status is never color-only
   (dot + icon + label).
-- **Type-safe:** `tsc --noEmit` clean. **Storybook coverage:** 90/90 components storied —
-  each with a meta + named states, enforced by `scripts/check-story-coverage.mjs`.
-- **Tokens only:** no hard-coded colors or `z-index` in component code — **eslint-enforced**
-  (`eslint.config.mjs`); spacing & typography are held by the impeccable design hook + review.
+- **Type-safe:** `tsc --noEmit` clean. **Storybook coverage:** every component is storied —
+  meta + named states, plus `argTypes` for prop-bearing and a `play` for interactive ones;
+  every route page is acknowledged too (a page-level story or an explicit intentionally-unstoried
+  entry). All enforced by `scripts/check-story-coverage.mjs`.
+- **Tokens only:** no hard-coded colors, `z-index`, arbitrary blur, or **shadow** in component
+  code — **eslint-enforced** (`eslint.config.mjs`); spacing & typography are held by the
+  impeccable design hook + review.
 
 ## Status
 

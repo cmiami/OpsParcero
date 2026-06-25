@@ -65,7 +65,13 @@ function isInteractive(src) {
 }
 
 function storyFacets(storyPath) {
-  const src = readFileSync(storyPath, "utf8");
+  const raw = readFileSync(storyPath, "utf8");
+  // Strip block + line comments before the regex pass, so a `// play:` note or an
+  // `argTypes:` mentioned in a comment can't satisfy a facet. The line-comment
+  // strip guards against `://` in URLs.
+  const src = raw
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
   return {
     exists: true,
     hasMeta: /export\s+default\b/.test(src),
@@ -108,4 +114,72 @@ if (offenders.length) {
 
 console.log(
   `✓ Story coverage: ${components.length}/${components.length} components — meta + named states + argTypes(props) + play(interactive).`,
+);
+
+// ── Route coverage (P1-8) ────────────────────────────────────────────────────
+// The gate above covers src/components. Route page.tsx files live in src/app and
+// are NOT components — they compose organisms with the Next runtime (nuqs /
+// useParams), so most can't be storied directly. To stop a route from regressing
+// INVISIBLY (the component count never sees it), every route must be ACKNOWLEDGED
+// here: either covered by a Pages/* composition story, or explicitly listed as
+// intentionally unstoried (with the reason it relies on organism stories / the
+// Next runtime). A new, unacknowledged route fails the gate.
+const appDir = join(root, "src", "app");
+
+/** @param {string} dir @returns {string[]} route page.tsx paths relative to src/app */
+function walkRoutes(dir) {
+  /** @type {string[]} */
+  const routes = [];
+  if (!existsSync(dir)) return routes;
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      routes.push(...walkRoutes(full));
+    } else if (entry === "page.tsx") {
+      routes.push(full.replace(appDir + "/", ""));
+    }
+  }
+  return routes;
+}
+
+// Routes whose page composition IS exercised by a Pages/* story (console-pages).
+const ROUTES_WITH_PAGE_STORY = new Set([
+  "(console)/backups/page.tsx", // Pages/Console → Backups (AssetTable)
+  "(console)/fleet/page.tsx", // same AssetTable composition
+  "(console)/alerts/page.tsx", // Pages/Console → Alerts (AlertTriageList)
+  "(console)/automation/runs/page.tsx", // Pages/Console → RunHistory
+]);
+
+// Routes intentionally without a page-level story — each is covered by its
+// organism's own story and/or needs the Next runtime (nuqs/useParams) a CSF
+// story can't supply. Listed explicitly so the set can't grow silently.
+const ROUTES_INTENTIONALLY_UNSTORIED = new Set([
+  "(console)/resolution/page.tsx", // ResolutionCenter organism story (nuqs)
+  "(console)/automation/approvals/page.tsx", // ApprovalQueue organism story
+  "(console)/automation/playbooks/page.tsx", // PlaybookList organism story
+  "(console)/automation/policies/page.tsx", // PoliciesView + editor stories
+  "(console)/cart/page.tsx", // ActionCart organism story
+  "(console)/fleet/[assetId]/page.tsx", // asset-detail: Next params + dialogs
+  "(console)/incidents/[id]/page.tsx", // incident detail: Next params
+  "(console)/products/[product]/page.tsx", // product lens: Next params
+  "(console)/overview/page.tsx", // KPI composition (aggregate tiles, deferred)
+  "(console)/reports/page.tsx", // KPI composition (aggregate tiles, deferred)
+  "(console)/settings/page.tsx", // static settings surface
+  "page.tsx", // root redirect entry
+]);
+
+const routes = walkRoutes(appDir);
+const unacknowledgedRoutes = routes.filter(
+  (r) =>
+    !ROUTES_WITH_PAGE_STORY.has(r) && !ROUTES_INTENTIONALLY_UNSTORIED.has(r),
+);
+if (unacknowledgedRoutes.length) {
+  console.error(
+    "Routes not acknowledged for story coverage (add a Pages/* story OR list as intentionally unstoried in check-story-coverage.mjs):",
+  );
+  for (const r of unacknowledgedRoutes) console.error(`  ✗ ${r}`);
+  process.exit(1);
+}
+console.log(
+  `✓ Route coverage: ${ROUTES_WITH_PAGE_STORY.size}/${routes.length} routes have a page-level story; ${ROUTES_INTENTIONALLY_UNSTORIED.size} intentionally unstoried (covered by organism stories or need the Next runtime).`,
 );

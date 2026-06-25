@@ -45,7 +45,7 @@ function TooltipContent({
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="-my-px fill-popover drop-shadow-[0_1px_0_var(--color-border)]" />
+        <TooltipPrimitive.Arrow className="-my-px fill-popover drop-shadow-tooltip" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

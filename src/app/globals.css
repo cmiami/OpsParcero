@@ -341,6 +341,12 @@
   --color-chart-5: var(--chart-5);
 }
 
+/* Tooltip arrow hairline — a token-bound drop-shadow so the arrow carries the
+   same 1px border edge as the tooltip box (M1: no arbitrary shadow literals). */
+@utility drop-shadow-tooltip {
+  filter: drop-shadow(0 1px 0 var(--color-border));
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

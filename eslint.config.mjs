@@ -124,6 +124,16 @@ const eslintConfig = [
           message:
             "M1: no arbitrary px spacing/radius (e.g. p-[13px], rounded-[7px]). Use the spacing/radius scale.",
         },
+        {
+          selector: "Literal[value=/\\b(drop-)?shadow-\\[/]",
+          message:
+            "M1: no arbitrary shadow (shadow-[…]/drop-shadow-[…]). Add a token (--shadow-*/an @utility) and use the utility class.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/\\b(drop-)?shadow-\\[/]",
+          message:
+            "M1: no arbitrary shadow (shadow-[…]/drop-shadow-[…]). Add a token (--shadow-*/an @utility) and use the utility class.",
+        },
       ],
     },
   },

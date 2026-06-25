@@ -154,6 +154,40 @@ export const backupRunSchema = z
   })
   .loose();
 
+// ── Activity-store entries (persisted to localStorage; validated on merge) ────
+// These guard rehydrated runtime activity (P2-5/P3-6): each persisted entry is
+// safeParse'd on merge so a malformed/garbage payload is dropped rather than
+// trusted. Loose so legitimately-richer entries survive; strict on the fields
+// that matter (ids present, override.status a real AssetStatus, timestamps set).
+
+export const actionRunEntrySchema = z
+  .object({
+    id: z.string().min(1),
+    actionId: z.string(),
+    state: z.string().min(1),
+    startedAt: isoDateTime,
+  })
+  .loose();
+
+export const auditLogEntrySchema = z
+  .object({
+    id: z.string().min(1),
+    at: isoDateTime,
+    verb: z.string().min(1),
+    detail: z.string(),
+  })
+  .loose();
+
+export const assetOverrideSchema = z.object({
+  status: assetStatusSchema,
+  resolvedAt: isoDateTime,
+});
+
+export const alertOverrideSchema = z.object({
+  state: z.literal("resolved"),
+  resolvedAt: isoDateTime,
+});
+
 // Inferred convenience types (subset checks; not the canonical @/types).
 export type AssetInput = z.infer<typeof assetSchema>;
 export type AlertInput = z.infer<typeof alertSchema>;

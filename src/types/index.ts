@@ -672,7 +672,16 @@ export interface AutomationPolicy {
   id: AutomationPolicyId;
   orgId: OrgId;
   name: string;
-  trigger: { failureModeId: FailureModeId; matchFilter?: AssetFilter };
+  /**
+   * What arms the policy. A `failure-mode` trigger fires for one specific failure
+   * mode; a `category` trigger fires for every failure in a product category.
+   * Modeled as a discriminated union so a category-wide rule carries the category
+   * explicitly — never an empty-string `failureModeId` sentinel (which would name
+   * a non-existent mode and fail seed integrity).
+   */
+  trigger:
+    | { kind: "failure-mode"; failureModeId: FailureModeId; matchFilter?: AssetFilter }
+    | { kind: "category"; category: string };
   appliesTo: AssetFilter;
   action: {
     kind: "action" | "playbook";

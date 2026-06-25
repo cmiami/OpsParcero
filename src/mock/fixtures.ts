@@ -184,8 +184,13 @@ function assertIntegrity(db: MockDB): void {
     }
   }
   for (const pol of db.policies) {
-    if (!modeIds.has(pol.trigger.failureModeId))
-      throw new Error(`[fixtures] policy ${pol.id} → unknown trigger mode ${pol.trigger.failureModeId}`);
+    if (
+      pol.trigger.kind === "failure-mode" &&
+      !modeIds.has(pol.trigger.failureModeId)
+    )
+      throw new Error(
+        `[fixtures] policy ${pol.id} → unknown trigger mode ${pol.trigger.failureModeId}`,
+      );
     if (pol.action.kind === "action" && !ACTION_BY_ID[pol.action.refId])
       throw new Error(`[fixtures] policy ${pol.id} → unknown action ${pol.action.refId}`);
   }

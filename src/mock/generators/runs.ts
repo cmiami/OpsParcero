@@ -200,8 +200,10 @@ export function generateRuns(
           locked: false,
         };
 
-        // Newer image points get a screenshot verification.
-        if (p >= total - 8) {
+        // Newer IMAGE-chain points get a boot-screenshot verification. SaaS
+        // recovery sets (M365/Google/Salesforce) have no bootable image, so a
+        // screenshot verification is meaningless for them — skip it.
+        if (rp.pointKind === "image-chain" && p >= total - 8) {
           const outcome: ScreenshotVerification["outcome"] = weighted(r, {
             passed: 82,
             failed: 14,

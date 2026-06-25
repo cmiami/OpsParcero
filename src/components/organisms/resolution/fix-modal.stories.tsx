@@ -119,16 +119,21 @@ export const CreatesTypePolicy: Story = {
     await waitFor(() =>
       expect(usePolicies.getState().policies.length).toBe(1),
     );
-    expect(usePolicies.getState().policies[0].trigger.failureModeId).toBe(
-      policyIssue.failureModeId,
-    );
+    const trigger = usePolicies.getState().policies[0].trigger;
+    expect(trigger.kind).toBe("failure-mode");
+    if (trigger.kind === "failure-mode") {
+      expect(trigger.failureModeId).toBe(policyIssue.failureModeId);
+    }
+    // Standing automation is created paused (opt-in), never auto-armed.
+    expect(usePolicies.getState().policies[0].enabled).toBe(false);
   },
 };
 
 /**
  * CreatesCategoryPolicy — choosing the "Whole category" breadth creates a
- * category-wide policy (failureModeId omitted → ""), preserving the capability
- * the deleted switch had, now as a sub-choice of the single "always" control.
+ * category-wide policy (trigger.kind === "category", carrying the category — no
+ * empty-string sentinel), preserving the capability the deleted switch had, now
+ * as a sub-choice of the single "always" control.
  */
 export const CreatesCategoryPolicy: Story = {
   args: { issue: policyIssue },
@@ -147,7 +152,11 @@ export const CreatesCategoryPolicy: Story = {
     await waitFor(() =>
       expect(usePolicies.getState().policies.length).toBe(1),
     );
-    expect(usePolicies.getState().policies[0].trigger.failureModeId).toBe("");
+    const trigger = usePolicies.getState().policies[0].trigger;
+    expect(trigger.kind).toBe("category");
+    if (trigger.kind === "category") {
+      expect(trigger.category).toBe(policyIssue.category);
+    }
   },
 };
 

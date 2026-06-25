@@ -163,6 +163,12 @@ export function recordAgentRun(input: {
 /**
  * Build a standing auto-remediation policy from an "always"-scoped apply, so the
  * Policies page shows the rule the user just created (runtime — ids minted here).
+ *
+ * A policy is created **paused** (`enabled: false`): standing automation that
+ * fires unattended on future failures is opt-in, not armed by one modal click —
+ * the same draft-then-publish model the AutomationPolicyEditor uses. Breadth
+ * decides the trigger: a `failureModeId` yields a single-mode trigger; its
+ * absence yields a `category`-wide trigger (no empty-string sentinel).
  */
 export function buildAutomationPolicy(input: {
   failureModeId?: string;
@@ -175,12 +181,12 @@ export function buildAutomationPolicy(input: {
     orgId: getOrg().id,
     name: `Auto-fix: ${input.category}`,
     trigger: input.failureModeId
-      ? { failureModeId: input.failureModeId as FailureModeId }
-      : { failureModeId: "" as FailureModeId },
+      ? { kind: "failure-mode", failureModeId: input.failureModeId as FailureModeId }
+      : { kind: "category", category: input.category },
     appliesTo: input.productBucket ? { productBuckets: [input.productBucket] } : {},
     action: { kind: "action", refId: input.actionId, params: {} },
     approvalRule: "over-threshold",
-    enabled: true,
+    enabled: false,
     dryRunFirst: true,
     stats: { triggered: 0, succeeded: 0 },
   };

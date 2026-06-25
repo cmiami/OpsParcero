@@ -167,7 +167,7 @@ function severityRank(a: Alert["severity"]): number {
  */
 export function buildIssues(db: MockDB): Issue[] {
   const openAlerts = db.alerts.filter(
-    (a) => a.state === "open" || a.state === "acknowledged" || a.state === "suppressed",
+    (a) => a.state === "open" || a.state === "acknowledged",
   );
 
   const byMode = new Map<string, Alert[]>();

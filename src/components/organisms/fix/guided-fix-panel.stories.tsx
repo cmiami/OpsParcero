@@ -340,9 +340,11 @@ export const AlwaysCreatesPolicy: Story = {
     await waitFor(() =>
       expect(usePolicies.getState().policies.length).toBe(1),
     );
-    expect(usePolicies.getState().policies[0].trigger.failureModeId).toBe(
-      ISSUE.failureModeId ?? "",
-    );
+    const trigger = usePolicies.getState().policies[0].trigger;
+    expect(trigger.kind).toBe("failure-mode");
+    if (trigger.kind === "failure-mode") {
+      expect(trigger.failureModeId).toBe(ISSUE.failureModeId);
+    }
   },
 };
 

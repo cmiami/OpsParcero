@@ -202,10 +202,10 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
       );
       setResult({
         tone: "warning",
-        title: "Auto-remediation policy created",
+        title: "Policy created (paused)",
         detail: wholeCategory
-          ? `Every future "${issue.category}" failure will be fixed automatically. ${outcome.resultSummary} See Automation → Policies.`
-          : `This failure will be fixed automatically going forward. ${outcome.resultSummary} See Automation → Policies.`,
+          ? `Applied now, and a standing rule for every future "${issue.category}" failure was created — paused pending approval. Enable it in Automation → Policies. ${outcome.resultSummary}`
+          : `Applied now, and a standing rule for this failure was created — paused pending approval. Enable it in Automation → Policies. ${outcome.resultSummary}`,
       });
     } else if (outcome.healsAsset) {
       setResult({

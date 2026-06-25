@@ -140,7 +140,7 @@ export function generatePolicies(): AutomationPolicy[] {
       id: "POL-AUTO-COMMS",
       orgId: ORG_ID,
       name: "Auto-repair agent comms (VIP clients)",
-      trigger: { failureModeId: "agent-secure-comms-401" },
+      trigger: { kind: "failure-mode", failureModeId: "agent-secure-comms-401" },
       appliesTo: { tags: ["vip-client"], productBuckets: ["bcdr"] },
       action: { kind: "action", refId: "repair-agent-comms", params: { verifyAfter: true } },
       approvalRule: "never",
@@ -152,7 +152,10 @@ export function generatePolicies(): AutomationPolicy[] {
       id: "POL-AUTO-SCREENSHOT",
       orgId: ORG_ID,
       name: "Tune wait-time on cosmetic screenshot failures",
-      trigger: { failureModeId: "screenshot-getting-devices-ready-timing" },
+      trigger: {
+        kind: "failure-mode",
+        failureModeId: "screenshot-getting-devices-ready-timing",
+      },
       appliesTo: { productBuckets: ["bcdr"] },
       action: { kind: "playbook", refId: "PB-COSMETIC-SCREENSHOT", params: {} },
       approvalRule: "never",
@@ -164,7 +167,7 @@ export function generatePolicies(): AutomationPolicy[] {
       id: "POL-AUTO-MERGE",
       orgId: ORG_ID,
       name: "Force diff-merge after 5 failed screenshots",
-      trigger: { failureModeId: "diff-merge-chain-rebuild-long" },
+      trigger: { kind: "failure-mode", failureModeId: "diff-merge-chain-rebuild-long" },
       appliesTo: { productBuckets: ["bcdr", "endpoint"] },
       action: { kind: "action", refId: "force-merge", params: { verifyAfter: true } },
       approvalRule: "over-threshold",
@@ -258,13 +261,31 @@ export function generateAutomationHistory(
       | "once"
       | "all-matching"
       | "always";
+    // Targets must be compatible with the action's product scope — a BCDR-only
+    // action (e.g. force-merge) must never list a SaaS-seat target. Prefer
+    // alerting assets in scope; fall back to any in-scope asset, then (last
+    // resort) the unfiltered pools so a run always has at least one target.
+    const inScope = (a: ProtectedAsset) =>
+      !action?.productTypes?.length ||
+      action.productTypes.includes(a.productType);
+    const compatAlerting = alertingAssetIds.filter((id) => {
+      const a = assetById.get(id);
+      return a ? inScope(a) : false;
+    });
+    const compatAssetIds = assets.filter(inScope).map((a) => a.id);
+    const targetPool: string[] = compatAlerting.length
+      ? compatAlerting
+      : compatAssetIds.length
+        ? compatAssetIds
+        : alertingAssetIds.length
+          ? alertingAssetIds
+          : assets.map((a) => a.id);
+
     const targetCount = scope === "once" ? 1 : int(r, 2, 9);
     const targetRefs: EntityRef[] = [];
     const targetSeen = new Set<string>();
     for (let t = 0; t < targetCount; t += 1) {
-      const aid = alertingAssetIds.length
-        ? pick(r, alertingAssetIds)
-        : pick(r, assets).id;
+      const aid = pick(r, targetPool);
       // Skip a repeated draw so one run never lists the same asset twice (same
       // PRNG draws either way — the loop still runs targetCount times).
       if (targetSeen.has(aid)) continue;

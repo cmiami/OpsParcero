@@ -6,6 +6,7 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { keepValid, savedViewSchema } from "@/lib/schemas";
 import type { SavedView, SavedViewId } from "@/types";
 
 export interface SavedViewsState {
@@ -28,6 +29,14 @@ export const useSavedViews = create<SavedViewsState>()(
       name: "dcc-saved-views",
       version: 1,
       partialize: (s) => ({ views: s.views }),
+      // Drop malformed saved views on rehydrate (#12).
+      merge: (persisted, current) => ({
+        ...(current as SavedViewsState),
+        views: keepValid<SavedView>(
+          (persisted as { views?: unknown })?.views,
+          savedViewSchema,
+        ),
+      }),
     },
   ),
 );

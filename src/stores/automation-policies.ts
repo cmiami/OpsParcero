@@ -7,6 +7,7 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { keepValid, automationPolicySchema } from "@/lib/schemas";
 import type { AutomationPolicy, AutomationPolicyId } from "@/types";
 
 export interface PoliciesState {
@@ -40,6 +41,15 @@ export const usePolicies = create<PoliciesState>()(
       name: "dcc-auto-rules",
       version: 1,
       partialize: (s) => ({ policies: s.policies }),
+      // Drop malformed/spoofed standing rules on rehydrate (#12) — these drive
+      // (paused) auto-remediation, so a corrupt payload shouldn't be trusted.
+      merge: (persisted, current) => ({
+        ...(current as PoliciesState),
+        policies: keepValid<AutomationPolicy>(
+          (persisted as { policies?: unknown })?.policies,
+          automationPolicySchema,
+        ),
+      }),
     },
   ),
 );

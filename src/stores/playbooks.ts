@@ -7,6 +7,7 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { keepValid, playbookSchema } from "@/lib/schemas";
 import type { Playbook, PlaybookId } from "@/types";
 
 export interface UserPlaybooksState {
@@ -40,6 +41,14 @@ export const useUserPlaybooks = create<UserPlaybooksState>()(
       name: "dcc-playbooks",
       version: 1,
       partialize: (s) => ({ userPlaybooks: s.userPlaybooks }),
+      // Drop malformed user playbooks on rehydrate (#12).
+      merge: (persisted, current) => ({
+        ...(current as UserPlaybooksState),
+        userPlaybooks: keepValid<Playbook>(
+          (persisted as { userPlaybooks?: unknown })?.userPlaybooks,
+          playbookSchema,
+        ),
+      }),
     },
   ),
 );

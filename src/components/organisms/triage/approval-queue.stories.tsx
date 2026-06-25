@@ -11,6 +11,7 @@ import {
   getAsset,
 } from "@/mock/query";
 import { makeUid } from "@/stores/uid";
+import { keepValid, approvalRequestSchema } from "@/lib/schemas";
 import type { ApprovalRequest, ApprovalRequestId } from "@/types";
 
 const pending = getPendingApprovals();
@@ -117,6 +118,29 @@ export const ApproveFlow: Story = {
     await waitFor(() =>
       expect(useApprovals.getState().requests[0].state).toBe("approved"),
     );
+  },
+};
+
+/**
+ * RehydrateDropsMalformed — regression gate for #12: the approvals store's merge
+ * validates rehydrated requests with keepValid(approvalRequestSchema), dropping
+ * malformed/garbage entries (which otherwise flow into resumeApprovedRun on
+ * approve) while keeping well-formed ones.
+ */
+export const RehydrateDropsMalformed: Story = {
+  args: { canApprove: true },
+  play: async () => {
+    const valid = resumableRequest();
+    const persisted: unknown[] = [
+      { id: "", state: "pending" }, // empty id
+      { state: "pending" }, // missing id
+      { id: "apr-x", state: "bogus-state" }, // invalid state enum
+      "not-an-object",
+      valid,
+    ];
+    const kept = keepValid<ApprovalRequest>(persisted, approvalRequestSchema);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].id).toBe(valid.id);
   },
 };
 

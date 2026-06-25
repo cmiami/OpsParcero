@@ -43,6 +43,30 @@ export const useUiStore = create<UiState>()(
         density: s.density,
         lastClientId: s.lastClientId,
       }),
+      // Validate the rehydrated scalars (#12) — a corrupt density / non-boolean
+      // collapse / non-string client falls back to the safe default.
+      merge: (persisted, current) => {
+        const p = persisted as {
+          sidebarCollapsed?: unknown;
+          density?: unknown;
+          lastClientId?: unknown;
+        };
+        return {
+          ...(current as UiState),
+          sidebarCollapsed:
+            typeof p?.sidebarCollapsed === "boolean"
+              ? p.sidebarCollapsed
+              : false,
+          density:
+            p?.density === "comfortable" || p?.density === "compact"
+              ? (p.density as Density)
+              : "comfortable",
+          lastClientId:
+            typeof p?.lastClientId === "string"
+              ? (p.lastClientId as ClientId)
+              : undefined,
+        };
+      },
     },
   ),
 );

@@ -188,6 +188,132 @@ export const alertOverrideSchema = z.object({
   resolvedAt: isoDateTime,
 });
 
+// ── Persisted zustand-store entries (#12) ────────────────────────────────────
+// Schemas for the OTHER persisted stores (approvals / policies / playbooks /
+// saved-views / action-cart), so their merge() can drop malformed-or-spoofed
+// localStorage instead of trusting raw JSON. Highest-value: approvalPayload,
+// which feeds resumeApprovedRun on approve — a spoofed payload could execute.
+
+export const actionScopeSchema = z.enum(["once", "all-matching", "always"]);
+
+const entityRefSchema = z.object({ kind: z.string(), id: z.string() }).loose();
+
+export const approvalPayloadSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("action"),
+      actionId: z.string().min(1),
+      targetRefs: z.array(entityRefSchema),
+      scope: actionScopeSchema,
+      params: z.record(z.string(), z.unknown()),
+    })
+    .loose(),
+  z
+    .object({
+      kind: z.literal("chain"),
+      steps: z.array(
+        z
+          .object({
+            actionId: z.string().min(1),
+            scope: actionScopeSchema,
+            params: z.record(z.string(), z.unknown()),
+          })
+          .loose(),
+      ),
+      targetRefs: z.array(entityRefSchema),
+      scope: actionScopeSchema,
+    })
+    .loose(),
+]);
+
+export const approvalRequestSchema = z
+  .object({
+    id: z.string().min(1),
+    requestedFor: z
+      .object({
+        kind: z.enum(["action-run", "policy-fire"]),
+        refId: z.string(),
+      })
+      .loose(),
+    requestedBy: z.string(),
+    reason: z.enum([
+      "destructive",
+      "irreversible",
+      "over-threshold",
+      "policy-default",
+    ]),
+    blastRadius: z
+      .object({ assetCount: z.number(), preview: z.string() })
+      .loose(),
+    state: z.enum(["pending", "approved", "rejected", "expired"]),
+    payload: approvalPayloadSchema.optional(),
+  })
+  .loose();
+
+const policyTriggerSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("failure-mode"), failureModeId: z.string() }).loose(),
+  z.object({ kind: z.literal("category"), category: z.string() }).loose(),
+]);
+
+export const automationPolicySchema = z
+  .object({
+    id: z.string().min(1),
+    orgId: z.string(),
+    name: z.string().min(1),
+    trigger: policyTriggerSchema,
+    action: z
+      .object({
+        kind: z.enum(["action", "playbook"]),
+        refId: z.string(),
+        params: z.record(z.string(), z.unknown()),
+      })
+      .loose(),
+    enabled: z.boolean(),
+  })
+  .loose();
+
+export const playbookSchema = z
+  .object({
+    id: z.string().min(1),
+    orgId: z.string(),
+    name: z.string().min(1),
+    steps: z.array(z.object({ actionId: z.string().min(1) }).loose()),
+    defaultScope: actionScopeSchema,
+  })
+  .loose();
+
+export const savedViewSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    surface: z.enum(["fleet", "alerts", "incidents", "playbooks", "audit"]),
+  })
+  .loose();
+
+export const cartStepSchema = z
+  .object({
+    uid: z.string().min(1),
+    actionId: z.string().min(1),
+    params: z.record(z.string(), z.unknown()),
+    scope: actionScopeSchema,
+  })
+  .loose();
+
+/**
+ * Filter an unknown (rehydrated) value to the array entries that pass `schema` —
+ * the shared "don't trust localStorage" primitive for every persisted store's
+ * merge(). Non-arrays yield []. Cap keeps a corrupt payload from growing memory.
+ */
+export function keepValid<T>(
+  value: unknown,
+  schema: { safeParse: (v: unknown) => { success: boolean } },
+  cap = 500,
+): T[] {
+  return Array.isArray(value)
+    ? (value.filter((x) => schema.safeParse(x).success) as T[]).slice(0, cap)
+    : [];
+}
+
 // Inferred convenience types (subset checks; not the canonical @/types).
 export type AssetInput = z.infer<typeof assetSchema>;
 export type AlertInput = z.infer<typeof alertSchema>;

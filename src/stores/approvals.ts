@@ -6,6 +6,7 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { keepValid, approvalRequestSchema } from "@/lib/schemas";
 import type { ApprovalRequest, ApprovalRequestId } from "@/types";
 
 export interface ApprovalsState {
@@ -58,6 +59,16 @@ export const useApprovals = create<ApprovalsState>()(
       name: "dcc-approvals",
       version: 1,
       partialize: (s) => ({ requests: s.requests }),
+      // Don't trust localStorage (#12): drop malformed/spoofed requests on
+      // rehydrate — critical here because an approved request's payload feeds
+      // resumeApprovedRun (a forged destructive payload could otherwise execute).
+      merge: (persisted, current) => ({
+        ...(current as ApprovalsState),
+        requests: keepValid<ApprovalRequest>(
+          (persisted as { requests?: unknown })?.requests,
+          approvalRequestSchema,
+        ),
+      }),
     },
   ),
 );

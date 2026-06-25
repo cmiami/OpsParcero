@@ -12,6 +12,11 @@
  */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  keepValid,
+  cartStepSchema,
+  actionScopeSchema,
+} from "@/lib/schemas";
 import type {
   ActionScope,
   AssetId,
@@ -123,6 +128,26 @@ export const useActionCart = create<ActionCartState>()(
         steps: s.steps,
         defaultScope: s.defaultScope,
       }),
+      // Drop malformed cart state on rehydrate (#12): non-string targets, steps
+      // that aren't valid CartSteps, and a bad defaultScope fall back to safe.
+      merge: (persisted, current) => {
+        const p = persisted as {
+          targets?: unknown;
+          steps?: unknown;
+          defaultScope?: unknown;
+        };
+        const scope = actionScopeSchema.safeParse(p?.defaultScope);
+        return {
+          ...(current as ActionCartState),
+          targets: Array.isArray(p?.targets)
+            ? (p.targets.filter((t) => typeof t === "string") as AssetId[])
+            : [],
+          steps: keepValid<CartStep>(p?.steps, cartStepSchema),
+          defaultScope: scope.success
+            ? (p.defaultScope as ActionScope)
+            : DEFAULT_SCOPE,
+        };
+      },
     },
   ),
 );

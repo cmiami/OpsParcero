@@ -91,6 +91,47 @@ async function main(): Promise<void> {
 
   await phase2(gatedAssetId() ?? assetId, fail);
   phase3(fail);
+  await phase4Abort(fail);
+}
+
+/**
+ * Phase 4 — #2: aborting a Sim session must CANCEL the engine loop (via the
+ * AbortController signal), not just fail the UI queue. Proven by: an aborted
+ * session must not heal the shared in-browser fleet. Aborting before the stream
+ * starts the loop means the loop sees an already-aborted signal and bails before
+ * any write — so the target asset's status is unchanged.
+ */
+async function phase4Abort(fail: (msg: string) => never): Promise<void> {
+  const candidate = DB.assets.find((a) => a.status === "failed");
+  if (!candidate) {
+    console.log("SMOKE OK — phase 4 (#2 abort) SKIPPED — no failed asset left");
+    return;
+  }
+  const before = candidate.status;
+  const client = new SimFixClient();
+  const handle = await client.createSession({
+    assetId: candidate.id as never,
+    mode: "ai",
+    model: { provider: "mock", model: "mock-fixer-1" },
+    scope: "once",
+  });
+  await handle.abort();
+  try {
+    for await (const ev of handle.stream()) {
+      void ev; // drain — abort already failed the queue, so this won't iterate far
+    }
+  } catch {
+    // FixAbortError is expected after abort.
+  }
+  const after = DB.assets.find((a) => a.id === candidate.id)!.status;
+  if (after !== before) {
+    fail(
+      `phase4: aborted sim healed ${candidate.id} (${before} -> ${after}) — loop not cancelled`,
+    );
+  }
+  console.log("SMOKE OK — phase 4 (#2 abort cancels the loop — no post-abort heal)");
+  console.log(`  asset           : ${candidate.id}`);
+  console.log(`  status before/after abort: ${before} / ${after}`);
 }
 
 /**

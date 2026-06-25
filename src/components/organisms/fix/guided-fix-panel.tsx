@@ -374,6 +374,12 @@ export function GuidedFixPanel({
         scope,
         dryRun,
       });
+      // Unmounted while createSession was pending → the unmount effect aborted a
+      // still-null ref; abort this late handle and don't start its stream (#6).
+      if (!aliveRef.current) {
+        void handle.abort().catch(() => {});
+        return;
+      }
       sessionRef.current = {
         id: handle.id,
         approve: handle.approve,

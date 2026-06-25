@@ -14,6 +14,7 @@ import type {
 } from "@/lib/fix-client";
 import { getAssets, getIssues } from "@/mock/query";
 import { usePolicies } from "@/stores/automation-policies";
+import { useActivity } from "@/stores/activity";
 
 // ── Real fixtures so the panel reads like the product ────────────────────────
 const ASSET = getAssets().items[0];
@@ -465,5 +466,104 @@ export const UnmountAbortsMidRun: Story = {
     );
     await waitFor(() => expect(unmountClient.aborted).toBe(true));
     expect(canvas.queryByText(/Approval needed/i)).not.toBeInTheDocument();
+  },
+};
+
+// A client whose createSession BLOCKS until released — to exercise the
+// unmount-while-createSession-pending race (#6). A holder object (not a bare
+// `let`) so TS doesn't flow-narrow the resolver to null at the release call.
+const createGate: { release: (() => void) | null } = { release: null };
+function resetCreateGate() {
+  createGate.release = null;
+}
+const lateHandle = { aborted: false, streamStarted: false };
+class BlockingClient implements FixClient {
+  readonly kind = "sim" as const;
+  async listModels(): Promise<FixModelOption[]> {
+    return [MOCK_MODEL];
+  }
+  async createSession(): Promise<FixSessionHandle> {
+    await new Promise<void>((res) => {
+      createGate.release = res;
+    });
+    return {
+      id: "late-session",
+      session: {} as FixSession,
+      async approve() {},
+      async abort() {
+        lateHandle.aborted = true;
+      },
+      async *stream(): AsyncIterable<FixSessionEvent> {
+        lateHandle.streamStarted = true; // must NOT happen after a late abort
+        // No events — an aborted late handle should never get here.
+        yield* [];
+      },
+    };
+  }
+  stream(): AsyncIterable<FixSessionEvent> {
+    throw new Error("use the handle returned by createSession");
+  }
+  async approve(): Promise<void> {}
+  async abort(): Promise<void> {}
+}
+const blockingClient = new BlockingClient();
+
+function LateUnmountHarness() {
+  const [mounted, setMounted] = React.useState(true);
+  return (
+    <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => setMounted(false)}
+        className="self-start rounded-md border border-border px-2 py-1 text-sm"
+      >
+        Unmount panel
+      </button>
+      {mounted && (
+        <GuidedFixPanel
+          asset={ASSET}
+          issue={ISSUE}
+          client={blockingClient}
+          matchCount={9}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * UnmountDuringCreateAbortsLateHandle — regression gate for #6: if the panel
+ * unmounts while createSession() is still pending, the handle that arrives late
+ * must be aborted and its stream never started (no loop with no UI owner, no
+ * recorded run). The unmount-abort otherwise fires against a still-null ref.
+ */
+export const UnmountDuringCreateAbortsLateHandle: Story = {
+  args: { asset: ASSET, issue: ISSUE, matchCount: 9 },
+  render: () => <LateUnmountHarness />,
+  play: async ({ canvasElement }) => {
+    resetCreateGate();
+    lateHandle.aborted = false;
+    lateHandle.streamStarted = false;
+    useActivity.setState({
+      runs: [],
+      audit: [],
+      assetOverrides: {},
+      alertOverrides: {},
+    });
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /start guided/i }),
+    );
+    // createSession is now pending (blocked). Unmount the panel mid-pend.
+    await waitFor(() => expect(createGate.release).not.toBeNull());
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Unmount panel/i }),
+    );
+    // Release the late createSession; the panel is already gone.
+    createGate.release?.();
+    // The late handle is aborted and its stream is never started → no run.
+    await waitFor(() => expect(lateHandle.aborted).toBe(true));
+    expect(lateHandle.streamStarted).toBe(false);
+    expect(useActivity.getState().runs.length).toBe(0);
   },
 };

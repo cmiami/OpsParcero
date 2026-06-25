@@ -56,6 +56,8 @@ interface SimSession {
   pendingApproval: { stepId: string; gate: Deferred<ApprovalDecision> } | null;
   aborted: boolean;
   started: boolean;
+  /** Cancels the in-flight loop so abort() actually stops execution (#2). */
+  controller: AbortController;
   /** Resolves with the finished FixSession (or rejects on abort/error). */
   done: Promise<FixSession>;
 }
@@ -89,6 +91,7 @@ export class SimFixClient implements FixClient {
       pendingApproval: null,
       aborted: false,
       started: false,
+      controller: new AbortController(),
       done: Promise.resolve(undefined as unknown as FixSession),
     };
     this.sessions.set(id, sim);
@@ -152,6 +155,10 @@ export class SimFixClient implements FixClient {
     const sim = this.sessions.get(sessionId);
     if (!sim || sim.aborted) return;
     sim.aborted = true;
+    // Cancel the in-flight loop so it stops before the next tool call instead of
+    // running to completion and healing the shared in-browser fleet AFTER the UI
+    // shows 'halted' (#2). The loop honors this signal at its while/per-call checks.
+    sim.controller.abort();
     // Unblock any open gate so the loop can unwind, then fail the stream.
     if (sim.pendingApproval) {
       const gate = sim.pendingApproval.gate;
@@ -169,6 +176,8 @@ export class SimFixClient implements FixClient {
     const run = runSession(req, {
       provider: new MockProvider(),
       registry: defaultRegistry(),
+      // Abort signal so abort() actually halts the loop (#2), not just the queue.
+      signal: sim.controller.signal,
       // ApprovalResolver: surface the gate, then block on the UI's decision.
       approve: async (step: FixPlanStep, preview) => {
         if (sim.aborted) return "reject";

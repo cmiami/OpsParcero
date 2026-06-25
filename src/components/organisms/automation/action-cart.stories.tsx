@@ -4,8 +4,9 @@ import { ActionCart } from "./action-cart";
 import { Toaster } from "@/components/ui/sonner";
 import { useActionCart } from "@/stores/action-cart";
 import { useActivity } from "@/stores/activity";
+import { useApprovals } from "@/stores/approvals";
 import { makeUid } from "@/stores/uid";
-import { healedAssetIds } from "@/lib/activity-record";
+import { healedAssetIds, resumeApprovedRun } from "@/lib/activity-record";
 import type { ActionScope } from "@/types";
 import type { RunnerOutcome } from "@/mock/runner";
 
@@ -97,6 +98,53 @@ export const EmptyTargetsBlocksDispatch: Story = {
     expect(
       canvas.getByRole("button", { name: /Save as playbook/i }),
     ).toBeEnabled();
+  },
+};
+
+/**
+ * GatedChainDefersRecording — regression gate for #11: when a chain ends
+ * awaiting-approval, the cart records/heals NOTHING (no phantom 'awaiting-approval'
+ * run, no pre-approval self-heal of the earlier step) and only enqueues a
+ * resumable payload. resumeApprovedRun is then the SOLE writer — each ran step
+ * recorded exactly once on approval, never double-counted.
+ */
+export const GatedChainDefersRecording: Story = {
+  decorators: [
+    (Story) => {
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides: {},
+        alertOverrides: {},
+      });
+      useApprovals.setState({ requests: [] });
+      seed({
+        steps: [
+          { actionId: "repair-vss-writers" }, // reversible self-heal (would pre-heal)
+          { actionId: "force-merge" }, // irreversible → gates the chain
+        ],
+        targets: ["btru-fs1"],
+        defaultScope: "all-matching",
+      });
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Dispatch/ }));
+    // Chain gates → NOTHING recorded/healed pre-approval; only an approval queued.
+    await waitFor(
+      () => expect(useApprovals.getState().requests.length).toBeGreaterThan(0),
+      { timeout: 3000 },
+    );
+    expect(useActivity.getState().runs.length).toBe(0);
+    expect(Object.keys(useActivity.getState().assetOverrides).length).toBe(0);
+    const req = useApprovals.getState().requests[0];
+    expect(req.state).toBe("pending");
+    expect(req.payload?.kind).toBe("chain");
+    // Approving runs the chain ONCE — each ran step recorded exactly once.
+    if (req.payload) resumeApprovedRun(req.payload);
+    await waitFor(() => expect(useActivity.getState().runs.length).toBe(2));
   },
 };
 

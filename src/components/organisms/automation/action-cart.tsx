@@ -109,30 +109,40 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       // history / Audit surfaces read, honoring that step's own scope, and heal the
       // real targeted assets it resolved — so a cart dispatch is as durable as the
       // fix-modal / remediation-panel surfaces (R3).
-      outcome.steps.forEach((stepResult, i) => {
-        const pair = pairs[i];
-        if (!stepResult.ran || !pair) return;
-        // Heal only the targets that actually succeeded — a partial step leaves
-        // some failed.
-        const healed = healedAssetIds(stepResult.outcome).filter((id) =>
-          targets.includes(id),
-        );
-        recordSimulatedRun({
-          actionId: pair.action.id,
-          actionLabel: pair.action.label,
-          targets: refs,
-          scope: pair.cartStep.scope,
-          params: pair.cartStep.params,
-          outcome: stepResult.outcome,
-          heal:
-            stepResult.outcome.healsAsset && healed.length
-              ? {
-                  assetIds: healed,
-                  status: stepResult.outcome.healedStatus ?? "protected",
-                }
-              : undefined,
+      //
+      // EXCEPT when the chain ends awaiting-approval (#11): a gated chain marks the
+      // already-run steps ran:true, but recording them here would (a) persist a
+      // phantom 'awaiting-approval' run and a pre-approval self-heal, and (b)
+      // double-record once resumeApprovedRun re-runs the chain on approval. So when
+      // gated, record/heal NOTHING now — only enqueue; resumeApprovedRun is the
+      // sole writer (mirrors fix-modal / remediation-panel, which skip recording on
+      // awaitingApproval).
+      if (outcome.state !== "awaiting-approval") {
+        outcome.steps.forEach((stepResult, i) => {
+          const pair = pairs[i];
+          if (!stepResult.ran || !pair) return;
+          // Heal only the targets that actually succeeded — a partial step leaves
+          // some failed.
+          const healed = healedAssetIds(stepResult.outcome).filter((id) =>
+            targets.includes(id),
+          );
+          recordSimulatedRun({
+            actionId: pair.action.id,
+            actionLabel: pair.action.label,
+            targets: refs,
+            scope: pair.cartStep.scope,
+            params: pair.cartStep.params,
+            outcome: stepResult.outcome,
+            heal:
+              stepResult.outcome.healsAsset && healed.length
+                ? {
+                    assetIds: healed,
+                    status: stepResult.outcome.healedStatus ?? "protected",
+                  }
+                : undefined,
+          });
         });
-      });
+      }
 
       // "always"-scoped steps become standing auto-remediation policies the
       // Policies page reads (R4 — once/all-matching/always semantics are real).

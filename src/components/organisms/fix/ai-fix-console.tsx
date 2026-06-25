@@ -270,6 +270,13 @@ export function AiFixConsole({
       model: selectedModel,
       scope: "once",
     });
+    // If the console unmounted while createSession was pending, the unmount
+    // effect aborted a still-null ref — so abort this late handle ourselves and
+    // never start its stream (which would run the loop with no UI owner). (#6)
+    if (!aliveRef.current) {
+      void handle.abort().catch(() => {});
+      return;
+    }
     handleRef.current = handle;
     void drainStream(handle);
   }, [running, selectedModel, fixClient, asset.id, issue?.id, drainStream]);

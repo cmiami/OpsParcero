@@ -695,9 +695,26 @@ export interface AutomationPolicy {
 }
 
 /**
+ * The standing-policy a gated, "always"-scoped dispatch must still create once
+ * approved. An "always" apply both runs the fix AND arms an AutomationPolicy; if
+ * the run gates, the policy can't be created up front — it rides the payload so
+ * resuming on approval creates it too. Same shape buildAutomationPolicy() takes.
+ */
+export interface ApprovalPolicySpec {
+  failureModeId?: string;
+  category: string;
+  actionId: string;
+  productBucket?: ProductBucket;
+}
+
+/**
  * Everything needed to actually RUN an approval-gated dispatch once it is
  * approved — so approving executes the held action/chain (heals + records) rather
  * than just flipping a flag. Carried on the ApprovalRequest the gate enqueues.
+ *
+ * `policy` is set only for an "always"-scoped dispatch that gated before it could
+ * arm its standing rule: resuming creates the policy too, so a gate never silently
+ * drops the automation the operator asked for (#6).
  */
 export type ApprovalPayload =
   | {
@@ -706,6 +723,7 @@ export type ApprovalPayload =
       targetRefs: EntityRef[];
       scope: ActionScope;
       params: Record<string, unknown>;
+      policy?: ApprovalPolicySpec;
     }
   | {
       kind: "chain";
@@ -716,6 +734,7 @@ export type ApprovalPayload =
       }>;
       targetRefs: EntityRef[];
       scope: ActionScope;
+      policy?: ApprovalPolicySpec;
     };
 
 export interface ApprovalRequest {

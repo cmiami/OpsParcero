@@ -3,6 +3,7 @@ import { expect, within, userEvent, waitFor } from "storybook/test";
 import { ApprovalQueue } from "./approval-queue";
 import { useApprovals } from "@/stores/approvals";
 import { useActivity } from "@/stores/activity";
+import { usePolicies } from "@/stores/automation-policies";
 import {
   getPendingApprovals,
   getApprovals,
@@ -51,6 +52,31 @@ function resumableRequest(): ApprovalRequest {
       params: {},
     },
     state: "pending",
+  };
+}
+
+/**
+ * A resumable request whose held dispatch is an "always"-scoped apply that gated
+ * BEFORE it could arm its standing rule — the payload therefore carries the
+ * policy spec, and approving must create the policy too (#6).
+ */
+function policyResumableRequest(): ApprovalRequest {
+  return {
+    ...resumableRequest(),
+    payload: {
+      kind: "action",
+      actionId: healAction?.id ?? "noop",
+      targetRefs: [{ kind: "asset", id: healAssetId }],
+      scope: "always",
+      params: {},
+      policy: {
+        failureModeId: healIssue?.failureModeId,
+        category: healIssue?.category ?? "Backup failure",
+        actionId: healAction?.id ?? "noop",
+        productBucket: healIssue?.productBucket,
+      },
+    },
+    reason: "destructive",
   };
 }
 
@@ -187,6 +213,54 @@ export const ApprovedRunExecutes: Story = {
         ),
       );
     }
+  },
+};
+
+/**
+ * ApprovedAlwaysArmsPolicy — regression gate for #6 (gate drops the policy):
+ * approving a request whose payload carries an "always" policy spec must BOTH run
+ * the held dispatch AND create the standing rule (paused) — the automation the
+ * operator asked for is never lost just because the fix gated.
+ */
+export const ApprovedAlwaysArmsPolicy: Story = {
+  decorators: [
+    (Story) => {
+      useApprovals.setState({ requests: [policyResumableRequest()] });
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides: {},
+        alertOverrides: {},
+      });
+      usePolicies.setState({ policies: [] });
+      return (
+        <div className="p-6">
+          <Story />
+        </div>
+      );
+    },
+  ],
+  args: { canApprove: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const before = usePolicies.getState().policies.length;
+    await userEvent.click(await canvas.findByRole("button", { name: "Approve" }));
+    await waitFor(() =>
+      expect(useApprovals.getState().requests[0].state).toBe("approved"),
+    );
+    // The held dispatch ran AND the standing rule was created (paused), with an
+    // audit trail for the creation.
+    await waitFor(() =>
+      expect(useActivity.getState().runs.length).toBeGreaterThan(0),
+    );
+    await waitFor(() =>
+      expect(usePolicies.getState().policies.length).toBe(before + 1),
+    );
+    const created = usePolicies.getState().policies.at(-1);
+    expect(created?.enabled).toBe(false); // created paused, never armed silently
+    expect(
+      useActivity.getState().audit.some((a) => a.verb === "enabled-policy"),
+    ).toBe(true);
   },
 };
 

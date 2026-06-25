@@ -11,6 +11,7 @@
 import { makeUid } from "@/stores/uid";
 import { useActivity } from "@/stores/activity";
 import { useApprovals } from "@/stores/approvals";
+import { usePolicies } from "@/stores/automation-policies";
 import { getUsers, getOrg, getAsset } from "@/mock/query";
 import { ACTION_BY_ID } from "@/mock/reference";
 import type {
@@ -19,6 +20,7 @@ import type {
   ActionScope,
   ActionRunState,
   ApprovalPayload,
+  ApprovalPolicySpec,
   ApprovalRequest,
   ApprovalRequestId,
   AlertId,
@@ -233,6 +235,19 @@ export function recordPolicyCreated(input: {
 }
 
 /**
+ * Arm the standing policy for an "always"-scoped apply: build it (paused),
+ * persist it to the Policies store, and audit its creation. The single place
+ * these three steps stay together — shared by the fresh dispatch (FixModal) and
+ * the gated resume (resumeApprovedRun) so a gate can't drop the policy (#6).
+ */
+export function createPolicyFromSpec(spec: ApprovalPolicySpec): AutomationPolicy {
+  const policy = buildAutomationPolicy(spec);
+  usePolicies.getState().addPolicy(policy);
+  recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
+  return policy;
+}
+
+/**
  * Record a manual alert-triage decision (P3-7) so real-semantic verbs leave a
  * durable trail like the fix path — not just a toast. "resolved" also closes the
  * alert everywhere (alertOverrides); "acknowledged" only audits (acknowledged
@@ -295,6 +310,9 @@ export function resumeApprovedRun(payload: ApprovalPayload): void {
           ? { assetIds: healed, status: outcome.healedStatus ?? "protected" }
           : undefined,
     });
+    // An "always"-scoped dispatch that gated couldn't arm its standing rule up
+    // front — create it now, on approval, so the policy isn't lost (#6).
+    if (payload.policy) createPolicyFromSpec(payload.policy);
     return;
   }
 
@@ -326,6 +344,8 @@ export function resumeApprovedRun(payload: ApprovalPayload): void {
           : undefined,
     });
   });
+  // Arm the standing policy a gated "always" chain deferred (#6).
+  if (payload.policy) createPolicyFromSpec(payload.policy);
 }
 
 /**
@@ -402,7 +422,7 @@ function enqueueApproval(input: {
   });
 }
 
-export type ExecuteRemediationInput =
+export type ExecuteRemediationInput = (
   | {
       kind: "action";
       action: RemediationAction;
@@ -421,7 +441,16 @@ export type ExecuteRemediationInput =
       targets: EntityRef[];
       scope: ActionScope;
       by?: TriggeredBy;
-    };
+    }
+) & {
+  /**
+   * The standing policy an "always" apply should arm. On the NON-gated path the
+   * caller still creates it (it owns the result banner). On a GATE it can't be
+   * created up front, so it rides the enqueued payload and resumeApprovedRun
+   * creates it on approval — closing the gate-drops-policy hole (#6).
+   */
+  policy?: ApprovalPolicySpec;
+};
 
 export interface ExecuteRemediationResult {
   /** True when the dispatch paused at the approval gate (nothing recorded/healed). */
@@ -463,6 +492,8 @@ export function executeRemediation(
           targetRefs: input.targets,
           scope: input.scope,
           params,
+          // Carry the standing policy so approval still arms it (#6).
+          policy: input.policy,
         },
       });
       return {
@@ -517,6 +548,8 @@ export function executeRemediation(
         })),
         targetRefs: input.targets,
         scope: input.scope,
+        // Carry the standing policy so approval still arms it (#6).
+        policy: input.policy,
       },
     });
     return {

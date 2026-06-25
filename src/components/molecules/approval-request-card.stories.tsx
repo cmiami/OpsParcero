@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, within, userEvent } from "storybook/test";
 import { ApprovalRequestCard } from "./approval-request-card";
+import { ACTION_BY_ID } from "@/mock/reference";
 import type { ApprovalRequest } from "@/types";
 
 const base: ApprovalRequest = {
@@ -83,6 +84,45 @@ export const ReadOnly: Story = {
     requesterName: "Jordan Doe",
     canApprove: false,
     onDecide: fn(),
+  },
+};
+
+/**
+ * WithDispatchContext — regression gate for #13: a request that carries a
+ * resumable payload surfaces WHAT will run — the action label, its scope, and (for
+ * an "always" apply) that it arms a standing rule — so no one approves blind.
+ */
+export const WithDispatchContext: Story = {
+  args: {
+    request: {
+      ...base,
+      reason: "destructive",
+      payload: {
+        kind: "action",
+        actionId: "force-retention",
+        targetRefs: [{ kind: "asset", id: "btru-fs1" }],
+        scope: "always",
+        params: {},
+        policy: {
+          category: "Retention / storage",
+          actionId: "force-retention",
+        },
+      },
+    },
+    requesterName: "Jordan Doe",
+    canApprove: true,
+    onDecide: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The action being approved is named (resolved label, not the raw id)…
+    await expect(
+      canvas.getByText(ACTION_BY_ID["force-retention"].label),
+    ).toBeInTheDocument();
+    // …its scope is shown…
+    await expect(canvas.getByText(/Always — standing rule/i)).toBeInTheDocument();
+    // …and the standing-rule consequence is flagged (text, not color alone).
+    await expect(canvas.getByText(/Arms a standing rule/i)).toBeInTheDocument();
   },
 };
 

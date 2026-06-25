@@ -9,12 +9,17 @@ import {
   Target,
   Check,
   X,
+  Wrench,
+  Crosshair,
+  Layers,
+  Repeat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import type { ApprovalRequest } from "@/types";
+import { ACTION_BY_ID } from "@/mock/reference";
+import type { ActionScope, ApprovalPayload, ApprovalRequest } from "@/types";
 
 export interface ApprovalRequestCardProps {
   /** The pending/decided approval request. */
@@ -69,6 +74,33 @@ const REASON_LABEL: Record<ApprovalRequest["reason"], string> = {
   "policy-default": "Policy requires approval",
 };
 
+const SCOPE_META: Record<ActionScope, { label: string; icon: typeof Target }> = {
+  once: { label: "This asset only", icon: Crosshair },
+  "all-matching": { label: "All matching assets", icon: Layers },
+  always: { label: "Always — standing rule", icon: Repeat },
+};
+
+/** What the held payload will actually run, so a viewer never approves blind. */
+function dispatchSummary(payload: ApprovalPayload): {
+  label: string;
+  scope: ActionScope;
+  armsPolicy: boolean;
+} {
+  if (payload.kind === "action") {
+    return {
+      label: ACTION_BY_ID[payload.actionId]?.label ?? payload.actionId,
+      scope: payload.scope,
+      armsPolicy: Boolean(payload.policy),
+    };
+  }
+  const n = payload.steps.length;
+  return {
+    label: `${n}-step remediation chain`,
+    scope: payload.scope,
+    armsPolicy: Boolean(payload.policy),
+  };
+}
+
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -82,10 +114,11 @@ function initials(name: string): string {
 /**
  * ApprovalRequestCard — a human-in-the-loop gate for risky remediations.
  *
- * Shows who requested the action, why approval is required, the blast-radius
- * preview, and a state pill (dot + icon + text, never color-only). When pending
- * and the viewer `canApprove`, exposes Approve / Reject. Decided/read-only
- * states hide the action footer.
+ * Shows who requested the action, why approval is required, WHAT will run (the
+ * action/chain, its scope, and whether it arms a standing rule — so no one
+ * approves blind), the blast-radius preview, and a state pill (dot + icon + text,
+ * never color-only). When pending and the viewer `canApprove`, exposes Approve /
+ * Reject. Decided/read-only states hide the action footer.
  */
 export function ApprovalRequestCard({
   request,
@@ -98,6 +131,10 @@ export function ApprovalRequestCard({
   const meta = STATE_META[request.state];
   const StateIcon = meta.icon;
   const showActions = request.state === "pending" && canApprove;
+  // Present on requests enqueued by the in-app fix surfaces; absent on seeded /
+  // historical entries (which only flip state when decided).
+  const dispatch = request.payload ? dispatchSummary(request.payload) : null;
+  const ScopeIcon = dispatch ? SCOPE_META[dispatch.scope].icon : Target;
 
   return (
     <Card className={cn("gap-0 overflow-hidden", className)}>
@@ -130,6 +167,29 @@ export function ApprovalRequestCard({
             {meta.label}
           </span>
         </div>
+
+        {dispatch && (
+          <div className="flex items-start gap-2 rounded-md bg-subtle p-2.5">
+            <Wrench aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-xs font-bold text-card-foreground">
+                {dispatch.label}
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-2xs font-bold text-muted-foreground">
+                  <ScopeIcon aria-hidden className="size-3 shrink-0" />
+                  {SCOPE_META[dispatch.scope].label}
+                </span>
+                {dispatch.armsPolicy && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-warning-tint px-1.5 py-0.5 text-2xs font-bold text-warning">
+                    <Repeat aria-hidden className="size-3 shrink-0" />
+                    Arms a standing rule
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-start gap-2 rounded-md bg-subtle p-2.5">
           <Target aria-hidden className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />

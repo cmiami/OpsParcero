@@ -20,11 +20,15 @@ import { FIX_META } from "@/lib/status";
 import { getPrimaryAction } from "@/mock/query";
 import {
   executeRemediation,
-  buildAutomationPolicy,
-  recordPolicyCreated,
+  createPolicyFromSpec,
 } from "@/lib/activity-record";
-import { usePolicies } from "@/stores/automation-policies";
-import type { ActionScope, AssetId, EntityRef, Issue } from "@/types";
+import type {
+  ActionScope,
+  ApprovalPolicySpec,
+  AssetId,
+  EntityRef,
+  Issue,
+} from "@/types";
 
 export interface FixModalProps {
   /** The issue being remediated. */
@@ -122,17 +126,42 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         ? issue.impactedAssetIds.slice(0, 1)
         : issue.impactedAssetIds;
     const targets: EntityRef[] = targetIds.map((id) => ({ kind: "asset", id }));
+
+    // The standing policy an "always" apply must arm. Breadth decides coverage:
+    // "type" → just this failure mode; "category" → every failure in the category
+    // (failureModeId omitted). Built BEFORE the dispatch so it can ride a gated
+    // payload — a destructive "always" fix that gates still arms its rule on
+    // approval instead of dropping it (#6).
+    const wholeCategory = policyBreadth === "category";
+    const policySpec: ApprovalPolicySpec | undefined =
+      scope === "always"
+        ? {
+            failureModeId: wholeCategory ? undefined : issue.failureModeId,
+            category: issue.category,
+            actionId: action.id,
+            productBucket: issue.productBucket,
+          }
+        : undefined;
+
     // The ONE dispatch command (#10): runs, and on a destructive/over-threshold
-    // gate enqueues a resumable approval (records nothing), else records the run +
-    // heals. Shared with RemediationPanel / ActionCart / the playbook + fix-all
-    // CTAs so the reason ladder + payload can't diverge.
-    const result = executeRemediation({ kind: "action", action, targets, scope });
+    // gate enqueues a resumable approval carrying the policy (records nothing),
+    // else records the run + heals. Shared with RemediationPanel / ActionCart /
+    // the playbook + fix-all CTAs so the reason ladder + payload can't diverge.
+    const result = executeRemediation({
+      kind: "action",
+      action,
+      targets,
+      scope,
+      policy: policySpec,
+    });
 
     if (result.awaitingApproval) {
       setResult({
         tone: "warning",
         title: "Approval required",
-        detail: `${result.summary} Review it in Automation → Approvals.`,
+        detail: policySpec
+          ? `${result.summary} Approve it in Automation → Approvals — the fix runs and the standing rule is created on approval.`
+          : `${result.summary} Review it in Automation → Approvals.`,
       });
       setRunning(false);
       return;
@@ -148,19 +177,10 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
           : "1 asset";
     const didHeal = result.healed.length > 0;
 
-    if (scope === "always") {
-      // Standing policy. Breadth decides what it covers: "type" → just this
-      // failure mode; "category" → every failure in the category (failureModeId
-      // omitted). One control, one meaning — no separate category toggle.
-      const wholeCategory = policyBreadth === "category";
-      const policy = buildAutomationPolicy({
-        failureModeId: wholeCategory ? undefined : issue.failureModeId,
-        category: issue.category,
-        actionId: action.id,
-        productBucket: issue.productBucket,
-      });
-      usePolicies.getState().addPolicy(policy);
-      recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
+    if (policySpec) {
+      // Not gated: arm the standing rule now (paused) via the shared helper, so
+      // the fresh-dispatch and gated-resume paths create it identically (#6).
+      createPolicyFromSpec(policySpec);
       setResult({
         tone: "warning",
         title: "Policy created (paused)",

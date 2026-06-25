@@ -3,10 +3,19 @@ import { expect, within, userEvent, waitFor } from "storybook/test";
 import { RemediationPanel } from "./remediation-panel";
 import { Toaster } from "@/components/ui/sonner";
 import { useActionCart } from "@/stores/action-cart";
-import { getIssues } from "@/mock/query";
+import { useActivity } from "@/stores/activity";
+import { getIssues, getAsset } from "@/mock/query";
 
 const issues = getIssues();
 const issue = issues[0];
+// A non-gated self-heal (records + heals) and a dry-run-capable action — both
+// deterministic seed fixtures used to gate the dispatch routing (#7).
+const healIssue =
+  issues.find((i) => i.id === "ISS-destructive-uninstaller") ?? issue;
+const healAsset = getAsset("AST-EP-0184");
+const dryIssue =
+  issues.find((i) => i.id === "ISS-storage-pool-full-backups-skipped") ?? issue;
+const dryAsset = getAsset("AST-AGT-0047");
 const cosmetic = issues.find((i) => i.isCosmetic) ?? issues[1] ?? issue;
 const insightsOnly =
   issues.find((i) => i.fixType === "manual" || i.fixType === "external") ?? issue;
@@ -25,8 +34,15 @@ const meta = {
   parameters: { layout: "padded" },
   decorators: [
     (Story) => {
-      // Reset the action cart so "Save as playbook" stories don't leak.
+      // Reset the action cart so "Save as playbook" stories don't leak, and the
+      // activity store so a recorded run / heal can't bleed between stories.
       useActionCart.setState({ targets: [], steps: [], defaultScope: "once" });
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides: {},
+        alertOverrides: {},
+      });
       return (
         <div className="mx-auto max-w-[28rem]">
           <Story />
@@ -73,6 +89,43 @@ export const Success: Story = {
       () => expect(canvas.getByRole("status")).toBeInTheDocument(),
       { timeout: 3000 },
     );
+  },
+};
+
+/**
+ * RealApplyRecordsViaCommand — regression gate for #7: a real "Apply once" flows
+ * through the shared executeRemediation command — a durable run is recorded and
+ * the targeted asset heals — rather than the panel's own bespoke dispatch.
+ */
+export const RealApplyRecordsViaCommand: Story = {
+  args: { issue: healIssue, asset: healAsset, matchCount: 1 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Apply once/i }));
+    await waitFor(
+      () => expect(useActivity.getState().runs.length).toBeGreaterThan(0),
+      { timeout: 3000 },
+    );
+    // Healed through the command's heal channel (asset overlay written).
+    expect(useActivity.getState().assetOverrides["AST-EP-0184"]).toBeDefined();
+  },
+};
+
+/**
+ * DryRunIsLocalOnly — the dry-run stays a LOCAL preview: it shows the rehearsal
+ * banner but records nothing and heals nothing (it never reaches the command).
+ */
+export const DryRunIsLocalOnly: Story = {
+  args: { issue: dryIssue, asset: dryAsset, matchCount: 1 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: /Dry-run/i }));
+    await waitFor(
+      () => expect(canvas.getByText(/Dry-run preview/i)).toBeInTheDocument(),
+      { timeout: 3000 },
+    );
+    expect(useActivity.getState().runs.length).toBe(0);
+    expect(useActivity.getState().assetOverrides["AST-AGT-0047"]).toBeUndefined();
   },
 };
 

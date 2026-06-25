@@ -22,17 +22,12 @@ import { FixTypeBadge } from "@/components/atoms/fix-type-badge";
 import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { WeYouSteps } from "@/components/molecules/we-you-steps";
 import { AiInsightCard } from "@/components/molecules/ai-insight-card";
-import { getIssues, getActionsForFailureMode, getUsers } from "@/mock/query";
+import { getIssues, getActionsForFailureMode } from "@/mock/query";
 import { simulateRun, type RunnerOutcome } from "@/mock/runner";
 import { useActionCart } from "@/stores/action-cart";
-import { usePolicies } from "@/stores/automation-policies";
-import { useApprovals } from "@/stores/approvals";
-import { makeUid } from "@/stores/uid";
 import {
-  recordSimulatedRun,
-  buildAutomationPolicy,
-  recordPolicyCreated,
-  healedAssetIds,
+  executeRemediation,
+  createPolicyFromSpec,
 } from "@/lib/activity-record";
 import type {
   Issue,
@@ -40,7 +35,6 @@ import type {
   FailureMode,
   RemediationAction,
   ActionScope,
-  ApprovalRequestId,
   EntityRef,
 } from "@/types";
 import { toast } from "sonner";
@@ -149,102 +143,77 @@ export function RemediationPanel({
   const executing = phase === "executing";
 
   function run(dryRun: boolean) {
-    if (!primaryAction) return;
+    const action = primaryAction;
+    if (!action) return;
     setPhase("executing");
     setOutcome(null);
     const runTargets = targetsForScope(scope);
     // Simulated latency: runtime-only randomness inside a handler is allowed.
-    window.setTimeout(
-      () => {
-        const result = simulateRun(primaryAction, runTargets, scope, {}, { dryRun });
+    window.setTimeout(() => {
+      if (dryRun) {
+        // A dry-run is a LOCAL preview only: it records nothing and never gates,
+        // so it stays on simulateRun — the shared dispatch command has no preview
+        // mode and is the wrong tool for a no-op rehearsal.
+        const result = simulateRun(action, runTargets, scope, {}, { dryRun: true });
         setOutcome(result);
-        const ok =
-          result.state === "succeeded" ||
-          result.state === "partial" ||
-          result.preview === true ||
-          result.awaitingApproval === true;
-        setPhase(ok ? "success" : "failure");
+        setPhase("success");
+        toast("Dry-run complete", { description: result.resultSummary });
+        return;
+      }
 
-        // Persist a durable ActionRun + AuditLogEntry for any real dispatch that
-        // actually ran — NOT a preview and NOT one paused at the approval gate
-        // (that records nothing until approved) — healing the targeted assets
-        // when the run resolves them, so Run history / Audit / fleet reflect it.
-        if (!result.preview && !result.awaitingApproval) {
-          recordSimulatedRun({
-            actionId: primaryAction.id,
-            actionLabel: primaryAction.label,
-            targets: runTargets,
-            scope,
-            outcome: result,
-            heal:
-              result.healsAsset && healedAssetIds(result).length
-                ? {
-                    // Only the targets that actually succeeded (partial-safe).
-                    assetIds: healedAssetIds(result),
-                    status: result.healedStatus ?? "protected",
-                  }
-                : undefined,
-          });
-        }
+      // A real apply flows through the ONE dispatch command (#7/#10): it runs and
+      // either records + heals or enqueues a resumable approval (the reason ladder
+      // + payload assembly live there), so RemediationPanel can't diverge from
+      // FixModal / ActionCart / the Fix-all path.
+      const result = executeRemediation({
+        kind: "action",
+        action,
+        targets: runTargets,
+        scope,
+      });
+      const ok =
+        result.state === "succeeded" ||
+        result.state === "partial" ||
+        result.awaitingApproval;
+      // The banner reads preview / awaitingApproval / resultSummary; synthesize
+      // that view from the command's result (the command owns the real outcome).
+      setOutcome({
+        state: result.state,
+        resultSummary: result.summary,
+        perTarget: [],
+        healsAsset: result.healed.length > 0,
+        awaitingApproval: result.awaitingApproval,
+      });
+      setPhase(ok ? "success" : "failure");
 
-        if (result.awaitingApproval) {
-          // Enqueue a resumable ApprovalRequest the Approval queue can decide,
-          // instead of dead-ending at a toast (human-in-the-loop contract).
-          useApprovals.getState().enqueue({
-            id: makeUid("apr") as ApprovalRequestId,
-            requestedFor: { kind: "action-run", refId: primaryAction.id },
-            requestedBy: getUsers()[0]?.id ?? "u-current",
-            reason: !primaryAction.reversible
-              ? "irreversible"
-              : primaryAction.destructive
-                ? "destructive"
-                : "over-threshold",
-            blastRadius: result.blastRadius ?? {
-              assetCount: runTargets.length,
-              preview: primaryAction.label,
-            },
-            // Resumable: the Approval queue can run this exact dispatch.
-            payload: {
-              kind: "action",
-              actionId: primaryAction.id,
-              targetRefs: runTargets,
-              scope,
-              params: {},
-            },
-            state: "pending",
-          });
-          toast.warning("Approval required", {
-            description: `${result.resultSummary} Review it in Automation → Approvals.`,
-          });
-        } else if (result.preview) {
-          toast("Dry-run complete", { description: result.resultSummary });
-        } else if (ok) {
-          toast.success(`${primaryAction.label} applied`, {
-            description: result.resultSummary,
-          });
-        } else {
-          toast.error(`${primaryAction.label} failed`, {
-            description: result.resultSummary,
-          });
-        }
-      },
-      600,
-    );
+      if (result.awaitingApproval) {
+        toast.warning("Approval required", {
+          description: `${result.summary} Review it in Automation → Approvals.`,
+        });
+      } else if (ok) {
+        toast.success(`${action.label} applied`, {
+          description: result.summary,
+        });
+      } else {
+        toast.error(`${action.label} failed`, {
+          description: result.summary,
+        });
+      }
+    }, 600);
   }
 
   function applyAlways() {
     if (!primaryAction) return;
     setScope("always");
     setDefaultScope("always");
-    // Create a standing policy (paused) the Policies page reads, and audit it.
-    const policy = buildAutomationPolicy({
+    // Create a standing policy (paused) the Policies page reads + audit it, via
+    // the shared helper so creation matches every other "always" site (#6 helper).
+    createPolicyFromSpec({
       failureModeId: issue.failureModeId,
       category: issue.category,
       actionId: primaryAction.id,
       productBucket: issue.productBucket,
     });
-    usePolicies.getState().addPolicy(policy);
-    recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
     toast.success("Policy created (paused)", {
       description: `A standing rule for "${issue.title}" was created — paused pending approval. Enable it in Automation → Policies.`,
     });

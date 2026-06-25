@@ -20,16 +20,20 @@ export interface FleetRollupProps {
   className?: string;
 }
 
-/** Token-bound donut dimensions: container class + recharts radii (px). */
-const DONUT_SIZE: Record<NonNullable<FleetRollupProps["size"]>, {
-  box: string;
-  inner: number;
-  outer: number;
-}> = {
-  sm: { box: "size-32", inner: 40, outer: 60 },
-  md: { box: "size-40", inner: 50, outer: 75 },
-  lg: { box: "size-52", inner: 66, outer: 98 },
+/** Token-bound donut box per size. */
+const DONUT_BOX: Record<NonNullable<FleetRollupProps["size"]>, string> = {
+  sm: "size-32",
+  md: "size-40",
+  lg: "size-52",
 };
+
+// Radii as PERCENTAGES of the rendered box — never absolute px. The root is
+// 13px (intentional density), so `size-40` is ~130px, not 160px; an absolute
+// outerRadius sized for 160px overflowed the SVG and got clipped flat by the
+// square viewport into a "squircle". Percentages fit any box + any root. The
+// ~36% ring thickness leaves the hole free for the center total.
+const INNER_RADIUS = "60%";
+const OUTER_RADIUS = "96%";
 
 /** Worst-first display order for legend + donut segments. */
 const ORDER: AssetStatus[] = [
@@ -85,7 +89,11 @@ export function FleetRollup({ stats, size = "md", className }: FleetRollupProps)
   const total = segments.reduce((sum, seg) => sum + seg.count, 0);
   const present = segments.map((seg) => seg.status);
   const worst = rollupStatus(present);
-  const dim = DONUT_SIZE[size];
+  const box = DONUT_BOX[size];
+  // A single-status fleet is one full ring: drop the segment separator + corner
+  // rounding so it closes seamlessly (otherwise the stroke + cornerRadius leave a
+  // faint card-colored notch at the start/end seam).
+  const single = segments.length === 1;
 
   // Render the donut only after mount — ResponsiveContainer measures its parent,
   // which has no size during the static prerender (Recharts width(-1)).
@@ -99,7 +107,7 @@ export function FleetRollup({ stats, size = "md", className }: FleetRollupProps)
         className,
       )}
     >
-      <div className={cn("relative shrink-0", dim.box)}>
+      <div className={cn("relative shrink-0", box)}>
         {total > 0 && mounted ? (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -107,10 +115,15 @@ export function FleetRollup({ stats, size = "md", className }: FleetRollupProps)
                 data={segments}
                 dataKey="count"
                 nameKey="label"
-                innerRadius={dim.inner}
-                outerRadius={dim.outer}
-                paddingAngle={total > 1 ? 2 : 0}
-                strokeWidth={0}
+                innerRadius={INNER_RADIUS}
+                outerRadius={OUTER_RADIUS}
+                // Separate segments with a thin card-colored stroke instead of an
+                // angular gap (paddingAngle) — a gap shrinks the tiny tail wedges
+                // into spikes; a stroke delineates without distorting them. A lone
+                // full-ring segment needs neither (no seam to hide).
+                stroke="var(--card)"
+                strokeWidth={single ? 0 : 2}
+                cornerRadius={single ? 0 : 2}
                 startAngle={90}
                 endAngle={-270}
                 isAnimationActive={false}

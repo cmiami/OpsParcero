@@ -35,7 +35,7 @@ import {
   printTurn,
   printSummary,
   printTranscript,
-  isSuccessState,
+  exitCodeForState,
 } from "./render";
 
 const PROVIDER_IDS: ProviderId[] = ["anthropic", "openai", "google", "local", "mock"];
@@ -169,7 +169,7 @@ function cmdReplay(file: string): number {
   printTranscript(turns);
   if (!Array.isArray(parsed) && session.state) {
     printSummary(parsed as FixSession);
-    return isSuccessState(session.state) ? 0 : 1;
+    return exitCodeForState(session.state);
   }
   return 0;
 }
@@ -316,7 +316,7 @@ async function cmdFix(opts: FixOpts): Promise<number> {
     process.stdout.write("\n" + JSON.stringify(session, null, 2) + "\n");
   }
 
-  return isSuccessState(session.state) ? 0 : 1;
+  return exitCodeForState(session.state);
 }
 
 // ── arg parsing + dispatch ────────────────────────────────────────────────────

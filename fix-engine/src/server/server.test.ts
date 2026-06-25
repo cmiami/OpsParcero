@@ -3,12 +3,16 @@
  * approval; P2-3 budget clamp). The HTTP server is loopback dev-tooling, but
  * these are the guards that make "if you ever run it" safe — so they're gated.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { app } from "./index";
 import { SessionStore, deferred, type SessionEntry } from "./store";
 import { clampBudget, DEFAULT_BUDGET } from "../loop/budget";
-import { DB } from "../shared/fleet";
+import { DB, resetFleet } from "../shared/fleet";
 import type { FixPlanStep, FixSession } from "../types";
+
+// The 201-path POST kicks off a background runSession that can heal the shared
+// DB; restore seeded state after each test so the suite stays order-independent (#7).
+afterEach(resetFleet);
 
 const APP_ORIGIN = "http://localhost:3000";
 const assetId = (DB.assets.find((a) => a.status === "failed") ?? DB.assets[0]).id;

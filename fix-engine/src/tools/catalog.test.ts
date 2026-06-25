@@ -14,15 +14,19 @@
  * Determinism: the seeded fleet + seeded clock + app PRNG make every run identical;
  * fixtures rebuild from seed each process, so the failing state resets per run.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { runSession } from "../loop/session";
 import { MockProvider } from "../providers/mock";
 import { defaultRegistry } from "./registry";
 import { pickToolsForAsset } from "./catalog";
-import { DB, getAsset, primaryIssueForAsset } from "../shared/fleet";
+import { DB, getAsset, primaryIssueForAsset, resetFleet } from "../shared/fleet";
 import type { ApprovalResolver, FixSession } from "../types";
 import type { AgentAsset, ProtectedAsset } from "../domain";
 import type { ToolContext as TC } from "./types";
+
+// applyHeal mutates the shared DB on a successful write; restore seeded state
+// after each test so order/shuffle can't pre-heal a later test's asset (#7).
+afterEach(resetFleet);
 
 const provider = new MockProvider();
 const model = { provider: "mock" as const, model: "mock-fixer-1" };

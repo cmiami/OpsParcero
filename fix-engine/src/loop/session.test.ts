@@ -1,10 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { runSession } from "./session";
 import { MockProvider } from "../providers/mock";
 import { ToolRegistry, STUB_TOOLS, defaultRegistry } from "../tools/registry";
-import { DB } from "../shared/fleet";
+import { DB, resetFleet } from "../shared/fleet";
 import type { ApprovalResolver } from "../types";
 import type { ToolHandler } from "../tools/types";
+
+// A successful run heals the shared module-level DB; restore the seeded failing
+// state after every test so order/shuffle can't change outcomes (finding #7).
+afterEach(resetFleet);
 
 const provider = new MockProvider();
 const assetId = (DB.assets.find((a) => a.status === "failed") ?? DB.assets[0]).id;
@@ -42,6 +46,9 @@ describe("fix-engine M1 — agent loop", () => {
       { assetId, mode: "ai", model: { provider: "mock", model: "mock-fixer-1" } },
       { provider, registry: defaultRegistry() },
     );
+    // Both runs must start from the SAME (seeded, failing) state — run a healed
+    // the shared DB, so reset before run b or the transcripts diverge (#7).
+    resetFleet();
     const b = await runSession(
       { assetId, mode: "ai", model: { provider: "mock", model: "mock-fixer-1" } },
       { provider, registry: defaultRegistry() },

@@ -66,6 +66,12 @@ interface ConsoleModel {
   finished: boolean;
   /** Set when the run was aborted by the user. */
   aborted: boolean;
+  /**
+   * The engine's HONEST heal signal (session.result.healed) — the symptom was
+   * verified cleared. NOT the same as "didn't escalate": a `partial` terminal is
+   * a non-escalation state but healed===false (P1 #1). Only this drives a heal.
+   */
+  healed: boolean;
 }
 
 const INITIAL_MODEL: ConsoleModel = {
@@ -75,6 +81,7 @@ const INITIAL_MODEL: ConsoleModel = {
   gate: null,
   finished: false,
   aborted: false,
+  healed: false,
 };
 
 type ConsoleEvent =
@@ -112,6 +119,7 @@ function reduce(model: ConsoleModel, action: ConsoleEvent): ConsoleModel {
               : model.turns,
             gate: null,
             finished: true,
+            healed: ev.session.result?.healed === true,
           };
         default:
           return model;
@@ -287,31 +295,46 @@ export function AiFixConsole({
   const StateIcon = meta.icon;
   const started = running || model.turns.length > 0 || model.finished;
   const escalated = model.finished && ESCALATION_STATES.has(model.state);
-  const succeeded = model.finished && !ESCALATION_STATES.has(model.state);
+  // A non-escalation terminal split by the engine's HONEST heal signal: a true
+  // verified heal vs a 'partial' that ran but did NOT clear the symptom (#1).
+  const terminalNonEscalation =
+    model.finished && !ESCALATION_STATES.has(model.state);
+  const healed = terminalNonEscalation && model.healed;
+  const partialNoHeal = terminalNonEscalation && !model.healed;
   const failureLabel = issue
     ? issue.failureModeId ?? issue.category
     : asset.kind;
 
-  // On terminal success, persist the run + heal the asset, so the console's
-  // "recorded in Run history and Audit" claim is true (record once per run).
+  // On a non-escalation terminal, persist the run with the engine's HONEST
+  // outcome — heal the asset ONLY when the engine verified the symptom cleared
+  // (model.healed). A 'partial' terminal records a partial run with NO heal, so
+  // the asset/alerts are never falsely closed (#1). Escalation has its own panel.
   React.useEffect(() => {
     if (!model.finished || recordedRef.current) return;
     recordedRef.current = true;
-    if (succeeded) {
-      recordAgentRun({
-        assetId: asset.id,
-        actionLabel: issue ? `AI fix — ${issue.title}` : "AI autonomous fix",
-        scope: "once",
-        state: "succeeded",
-        summary:
-          [...model.turns].reverse().find((t) => t.kind === "verification")
+    if (!terminalNonEscalation) return;
+    recordAgentRun({
+      assetId: asset.id,
+      actionLabel: issue ? `AI fix — ${issue.title}` : "AI autonomous fix",
+      scope: "once",
+      state: model.healed ? "succeeded" : "partial",
+      summary: model.healed
+        ? ([...model.turns].reverse().find((t) => t.kind === "verification")
             ?.text ??
-          "The AI agent applied the fix and verification confirmed the heal.",
-        by: { kind: "ai", refId: selectedModel?.model ?? "ai-agent" },
-        heal: { status: "protected" },
-      });
-    }
-  }, [model.finished, succeeded, asset.id, issue, selectedModel, model.turns]);
+          "The AI agent applied the fix and verification confirmed the heal.")
+        : "The AI agent ran but verification did not confirm the symptom cleared — review the transcript or escalate.",
+      by: { kind: "ai", refId: selectedModel?.model ?? "ai-agent" },
+      heal: model.healed ? { status: "protected" } : undefined,
+    });
+  }, [
+    model.finished,
+    terminalNonEscalation,
+    model.healed,
+    asset.id,
+    issue,
+    selectedModel,
+    model.turns,
+  ]);
 
   return (
     <section
@@ -460,8 +483,10 @@ export function AiFixConsole({
               </div>
             )}
 
-            {/* Success terminal — concise confident banner + next actions. */}
-            {succeeded && (
+            {/* Non-escalation terminal — copy follows the engine's honest heal
+                signal: a true heal reads as resolved; a 'partial' says plainly it
+                did NOT clear, and is NOT recorded as a heal (#1). */}
+            {(healed || partialNoHeal) && (
               <div
                 role="status"
                 className={cn(
@@ -477,15 +502,23 @@ export function AiFixConsole({
                   <span className={cn("text-sm font-bold", meta.textClass)}>
                     {meta.label}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    The agent applied the fix and verified the symptom cleared.
-                    This run is recorded in Run history and Audit as{" "}
-                    <span className="inline-flex items-center gap-1 font-bold text-ai">
-                      <Sparkles aria-hidden className="size-3" />
-                      AI
+                  {healed ? (
+                    <span className="text-xs text-muted-foreground">
+                      The agent applied the fix and verified the symptom cleared.
+                      This run is recorded in Run history and Audit as{" "}
+                      <span className="inline-flex items-center gap-1 font-bold text-ai">
+                        <Sparkles aria-hidden className="size-3" />
+                        AI
+                      </span>
+                      .
                     </span>
-                    .
-                  </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      The agent ran but verification did not confirm the symptom
+                      cleared — no heal was applied. Review the transcript or
+                      escalate. Recorded as a partial AI run.
+                    </span>
+                  )}
                 </div>
               </div>
             )}

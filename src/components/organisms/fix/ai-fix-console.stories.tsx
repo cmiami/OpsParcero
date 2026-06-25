@@ -13,6 +13,7 @@ import type {
   RunSessionRequest,
 } from "@/lib/fix-client";
 import { getIssues, getAsset, getAssets } from "@/mock/query";
+import { useActivity } from "@/stores/activity";
 import type { ProtectedAsset, Issue } from "@/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -225,6 +226,34 @@ const succeededScript: FixSessionEvent[] = [
     session: {
       id: "fix-story-scripted",
       state: "succeeded",
+      // The engine's HONEST heal signal — only this drives a UI heal (#1).
+      result: {
+        healed: true,
+        summary: "OAuth grant reauthorized; the next M365 backup completed.",
+        actionRunIds: [],
+      },
+    } as unknown as FixSession,
+  },
+];
+
+// A run that ATTEMPTED a write but verification did NOT confirm the heal: a
+// non-escalation 'partial' terminal with result.healed:false. The console must
+// NOT heal the asset or record a success (#1).
+const partialScript: FixSessionEvent[] = [
+  ...triageScript,
+  { type: "state", state: "executing" },
+  { type: "state", state: "verifying" },
+  { type: "state", state: "partial" },
+  {
+    type: "done",
+    session: {
+      id: "fix-story-scripted",
+      state: "partial",
+      result: {
+        healed: false,
+        summary: "Reauthorization ran but the next backup still failed.",
+        actionRunIds: [],
+      },
     } as unknown as FixSession,
   },
 ];
@@ -445,6 +474,50 @@ export const Succeeded: Story = {
         ).toBeInTheDocument(),
       { timeout: 4000 },
     );
+  },
+};
+
+/**
+ * PartialDoesNotHeal — regression gate for P1 #1: a 'partial' terminal
+ * (result.healed:false) is a non-escalation state, but the console must NOT heal
+ * the asset or record a success — it shows an honest "did not confirm" banner and
+ * records a partial run. (Previously it equated non-escalation with success.)
+ */
+export const PartialDoesNotHeal: Story = {
+  args: {
+    asset,
+    issue,
+    client: new ScriptedFixClient(partialScript),
+  },
+  play: async ({ canvasElement }) => {
+    useActivity.setState({
+      runs: [],
+      audit: [],
+      assetOverrides: {},
+      alertOverrides: {},
+    });
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /Fix with AI/i }),
+    );
+    await waitFor(
+      () =>
+        expect(
+          canvas.getByText(/did not confirm the symptom cleared/i),
+        ).toBeInTheDocument(),
+      { timeout: 4000 },
+    );
+    // The honest signal: NO heal override written for this asset…
+    expect(useActivity.getState().assetOverrides[asset.id]).toBeUndefined();
+    // …and the run is recorded as 'partial', never a success heal.
+    await waitFor(() =>
+      expect(
+        useActivity.getState().runs.some((r) => r.state === "partial"),
+      ).toBe(true),
+    );
+    expect(
+      useActivity.getState().runs.some((r) => r.state === "succeeded"),
+    ).toBe(false);
   },
 };
 

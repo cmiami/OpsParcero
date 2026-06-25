@@ -160,6 +160,34 @@ export function revertHeal(record: HealRecord): void {
   }
 }
 
+// Snapshot every asset's healable facets at module import — BEFORE any test runs
+// a heal — so the seeded failing state can be restored between tests. applyHeal
+// only ever REPLACES a facet's reference (never mutates in place), so retaining
+// the original reference and reassigning it is a faithful restore.
+const _seedFacets: ReadonlyMap<AssetId, Record<string, unknown>> = new Map(
+  DB.assets.map((a) => {
+    const rec = a as unknown as Record<string, unknown>;
+    const snap: Record<string, unknown> = {};
+    for (const k of HEALABLE_FACETS) if (k in rec) snap[k] = rec[k];
+    return [a.id, snap] as const;
+  }),
+);
+
+/**
+ * Restore every asset's healable facets to the seeded values. Call in an
+ * `afterEach` so a heal-mutating test (applyHeal writes the shared module-level
+ * DB) can't leak healed state into a later test — making the suite order- and
+ * shuffle-independent (finding #7).
+ */
+export function resetFleet(): void {
+  for (const a of DB.assets) {
+    const snap = _seedFacets.get(a.id);
+    if (!snap) continue;
+    const rec = a as unknown as Record<string, unknown>;
+    for (const [k, v] of Object.entries(snap)) rec[k] = v;
+  }
+}
+
 export function getAction(id: string): RemediationAction | undefined {
   return ACTION_BY_ID[id];
 }

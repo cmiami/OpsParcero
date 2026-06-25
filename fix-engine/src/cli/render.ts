@@ -130,7 +130,14 @@ export function printSummary(session: FixSession): void {
   process.stdout.write(c.gray(line) + "\n");
 }
 
-/** Whether a final state should map to exit code 0 (success/partial) vs 1. */
-export function isSuccessState(state: FixState): boolean {
-  return state === "succeeded" || state === "partial";
+/**
+ * Exit code for a final state (#1): 0 = a VERIFIED resolution, 2 = ran but the
+ * heal was NOT confirmed (partial), 1 = failed/halted/escalated. A 'partial' is
+ * no longer collapsed into success, so a script can't treat an unconfirmed heal
+ * as a pass.
+ */
+export function exitCodeForState(state: FixState): 0 | 1 | 2 {
+  if (state === "succeeded") return 0;
+  if (state === "partial") return 2;
+  return 1;
 }

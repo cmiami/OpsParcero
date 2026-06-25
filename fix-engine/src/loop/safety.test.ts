@@ -1,10 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { runSession } from "./session";
 import { MockProvider } from "../providers/mock";
 import { defaultRegistry, stubRegistry } from "../tools/registry";
-import { DB, getAsset } from "../shared/fleet";
+import { DB, getAsset, resetFleet } from "../shared/fleet";
 import type { ActionRun } from "../domain";
 import type { ChatEvent, ModelProvider, ModelInfo } from "../providers/types";
+
+// Restore the seeded failing state after every test (applyHeal mutates the
+// shared DB) so the suite is order/shuffle-independent (finding #7).
+afterEach(resetFleet);
 
 const provider = new MockProvider();
 const failed = DB.assets.find((a) => a.status === "failed")!;

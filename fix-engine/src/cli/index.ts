@@ -21,7 +21,13 @@ import { defaultRegistry } from "../tools/registry";
 import { defaultProviderRegistry } from "../providers/registry";
 import { DB } from "../shared/fleet";
 import { DEFAULT_BUDGET } from "../loop/budget";
-import type { FixMode, FixModelRef, FixSession, FixTranscriptTurn } from "../types";
+import type {
+  FixMode,
+  FixModelRef,
+  FixSession,
+  FixTranscriptTurn,
+  FixPlanStep,
+} from "../types";
 import type { ProviderId } from "../providers/types";
 import type { ActionScope, ProductType, ProtectedAsset } from "../domain";
 import { c } from "./term";
@@ -78,7 +84,10 @@ fix options:
   --dry-run           safe preview — auto-REJECT every approval gate so no
                       gated/destructive action runs (the loop still shows each
                       write's dry-run diff before its gate)
-  --no-approve        auto-REJECT approval gates (default: auto-approve)
+  --yes               auto-approve safe-write/read gates (default: gates are
+                      REJECTED — a bare \`fix\` makes no changes)
+  --allow-destructive with --yes, also auto-approve DESTRUCTIVE gates
+  --no-approve        force-REJECT every gate (overrides --yes)
   --budget-steps <N>  override the max model-step budget
   --json              also dump the final session as JSON to stdout
   -h, --help          show this help
@@ -174,7 +183,12 @@ interface FixOpts {
   model?: string;
   scope: ActionScope;
   dryRun: boolean;
-  approve: boolean;
+  /** Legacy --approve / --no-approve override (undefined = neither flag). */
+  approve?: boolean;
+  /** --yes: auto-approve safe-write/read gates (destructive still needs the next). */
+  yes?: boolean;
+  /** --allow-destructive: also auto-approve destructive gates (with --yes/--approve). */
+  allowDestructive?: boolean;
   budgetSteps?: number;
   json: boolean;
 }
@@ -245,7 +259,13 @@ async function cmdFix(opts: FixOpts): Promise<number> {
       c.dim(
         ` · ${opts.mode} · ${modelRef.provider}:${modelRef.model} · scope=${opts.scope}` +
           (opts.dryRun ? " · dry-run" : "") +
-          (opts.approve ? "" : " · auto-reject") +
+          (opts.dryRun || opts.approve === false
+            ? " · auto-reject"
+            : opts.yes || opts.approve === true
+              ? opts.allowDestructive
+                ? " · auto-approve (incl. destructive)"
+                : " · auto-approve safe writes"
+              : " · gates auto-reject (use --yes to approve)") +
           "\n",
       ),
   );
@@ -253,11 +273,19 @@ async function cmdFix(opts: FixOpts): Promise<number> {
     c.dim(`target ${target.id} (${target.displayName}, ${target.kind}/${target.productType})\n\n`),
   );
 
-  // Approval resolver: auto-approve unless --no-approve or --dry-run (then
-  // auto-reject every gate, so no gated/destructive action mutates anything).
-  const allowApprovals = opts.approve && !opts.dryRun;
-  const approve = async () =>
-    allowApprovals ? ("approve" as const) : ("reject" as const);
+  // Approval resolver — SAFE BY DEFAULT (P1-4): a bare `fix` REJECTS every gate.
+  // Approving requires an explicit opt-in: `--yes` (or legacy `--approve`)
+  // approves safe-write/read gates; a destructive gate ALSO needs
+  // `--allow-destructive`. `--dry-run` / `--no-approve` reject everything.
+  const wantApprove =
+    !opts.dryRun && opts.approve !== false && (opts.yes || opts.approve === true);
+  const approve = async (step: FixPlanStep) => {
+    if (!wantApprove) return "reject" as const;
+    if (step.risk === "destructive" && !opts.allowDestructive) {
+      return "reject" as const;
+    }
+    return "approve" as const;
+  };
 
   let session: FixSession;
   try {
@@ -350,6 +378,8 @@ async function main(): Promise<number> {
         model: { type: "string" },
         scope: { type: "string", default: "once" },
         "dry-run": { type: "boolean", default: false },
+        yes: { type: "boolean", default: false },
+        "allow-destructive": { type: "boolean", default: false },
         "budget-steps": { type: "string" },
         json: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -393,7 +423,9 @@ async function main(): Promise<number> {
     model: values.model as string | undefined,
     scope: scopeArg,
     dryRun: values["dry-run"] as boolean,
-    approve: approveOverride ?? true,
+    approve: approveOverride,
+    yes: values.yes as boolean,
+    allowDestructive: values["allow-destructive"] as boolean,
     budgetSteps,
     json: values.json as boolean,
   });

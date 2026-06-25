@@ -34,7 +34,9 @@ import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { serve } from "@hono/node-server";
 
+import { randomUUID } from "node:crypto";
 import { runSession } from "../loop/session";
+import { clampBudget } from "../loop/budget";
 import { defaultProviderRegistry } from "../providers/registry";
 import { defaultRegistry } from "../tools/registry";
 import { SeededClock } from "../shared/clock";
@@ -92,6 +94,23 @@ app.use(
     allowHeaders: ["Content-Type"],
   }),
 );
+
+// CSRF / DNS-rebind guard (P1-1): state-changing POSTs must come from the app
+// origin and be JSON. A drive-by page in the same browser can't set a matching
+// Origin, and a simple-request CSRF can't send application/json without a
+// preflight CORS already blocks. (Read-only GETs — healthz/models/stream — pass.)
+app.use("*", async (c, next) => {
+  if (c.req.method !== "POST") return next();
+  const origin = c.req.header("Origin");
+  if (origin && origin !== APP_ORIGIN) {
+    return c.json({ error: "origin not allowed" }, 403);
+  }
+  const contentType = c.req.header("Content-Type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    return c.json({ error: "Content-Type must be application/json" }, 415);
+  }
+  return next();
+});
 
 app.get("/healthz", (c) => {
   const providersReady: Record<string, "ready" | "unconfigured"> = {};
@@ -157,7 +176,9 @@ app.post("/sessions", async (c) => {
   }
 
   // ── Build the session entry + its event projection ──
-  const sessionId = `fix-${assetId}-${mode}-${store.ids().length}`;
+  // Unguessable id (P1-1) — the loop accepts req.sessionId, so nothing downstream
+  // depends on the old predictable `fix-<asset>-<mode>-<count>` shape.
+  const sessionId = `fix-${randomUUID()}`;
   const abort = new AbortController();
   const entry: SessionEntry = {
     id: sessionId,
@@ -182,7 +203,9 @@ app.post("/sessions", async (c) => {
     triageModel,
     scope,
     dryRun: body.dryRun ?? false,
-    budget: body.budget,
+    // Clamp a client-supplied budget to a safe ceiling (P2-3) — no astronomical
+    // maxTokens/maxToolCalls (real spend with a paid provider).
+    budget: clampBudget(body.budget, mode),
     // The loop's session.id must equal the id we already returned to the client.
     sessionId,
   };

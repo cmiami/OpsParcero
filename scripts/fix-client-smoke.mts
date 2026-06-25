@@ -19,6 +19,7 @@ import type { FixPlanStep, FixSessionEvent, FixTranscriptTurn } from "@fix-engin
 import { TERMINAL_STATES } from "@fix-engine/types";
 import { DB } from "@/mock/fixtures";
 import { SimFixClient } from "@/lib/fix-client/sim";
+import { isLoopbackUrl } from "@/lib/fix-client";
 
 // Re-run the exact onTurn → queue + ApprovalResolver bridge the SimFixClient uses,
 // inline, so the smoke proves the *integration*, not just the imports.
@@ -89,6 +90,33 @@ async function main(): Promise<void> {
   console.log(`  actionRunIds    : ${session.result?.actionRunIds.length ?? 0}`);
 
   await phase2(gatedAssetId() ?? assetId, fail);
+  phase3(fail);
+}
+
+/**
+ * Phase 3 — P3-2 loopback guard: the factory only honors a non-loopback engine
+ * URL behind an explicit opt-in, so isLoopbackUrl must classify hosts correctly.
+ */
+function phase3(fail: (msg: string) => never): void {
+  const loopback = [
+    "http://127.0.0.1:8787",
+    "http://localhost:3000",
+    "http://[::1]:8787",
+    "https://localhost/api/",
+  ];
+  const remote = [
+    "https://evil.example.com",
+    "http://10.0.0.5:8787",
+    "http://attacker.test",
+    "not a url",
+  ];
+  for (const u of loopback) {
+    if (!isLoopbackUrl(u)) fail(`phase3: ${u} should be loopback`);
+  }
+  for (const u of remote) {
+    if (isLoopbackUrl(u)) fail(`phase3: ${u} should NOT be loopback`);
+  }
+  console.log("SMOKE OK — phase 3 (P3-2 loopback guard classifies hosts)");
 }
 
 /** Find an asset whose primary remediation is approval-gated, to exercise the gate. */

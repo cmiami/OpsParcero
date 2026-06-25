@@ -46,6 +46,18 @@ export class LiveFixClient implements FixClient {
   constructor(base: string) {
     // Normalize: no trailing slash so `${base}/sessions` is always well-formed.
     this.base = base.replace(/\/+$/, "");
+    // Defense-in-depth (P3-2): the factory already gates non-loopback hosts; warn
+    // if this is ever constructed directly against a remote host.
+    try {
+      const h = new URL(this.base).hostname.toLowerCase().replace(/^\[|\]$/g, "");
+      if (h !== "127.0.0.1" && h !== "::1" && h !== "localhost") {
+        console.warn(
+          `[LiveFixClient] non-loopback engine host "${h}" — fix metadata will egress there.`,
+        );
+      }
+    } catch {
+      // Malformed base — the first fetch will surface the error.
+    }
   }
 
   async listModels(): Promise<FixModelOption[]> {
@@ -158,9 +170,14 @@ export class LiveFixClient implements FixClient {
       ref.aborted = true;
       ref.controller.abort();
     }
-    // Best-effort server-side abort; the loop transitions to halted.
+    // Best-effort server-side abort; the loop transitions to halted. Send a JSON
+    // content-type so the server's POST guard accepts it (empty JSON body).
     try {
-      await fetch(`${this.base}/sessions/${sessionId}/abort`, { method: "POST" });
+      await fetch(`${this.base}/sessions/${sessionId}/abort`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
     } catch {
       // Connection already torn down by the client-side abort — fine.
     }

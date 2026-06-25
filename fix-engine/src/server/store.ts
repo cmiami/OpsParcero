@@ -55,6 +55,10 @@ export interface SessionEntry {
   finished: boolean;
 }
 
+/** Bound memory growth on a long-lived POC process (P2-3). */
+const MAX_SESSIONS = 50;
+const MAX_EVENTS_PER_SESSION = 2000;
+
 export class SessionStore {
   private byId = new Map<string, SessionEntry>();
 
@@ -66,8 +70,17 @@ export class SessionStore {
     return this.byId.get(id);
   }
 
-  /** Register a freshly-created session entry. */
+  /** Register a freshly-created session entry, evicting the oldest finished one
+   * when at capacity so repeated POST /sessions can't grow memory unbounded. */
   create(entry: SessionEntry): void {
+    if (this.byId.size >= MAX_SESSIONS) {
+      for (const [k, e] of this.byId) {
+        if (e.finished) {
+          this.byId.delete(k);
+          break;
+        }
+      }
+    }
     this.byId.set(entry.id, entry);
   }
 
@@ -76,6 +89,15 @@ export class SessionStore {
     const entry = this.byId.get(id);
     if (!entry) return;
     entry.events.push(event);
+    // Cap the replay buffer (keep head + recent tail) so a runaway/abusive run
+    // can't grow this array without bound; replay tolerates gaps (clients key on
+    // the turn's at+kind).
+    if (entry.events.length > MAX_EVENTS_PER_SESSION) {
+      entry.events = [
+        ...entry.events.slice(0, 100),
+        ...entry.events.slice(-(MAX_EVENTS_PER_SESSION - 100)),
+      ];
+    }
     if (event.type === "done") entry.finished = true;
     for (const sub of entry.subscribers) {
       try {
@@ -125,8 +147,10 @@ export class SessionStore {
   ): boolean {
     const entry = this.byId.get(id);
     if (!entry?.pending) return false;
-    // Match by stepId when provided; the loop only opens one gate at a time.
-    if (stepId && entry.pending.step.id !== stepId) return false;
+    // Require an EXACT step-id match (P1-1): the caller must name the open gate's
+    // step, so a blank/guessed id can't resolve it. The legit client echoes the
+    // step.id from the approval-request event.
+    if (!stepId || entry.pending.step.id !== stepId) return false;
     entry.pending.deferred.resolve(decision);
     entry.pending = undefined;
     return true;

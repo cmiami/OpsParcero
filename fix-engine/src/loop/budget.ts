@@ -9,6 +9,35 @@ export const DEFAULT_BUDGET: Record<FixMode, FixBudget> = {
   ai: { maxSteps: 10, maxToolCalls: 20, maxTokens: 80_000, maxWallMs: 120_000 },
 };
 
+/** How far above the per-mode default a client may raise any budget field. */
+const BUDGET_CEILING_MULTIPLE = 4;
+
+/**
+ * Clamp a client-supplied budget to a safe ceiling (P2-3): each provided field is
+ * pinned to `[1, default × 4]`, and fields the client omitted are left out (so the
+ * loop's own default merge still applies). Prevents a client from requesting an
+ * astronomical maxTokens/maxToolCalls — real spend with a paid provider. The
+ * ceiling sits ABOVE the mock's deterministic budget, so the mock path is
+ * unchanged.
+ */
+export function clampBudget(
+  requested: Partial<FixBudget> | undefined,
+  mode: FixMode,
+): Partial<FixBudget> | undefined {
+  if (!requested) return undefined;
+  const def = DEFAULT_BUDGET[mode];
+  const out: Partial<FixBudget> = {};
+  (["maxSteps", "maxToolCalls", "maxTokens", "maxWallMs"] as const).forEach(
+    (f) => {
+      const v = requested[f];
+      if (typeof v === "number" && Number.isFinite(v)) {
+        out[f] = Math.max(1, Math.min(v, def[f] * BUDGET_CEILING_MULTIPLE));
+      }
+    },
+  );
+  return out;
+}
+
 export type HaltReason =
   | "maxSteps"
   | "maxToolCalls"

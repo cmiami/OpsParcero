@@ -25,24 +25,54 @@ import { SimFixClient } from "./sim";
 import { LiveFixClient, probeLiveEngine } from "./live";
 
 const ENGINE_URL = process.env.NEXT_PUBLIC_FIX_ENGINE_URL;
+const ALLOW_REMOTE =
+  process.env.NEXT_PUBLIC_FIX_ENGINE_ALLOW_REMOTE === "true";
+
+/**
+ * Whether a URL points at the local loopback. The live engine is a localhost POC
+ * (binds 127.0.0.1), so only loopback hosts are honored by default — a remote
+ * NEXT_PUBLIC_FIX_ENGINE_URL would, once baked into the client bundle, silently
+ * egress fix metadata + approval decisions to that host. Non-loopback requires an
+ * explicit opt-in (P3-2).
+ */
+export function isLoopbackUrl(url: string): boolean {
+  try {
+    const h = new URL(url).hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    return h === "127.0.0.1" || h === "::1" || h === "localhost";
+  } catch {
+    return false;
+  }
+}
 
 let cached: FixClient | null = null;
 let pending: Promise<FixClient> | null = null;
 
 /**
- * Resolve the active FixClient. Live if an engine URL is configured and healthy,
- * else the offline Sim. Async because of the best-effort /healthz probe; the
- * result is cached so subsequent calls are synchronous-fast.
+ * Resolve the active FixClient. Live if a LOOPBACK engine URL is configured and
+ * healthy (or a non-loopback URL is explicitly allowed), else the offline Sim.
+ * Async because of the best-effort /healthz probe; the result is cached.
  */
 export async function getFixClient(): Promise<FixClient> {
   if (cached) return cached;
   if (pending) return pending;
 
   pending = (async () => {
-    if (ENGINE_URL) {
-      const healthy = await probeLiveEngine(ENGINE_URL);
-      cached = healthy ? new LiveFixClient(ENGINE_URL) : new SimFixClient();
+    const loopback = ENGINE_URL ? isLoopbackUrl(ENGINE_URL) : false;
+    const honor = ENGINE_URL && (loopback || ALLOW_REMOTE);
+    if (honor) {
+      if (!loopback) {
+        console.warn(
+          "[fix-client] honoring a NON-LOOPBACK engine URL via NEXT_PUBLIC_FIX_ENGINE_ALLOW_REMOTE — fix metadata and approval decisions will egress to that host.",
+        );
+      }
+      const healthy = await probeLiveEngine(ENGINE_URL!);
+      cached = healthy ? new LiveFixClient(ENGINE_URL!) : new SimFixClient();
     } else {
+      if (ENGINE_URL) {
+        console.warn(
+          "[fix-client] ignoring non-loopback NEXT_PUBLIC_FIX_ENGINE_URL (set NEXT_PUBLIC_FIX_ENGINE_ALLOW_REMOTE=true to allow). Falling back to the offline Sim.",
+        );
+      }
       cached = new SimFixClient();
     }
     pending = null;

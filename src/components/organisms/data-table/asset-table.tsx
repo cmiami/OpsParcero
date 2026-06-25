@@ -318,7 +318,7 @@ function RowActions({
             aria-label={`Actions for ${asset.displayName}`}
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "inline-flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-target",
             )}
           >
             <MoreHorizontal aria-hidden className="size-4" />

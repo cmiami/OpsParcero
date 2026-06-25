@@ -68,3 +68,19 @@ export const FixAllRecordsRuns: Story = {
     );
   },
 };
+
+/**
+ * OverflowMenuPresent — regression gate for #14: a compact overflow trigger is
+ * rendered (lg:hidden) so Search / Scan / Fix-all stay reachable below lg, where
+ * their inline buttons are hidden. (display:none at this wide test viewport, so
+ * queried with hidden:true.)
+ */
+export const OverflowMenuPresent: Story = {
+  play: async ({ canvasElement }) => {
+    // Visibility-agnostic: the trigger is display:none at this wide test width
+    // (lg:hidden), so query the DOM directly rather than by accessible role.
+    expect(
+      canvasElement.querySelector('[aria-label="More actions"]'),
+    ).not.toBeNull();
+  },
+};

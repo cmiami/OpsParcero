@@ -53,6 +53,24 @@ export const New: Story = {
   args: { alert: { ...baseAlert, state: "open" } },
 };
 
+/**
+ * TouchTargetsOnIconButtons — regression gate for #15: the dense size-7 icon
+ * controls carry the coarse-pointer min-hit-area utility (touch-target), so they
+ * reach 44px on touch while keeping the compact look on a mouse.
+ */
+export const TouchTargetsOnIconButtons: Story = {
+  args: { alert: { ...baseAlert, state: "open" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(
+      canvas.getByRole("button", { name: /Acknowledge alert/i }),
+    ).toHaveClass("touch-target");
+    expect(
+      canvas.getByRole("button", { name: /More triage actions/i }),
+    ).toHaveClass("touch-target");
+  },
+};
+
 /** Acknowledged — picked up by a technician. */
 export const Acknowledged: Story = {
   args: { alert: { ...baseAlert, state: "acknowledged" } },

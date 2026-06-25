@@ -11,6 +11,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  MoreVertical,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -243,6 +244,38 @@ export function TopBar({
           <Wrench className="size-4" aria-hidden />
           End-to-end fix all
         </Button>
+
+        {/* Compact overflow — surfaces Search / Scan / Fix-all below lg, where
+            their inline buttons are hidden, so the primary fleet operations stay
+            reachable at every width (incl. touch, no keyboard shortcut) (#14). */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="More actions"
+              className="text-topbar-foreground hover:bg-topbar-foreground/15 hover:text-topbar-foreground lg:hidden"
+            >
+              <MoreVertical className="size-5" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {onSearch && (
+              <DropdownMenuItem onClick={onSearch} className="md:hidden">
+                <ScanLine className="size-4" aria-hidden />
+                Search
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={handleScan}>
+              <ScanLine className="size-4" aria-hidden />
+              Scan now
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleFixAll}>
+              <Wrench className="size-4" aria-hidden />
+              End-to-end fix all
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Notifications */}
         <Button

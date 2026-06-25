@@ -155,7 +155,7 @@ export function AlertTriageRow({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7"
+              className="size-7 touch-target"
               aria-label="Acknowledge alert"
               onClick={() => onTriage?.("acknowledge", alert)}
             >
@@ -168,7 +168,7 @@ export function AlertTriageRow({
             <Button
               variant="ghost"
               size="icon"
-              className="size-7"
+              className="size-7 touch-target"
               aria-label="More triage actions"
             >
               <MoreHorizontal aria-hidden className="size-4" />

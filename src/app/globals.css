@@ -347,6 +347,15 @@
   filter: drop-shadow(0 1px 0 var(--color-border));
 }
 
+/* Coarse-pointer min hit area (WCAG 2.2 target size, M5): keeps the dense visual
+   size on a mouse, but expands the touchable box to 44px on touch (#15). */
+@utility touch-target {
+  @media (pointer: coarse) {
+    min-block-size: 2.75rem;
+    min-inline-size: 2.75rem;
+  }
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

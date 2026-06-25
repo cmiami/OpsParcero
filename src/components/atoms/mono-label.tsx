@@ -65,7 +65,7 @@ export function MonoLabel({
           type="button"
           onClick={handleCopy}
           aria-label={copied ? "Copied" : "Copy"}
-          className="-mr-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="-mr-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch-target"
         >
           {copied ? (
             <Check aria-hidden className="size-3 text-success" />

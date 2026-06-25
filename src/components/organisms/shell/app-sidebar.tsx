@@ -80,10 +80,14 @@ export function AppSidebar({
   const alertOverrides = useActivity((s) => s.alertOverrides);
 
   // Live badges, derived deterministically from the mock layer (+ heal overlay).
+  // Scoped to the active tenant (#10) so the counts agree with the tenant-scoped
+  // Alerts / Resolution pages — a global badge over a scoped page is a same-shell
+  // contradiction. Undefined clientId = "All tenants" (unscoped).
   const badges = React.useMemo(() => {
     const map = new Map<string, NavBadge>();
+    const scope = clientId ? { clientIds: [clientId] } : undefined;
 
-    const rawAlerts = getOpenAlerts();
+    const rawAlerts = getOpenAlerts(scope);
     const openAlerts = activityHydrated
       ? applyAlertOverrides(rawAlerts, alertOverrides).filter(
           (a) => a.state === "open" || a.state === "acknowledged",
@@ -98,7 +102,7 @@ export function AppSidebar({
       map.set("/alerts", { worst, count: openAlerts.length });
     }
 
-    const rawIssues = getIssues();
+    const rawIssues = getIssues(scope);
     const issues = activityHydrated
       ? applyIssueResolution(rawIssues, assetOverrides)
       : rawIssues;
@@ -110,7 +114,7 @@ export function AppSidebar({
     }
 
     return map;
-  }, [activityHydrated, alertOverrides, assetOverrides]);
+  }, [clientId, activityHydrated, alertOverrides, assetOverrides]);
 
   return (
     <nav

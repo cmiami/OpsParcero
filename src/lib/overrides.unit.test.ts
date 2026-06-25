@@ -37,8 +37,8 @@ describe("applyAlertOverrides", () => {
 describe("applyIssueResolution", () => {
   it("drops an issue only when EVERY impacted asset is healed", () => {
     const issues = [
-      { id: "i1", impactedAssetIds: ["a", "b"] },
-      { id: "i2", impactedAssetIds: ["c"] },
+      { id: "i1", impactedAssetIds: ["a", "b"], occurrenceCount: 4 },
+      { id: "i2", impactedAssetIds: ["c"], occurrenceCount: 1 },
     ] as Issue[];
     const out = applyIssueResolution(issues, {
       a: { status: "protected", resolvedAt: "t" },
@@ -47,11 +47,32 @@ describe("applyIssueResolution", () => {
     expect(out.map((i) => i.id)).toEqual(["i2"]);
   });
 
-  it("keeps a partially-healed issue", () => {
-    const issues = [{ id: "i1", impactedAssetIds: ["a", "b"] }] as Issue[];
+  it("projects a partially-healed issue onto the still-impacted assets (#8)", () => {
+    const issues = [
+      { id: "i1", impactedAssetIds: ["a", "b", "c", "d"], occurrenceCount: 8 },
+    ] as Issue[];
     const out = applyIssueResolution(issues, {
       a: { status: "protected", resolvedAt: "t" },
+      b: { status: "protected", resolvedAt: "t" },
     });
     expect(out).toHaveLength(1);
+    // Healed assets removed — the count no longer includes already-fixed assets.
+    expect(out[0].impactedAssetIds).toEqual(["c", "d"]);
+    // occurrenceCount scales with the remaining share (8 * 2/4 = 4), never below
+    // one per still-impacted asset, so "{n} occurrences · {m} assets" stays sane.
+    expect(out[0].occurrenceCount).toBe(4);
+    expect(out[0].occurrenceCount).toBeGreaterThanOrEqual(
+      out[0].impactedAssetIds.length,
+    );
+  });
+
+  it("leaves an untouched issue's count and ids intact", () => {
+    const issues = [
+      { id: "i1", impactedAssetIds: ["a", "b"], occurrenceCount: 5 },
+    ] as Issue[];
+    const out = applyIssueResolution(issues, {
+      z: { status: "protected", resolvedAt: "t" },
+    });
+    expect(out[0]).toBe(issues[0]); // same reference — no needless clone
   });
 });

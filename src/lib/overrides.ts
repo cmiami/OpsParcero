@@ -53,18 +53,33 @@ export function applyAlertOverrides(
 }
 
 /**
- * Drop issues whose every impacted asset has been healed this session — so a
- * resolved issue stops showing (and stops counting) after its fix lands (the
- * seeded ISSUES list is frozen; this overlays the heal on read). Pure;
- * hydration-gate like {@link applyOverrides}.
+ * Overlay session heals onto the seeded ISSUES list (which is frozen). An issue
+ * is PROJECTED onto the assets that are still impacted: healed assets are removed
+ * from impactedAssetIds, and the issue is dropped only once that set is empty.
+ *
+ * Filtering whole-issue (drop iff EVERY asset healed) made a partially-healed
+ * issue keep listing already-fixed assets and overcount everywhere it aggregated
+ * (#8) — e.g. the "top problem" card and category charts. Projecting keeps the
+ * issue visible while its tallies shrink to what's actually still broken.
+ * occurrenceCount is scaled with the remaining share (floored at one per
+ * still-impacted asset) so "{n} occurrences · {m} assets" stays self-consistent.
+ * Pure; hydration-gate like {@link applyOverrides}.
  */
 export function applyIssueResolution(
   issues: Issue[],
   overrides: Record<string, AssetOverride>,
 ): Issue[] {
-  return issues.filter(
-    (i) =>
-      i.impactedAssetIds.length === 0 ||
-      !i.impactedAssetIds.every((id) => overrides[id]),
-  );
+  return issues.flatMap((i) => {
+    const total = i.impactedAssetIds.length;
+    if (total === 0) return [i];
+    const remaining = i.impactedAssetIds.filter((id) => !overrides[id]);
+    if (remaining.length === total) return [i]; // nothing healed — unchanged
+    if (remaining.length === 0) return []; // fully healed — drop
+    // Partially healed — project onto the still-impacted assets.
+    const occurrenceCount = Math.max(
+      remaining.length,
+      Math.round((i.occurrenceCount * remaining.length) / total),
+    );
+    return [{ ...i, impactedAssetIds: remaining, occurrenceCount }];
+  });
 }

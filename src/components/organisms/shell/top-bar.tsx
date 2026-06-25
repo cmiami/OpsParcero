@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui";
+import { useActiveClientId } from "@/stores/use-active-client";
 import { getIssues, getPrimaryAction } from "@/mock/query";
 import { executeRemediation } from "@/lib/activity-record";
 import type { EntityRef } from "@/types";
@@ -104,6 +105,7 @@ export function TopBar({
   className,
 }: TopBarProps) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const activeClientId = useActiveClientId();
   const hasUnread = notificationCount > 0;
 
   // The two action buttons are functional everywhere: a host can supply real
@@ -116,11 +118,16 @@ export function TopBar({
       }));
   // "End-to-end fix all" REALLY runs every end-to-end-fixable issue's self-heal
   // through the shared dispatch command — recording runs + healing (or queueing
-  // the gated ones for approval), not just a toast (#5).
+  // the gated ones for approval), not just a toast (#5). Scoped to the active
+  // tenant (#10) so "Fix all" can't silently act across every other tenant's
+  // issues while the operator is viewing one client.
   const handleFixAll =
     onFixAll ??
     (() => {
-      const fixable = getIssues({ fixTypes: ["full"] });
+      const fixable = getIssues({
+        fixTypes: ["full"],
+        clientIds: activeClientId ? [activeClientId] : undefined,
+      });
       let fixed = 0;
       let queued = 0;
       for (const issue of fixable) {

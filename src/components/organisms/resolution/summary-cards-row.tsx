@@ -4,6 +4,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { SummaryCard } from "@/components/molecules/summary-card";
 import { getFleetStats, getIssues, type FleetStats } from "@/mock/query";
+import { useActivity, applyIssueResolution } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 import type { ClientId, Issue } from "@/types";
 
 export interface SummaryCardsRowProps {
@@ -33,10 +35,17 @@ export function SummaryCardsRow({
 }: SummaryCardsRowProps) {
   const s = stats ?? getFleetStats(clientId);
 
+  // Overlay this session's heals so the "top problem" drops/decreases in lockstep
+  // with the counts beside it (which come from overlay-aware stats) — otherwise a
+  // healed issue keeps headlining after its fix lands (#9). Hydration-gated.
+  const hydrated = useHasHydrated(useActivity);
+  const assetOverrides = useActivity((st) => st.assetOverrides);
+
   // The worst issue currently open is the "top problem of the day" — scoped to
   // the active tenant so it can't contradict the scoped counts beside it.
   const topProblem = React.useMemo<Issue | undefined>(() => {
-    const issues = getIssues(clientId ? { clientIds: [clientId] } : {});
+    const raw = getIssues(clientId ? { clientIds: [clientId] } : {});
+    const issues = hydrated ? applyIssueResolution(raw, assetOverrides) : raw;
     const sorted = [...issues].sort((a, b) => {
       const sev =
         (a.severity === "critical" ? 0 : 1) - (b.severity === "critical" ? 0 : 1);
@@ -44,7 +53,7 @@ export function SummaryCardsRow({
       return b.occurrenceCount - a.occurrenceCount;
     });
     return sorted[0];
-  }, [clientId]);
+  }, [clientId, hydrated, assetOverrides]);
 
   return (
     <div

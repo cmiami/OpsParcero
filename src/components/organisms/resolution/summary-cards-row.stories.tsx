@@ -1,9 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { SummaryCardsRow } from "./summary-cards-row";
-import { getFleetStats } from "@/mock/query";
+import { getFleetStats, getIssues } from "@/mock/query";
+import { useActivity } from "@/stores/activity";
 
 const stats = getFleetStats();
+
+/** The same worst-first ordering the component uses to pick the headline issue. */
+function currentTopProblem() {
+  return [...getIssues()].sort((a, b) => {
+    const sev =
+      (a.severity === "critical" ? 0 : 1) - (b.severity === "critical" ? 0 : 1);
+    if (sev !== 0) return sev;
+    return b.occurrenceCount - a.occurrenceCount;
+  })[0];
+}
 
 const meta = {
   title: "Organisms/SummaryCardsRow",
@@ -14,6 +25,21 @@ const meta = {
     onSelectTopProblem: { table: { disable: true } },
   },
   parameters: { layout: "padded" },
+  decorators: [
+    // The top-problem overlay reads useActivity; reset it so leaked heal state
+    // from another story (the browser shares one page) can't change the headline.
+    // Heal-dependent stories set their own overrides in an inner story decorator,
+    // which runs AFTER this reset.
+    (Story) => {
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides: {},
+        alertOverrides: {},
+      });
+      return <Story />;
+    },
+  ],
 } satisfies Meta<typeof SummaryCardsRow>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -28,6 +54,42 @@ export const Default: Story = {
       canvas.getByRole("button", { name: /Top problem of the day/i }),
     );
     await expect(args.onSelectTopProblem).toHaveBeenCalled();
+  },
+};
+
+/**
+ * TopProblemReflectsHeal — regression gate for #9: the "top problem of the day"
+ * is overlay-aware. Healing every asset of the current worst issue this session
+ * drops it from the headline (the card moves to the next-worst), instead of
+ * headlining an already-fixed issue.
+ */
+export const TopProblemReflectsHeal: Story = {
+  args: { onSelectTopProblem: fn() },
+  decorators: [
+    (Story) => {
+      const top = currentTopProblem();
+      const assetOverrides = Object.fromEntries(
+        top.impactedAssetIds.map((id) => [
+          id,
+          { status: "protected" as const, resolvedAt: "t" },
+        ]),
+      );
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides,
+        alertOverrides: {},
+      });
+      return <Story />;
+    },
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const healedTitle = currentTopProblem().title;
+    // The fully-healed worst issue no longer headlines the card.
+    await waitFor(() =>
+      expect(canvas.queryByText(healedTitle)).not.toBeInTheDocument(),
+    );
   },
 };
 

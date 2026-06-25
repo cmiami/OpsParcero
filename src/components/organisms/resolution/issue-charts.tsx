@@ -19,7 +19,10 @@ import { TrendingUp, PieChart as PieIcon, BarChart3, Layers } from "lucide-react
 import type { LucideIcon } from "lucide-react";
 import type { ClientId } from "@/types";
 import { cn } from "@/lib/utils";
-import { getFleetStats, getIssueCategories, type FleetStats } from "@/mock/query";
+import { getFleetStats, getIssues, type FleetStats } from "@/mock/query";
+import { groupIssuesByCategory } from "@/mock/issues";
+import { useActivity, applyIssueResolution } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 
 export interface IssueChartsProps {
   /** Pre-fetched stats; falls back to `getFleetStats()`. */
@@ -141,6 +144,11 @@ function buildTrend(open: number, resolved: number) {
  */
 export function IssueCharts({ stats, clientId, className }: IssueChartsProps) {
   const s = stats ?? getFleetStats();
+  // Overlay session heals so the by-category breakdown moves with the other
+  // series (which read overlay-aware stats) instead of charting already-fixed
+  // issues (#9). Hydration-gated to avoid an SSR/CSR mismatch.
+  const hydrated = useHasHydrated(useActivity);
+  const assetOverrides = useActivity((st) => st.assetOverrides);
 
   const trend = React.useMemo(
     () => buildTrend(s.openIssues, s.resolvedToday + 6),
@@ -171,13 +179,15 @@ export function IssueCharts({ stats, clientId, className }: IssueChartsProps) {
   );
 
   const categoryData = React.useMemo(() => {
-    const cats = getIssueCategories(clientId);
+    const raw = getIssues(clientId ? { clientIds: [clientId] } : {});
+    const live = hydrated ? applyIssueResolution(raw, assetOverrides) : raw;
+    const cats = groupIssuesByCategory(live);
     return cats.slice(0, 5).map((c, i) => ({
       name: c.category,
       value: c.totalIssues,
       color: C.category[i % C.category.length],
     }));
-  }, [clientId]);
+  }, [clientId, hydrated, assetOverrides]);
 
   // Recharts contentStyle — token-driven, no raw px (M1). (The chart axis ticks
   // below stay numeric because Recharts requires a number for tick fontSize.)

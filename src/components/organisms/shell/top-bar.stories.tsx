@@ -3,6 +3,8 @@ import { expect, within, userEvent, waitFor } from "storybook/test";
 
 import { TopBar } from "./top-bar";
 import { useActivity } from "@/stores/activity";
+import { useUiStore } from "@/stores/ui";
+import { getAsset } from "@/mock/query";
 
 const meta = {
   title: "Organisms/TopBar",
@@ -21,6 +23,14 @@ const meta = {
     notificationCount: 0,
   },
   parameters: { layout: "fullscreen" },
+  decorators: [
+    // Default to unscoped so a leaked active tenant can't change which issues
+    // "Fix all" touches; the tenant-scoped stories set their own client in play.
+    (Story) => {
+      useUiStore.setState({ lastClientId: undefined });
+      return <Story />;
+    },
+  ],
 } satisfies Meta<typeof TopBar>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -53,6 +63,7 @@ export const MenuOpen: Story = {
  */
 export const FixAllRecordsRuns: Story = {
   play: async ({ canvasElement }) => {
+    useUiStore.setState({ lastClientId: undefined }); // global scope, deterministic
     useActivity.setState({
       runs: [],
       audit: [],
@@ -66,6 +77,36 @@ export const FixAllRecordsRuns: Story = {
     await waitFor(() =>
       expect(useActivity.getState().runs.length).toBeGreaterThan(0),
     );
+  },
+};
+
+/**
+ * FixAllScopedToTenant — regression gate for #10: with a tenant active, "Fix all"
+ * acts ONLY on that tenant's issues — it never reaches another client's fleet.
+ */
+export const FixAllScopedToTenant: Story = {
+  play: async ({ canvasElement }) => {
+    useUiStore.setState({ lastClientId: "CLI-ACME" });
+    useActivity.setState({
+      runs: [],
+      audit: [],
+      assetOverrides: {},
+      alertOverrides: {},
+    });
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /End-to-end fix all/i }),
+    );
+    await waitFor(() =>
+      expect(useActivity.getState().runs.length).toBeGreaterThan(0),
+    );
+    // Every asset a run touched belongs to the active tenant — no cross-tenant fan-out.
+    const offTenant = useActivity
+      .getState()
+      .runs.flatMap((r) => r.targetRefs)
+      .filter((t) => t.kind === "asset")
+      .filter((t) => getAsset(t.id)?.clientId !== "CLI-ACME");
+    expect(offTenant).toEqual([]);
   },
 };
 

@@ -25,7 +25,7 @@
  */
 import { runSession } from "@fix-engine/loop/session";
 import { MockProvider } from "@fix-engine/providers/mock";
-import { defaultRegistry } from "@fix-engine/tools/registry";
+import { defaultRegistry, type ToolRegistry } from "@fix-engine/tools/registry";
 import type {
   FixSession,
   FixSessionEvent,
@@ -65,6 +65,14 @@ interface SimSession {
 export class SimFixClient implements FixClient {
   readonly kind = "sim" as const;
   private sessions = new Map<string, SimSession>();
+
+  /**
+   * @param makeRegistry builds the tool registry for each run. Defaults to the
+   * real catalog (`defaultRegistry`). Injectable ONLY so tests can force a gated
+   * plan (the default catalog auto-approves) to exercise the approval gate; the
+   * app always uses the default.
+   */
+  constructor(private readonly makeRegistry: () => ToolRegistry = defaultRegistry) {}
 
   async listModels(): Promise<FixModelOption[]> {
     // The sim only offers the deterministic Mock model.
@@ -142,11 +150,12 @@ export class SimFixClient implements FixClient {
     if (!sim) throw new Error(`[SimFixClient] unknown session: ${sessionId}`);
     const pending = sim.pendingApproval;
     if (!pending) return; // No open gate — no-op (idempotent for double clicks).
-    // The UX keys approvals by step id; the loop only awaits one gate at a time,
-    // so accept the open gate (and assert the id matches when one is provided).
-    if (stepId && pending.stepId !== stepId) {
-      // Tolerate id drift between the planned step and the live gate.
-    }
+    // Exact-step parity with the live engine/server (#3): the server resolves an
+    // approval only for the EXACT open step (a mismatch returns 409 and leaves the
+    // gate open — P1-1 security). The Sim must behave identically, not silently
+    // resolve the only open gate for a wrong/blank step id — otherwise the mock
+    // approves things the real engine would refuse.
+    if (stepId && pending.stepId !== stepId) return;
     sim.pendingApproval = null;
     pending.gate.resolve(decision);
   }
@@ -175,7 +184,7 @@ export class SimFixClient implements FixClient {
 
     const run = runSession(req, {
       provider: new MockProvider(),
-      registry: defaultRegistry(),
+      registry: this.makeRegistry(),
       // Abort signal so abort() actually halts the loop (#2), not just the queue.
       signal: sim.controller.signal,
       // ApprovalResolver: surface the gate, then block on the UI's decision.

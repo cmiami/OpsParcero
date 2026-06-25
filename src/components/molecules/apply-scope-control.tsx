@@ -18,6 +18,12 @@ export interface ApplyScopeControlProps {
   onChange: (scope: ActionScope) => void;
   /** How many assets currently match the failure mode (drives the "all" option). */
   matchCount?: number;
+  /**
+   * Which scopes to offer (in spine order). Defaults to all three. A surface that
+   * cannot actually fan out — e.g. the single-asset engine console — passes
+   * `["once","always"]` so it never PROMISES "all-matching" it won't deliver (#3).
+   */
+  allowedScopes?: ActionScope[];
   /** Disable the whole control (e.g. while a run is executing). */
   disabled?: boolean;
   /**
@@ -80,6 +86,7 @@ export function ApplyScopeControl({
   value,
   onChange,
   matchCount,
+  allowedScopes,
   disabled,
   policyBreadth = "type",
   onPolicyBreadthChange,
@@ -88,6 +95,9 @@ export function ApplyScopeControl({
   className,
 }: ApplyScopeControlProps) {
   const showBreadth = value === "always" && Boolean(onPolicyBreadthChange);
+  const scopes = allowedScopes
+    ? SCOPES.filter((o) => allowedScopes.includes(o.value))
+    : SCOPES;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <RadioGroup
@@ -97,7 +107,7 @@ export function ApplyScopeControl({
         aria-label="Apply scope"
         className="gap-2"
       >
-      {SCOPES.map((opt) => {
+      {scopes.map((opt) => {
         const selected = value === opt.value;
         const Icon = opt.icon;
         const id = `apply-scope-${opt.value}`;

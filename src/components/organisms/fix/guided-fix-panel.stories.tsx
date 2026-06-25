@@ -169,6 +169,22 @@ export const Idle: Story = {
   render: (args) => <GuidedFixPanel {...args} />,
 };
 
+/**
+ * ScopeHidesAllMatching — regression gate for #3: even with matchCount>1 the
+ * single-asset engine console offers Once + Always only, never "all-matching"
+ * (which it can't fan out across — it would record a blast radius it didn't heal).
+ */
+export const ScopeHidesAllMatching: Story = {
+  args: { asset: ASSET, issue: ISSUE, matchCount: 9 },
+  render: (args) => <GuidedFixPanel {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.getByLabelText(/Fix this once/i)).toBeInTheDocument();
+    expect(canvas.getByLabelText(/Always auto-fix/i)).toBeInTheDocument();
+    expect(canvas.queryByLabelText(/Apply to all matching/i)).toBeNull();
+  },
+};
+
 /** Mid-run — triaging, plan shown, transcript streaming. */
 export const Running: Story = {
   args: { asset: ASSET, issue: ISSUE, matchCount: 9 },

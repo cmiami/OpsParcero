@@ -27,10 +27,12 @@ function Controlled({
   initial,
   matchCount,
   disabled,
+  allowedScopes,
 }: {
   initial: ActionScope;
   matchCount?: number;
   disabled?: boolean;
+  allowedScopes?: ActionScope[];
 }) {
   const [value, setValue] = React.useState<ActionScope>(initial);
   return (
@@ -40,6 +42,7 @@ function Controlled({
         onChange={setValue}
         matchCount={matchCount}
         disabled={disabled}
+        allowedScopes={allowedScopes}
       />
     </div>
   );
@@ -63,6 +66,24 @@ export const Always: Story = {
 export const Disabled: Story = {
   args: { value: "once", matchCount: 14, disabled: true, onChange: fn() },
   render: () => <Controlled initial="once" matchCount={14} disabled />,
+};
+
+/**
+ * RestrictedToOnceAndAlways — a single-asset surface (engine console) passes
+ * allowedScopes to drop "all-matching" it can't fan out across, so it never
+ * promises a blast radius it won't deliver (#3).
+ */
+export const RestrictedToOnceAndAlways: Story = {
+  args: { value: "once", matchCount: 14, onChange: fn() },
+  render: () => (
+    <Controlled initial="once" matchCount={14} allowedScopes={["once", "always"]} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.getByLabelText(/Fix this once/i)).toBeInTheDocument();
+    expect(canvas.getByLabelText(/Always auto-fix/i)).toBeInTheDocument();
+    expect(canvas.queryByLabelText(/Apply to all matching/i)).toBeNull();
+  },
 };
 
 export const SelectScope: Story = {

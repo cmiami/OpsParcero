@@ -457,10 +457,14 @@ export function GuidedFixPanel({
       {run.phase === "idle" && (
         <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3">
           <span className="text-xs font-bold text-foreground">Apply scope</span>
+          {/* The engine console is a single-asset executor and heals exactly one
+              asset — so it offers Once and Always (a standing policy) only, never
+              "all-matching" it can't actually fan out across (#3). */}
           <ApplyScopeControl
             value={scope}
             onChange={setScope}
             matchCount={matchCount}
+            allowedScopes={["once", "always"]}
           />
           <label className="flex cursor-pointer items-center gap-2 text-sm text-card-foreground">
             <input

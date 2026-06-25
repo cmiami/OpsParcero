@@ -28,6 +28,7 @@ import type {
   FixTranscriptTurn,
   FixPlanStep,
 } from "../types";
+import { isExecutableScope } from "../types";
 import type { ProviderId } from "../providers/types";
 import type { ActionScope, ProductType, ProtectedAsset } from "../domain";
 import { c } from "./term";
@@ -80,7 +81,7 @@ fix options:
   --mode <m>          guided | ai                          (default: ai)
   --provider <id>     anthropic | openai | google | local | mock  (default: mock)
   --model <m>         provider-native model id (default: provider's first model)
-  --scope <s>         once | all-matching | always         (default: once)
+  --scope <s>         once (only executable scope — per-asset engine)  (default: once)
   --dry-run           safe preview — auto-REJECT every approval gate so no
                       gated/destructive action runs (the loop still shows each
                       write's dry-run diff before its gate)
@@ -405,6 +406,15 @@ async function main(): Promise<number> {
   const scopeArg = values.scope as string;
   if (!isScope(scopeArg)) {
     return die(`--scope must be one of: ${SCOPES.join(", ")} (got "${scopeArg}")`);
+  }
+  // The engine is a PER-ASSET executor — it never fans out to matching assets or
+  // writes an "always" policy. Reject those scopes here rather than recording a
+  // session that claims a cohort/policy it never acted on (#2).
+  if (!isExecutableScope(scopeArg)) {
+    return die(
+      `--scope ${scopeArg} is not executable by this per-asset engine; only "once" is. ` +
+        `Fan-out ("all-matching") and policy promotion ("always") are orchestrated by the caller.`,
+    );
   }
 
   let budgetSteps: number | undefined;

@@ -88,6 +88,28 @@ describe("approve decision validation (#4)", () => {
   });
 });
 
+describe("scope boundary (#2)", () => {
+  it("rejects a non-'once' scope with 400 — the engine never fans out", async () => {
+    for (const scope of ["all-matching", "always"]) {
+      const r = await jsonPost(
+        "/sessions",
+        { assetId, scope },
+        { Origin: APP_ORIGIN },
+      );
+      expect(r.status, `scope=${scope}`).toBe(400);
+    }
+  });
+
+  it("accepts scope 'once' (the per-asset scope)", async () => {
+    const r = await jsonPost(
+      "/sessions",
+      { assetId, scope: "once" },
+      { Origin: APP_ORIGIN },
+    );
+    expect(r.status).toBe(201);
+  });
+});
+
 describe("in-flight session snapshot (#17)", () => {
   it("GET /sessions/:id returns a populated session (id + state), not {}", async () => {
     const r = await jsonPost("/sessions", { assetId }, { Origin: APP_ORIGIN });

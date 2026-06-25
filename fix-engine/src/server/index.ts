@@ -51,6 +51,7 @@ import type {
   FixPlanStep,
   RunSessionRequest,
 } from "../types";
+import { isExecutableScope } from "../types";
 import type { AssetId, ActionScope } from "../domain";
 import { SessionStore, deferred, type SessionEntry } from "./store";
 
@@ -157,6 +158,19 @@ app.post("/sessions", async (c) => {
       }
     : undefined;
   const scope: ActionScope = body.scope ?? "once";
+  // The loop is a PER-ASSET executor (loop/session.ts §240): it never fans out
+  // across matching assets nor writes an "always" policy. Reject any non-"once"
+  // scope at the boundary so a session can never CLAIM a cohort/policy it never
+  // acted on (#2) — fan-out and policy promotion are the caller's job.
+  if (!isExecutableScope(scope)) {
+    return c.json(
+      {
+        error:
+          "scope must be 'once' — this engine is a per-asset executor; 'all-matching' (fan-out) and 'always' (policy) are orchestrated by the caller",
+      },
+      400,
+    );
+  }
 
   // Resolve the provider through the registry (never throws on a missing key;
   // an unavailable provider falls back to Mock inside the registry's chat()).

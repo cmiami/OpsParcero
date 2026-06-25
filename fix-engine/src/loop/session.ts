@@ -314,6 +314,7 @@ export async function runSession(
     // ── one model turn ──
     let text = "";
     const calls: { id: string; name: string; input: unknown }[] = [];
+    let providerErrored = false;
     try {
       for await (const ev of provider.chat(
         {
@@ -333,6 +334,8 @@ export async function runSession(
         } else if (ev.type === "error") {
           push({ kind: "status", text: `Provider error: ${ev.message}` });
           setState("failed");
+          providerErrored = true;
+          break;
         }
       }
     } catch (e) {
@@ -340,6 +343,11 @@ export async function runSession(
       setState("halted");
       break;
     }
+    // A provider `error` event is a TERMINAL fault: break the outer loop so the
+    // honest "failed" state stands. Falling through would reach the
+    // calls.length===0 branch below and overwrite it with succeeded/partial/
+    // escalated (no calls arrived on an error), masking the failure (#1).
+    if (providerErrored) break;
     if (text) push({ kind: "model", text });
 
     if (calls.length === 0) {

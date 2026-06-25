@@ -32,6 +32,17 @@ export const TERMINAL_STATES: ReadonlySet<FixState> = new Set<FixState>([
   "halted",
 ]);
 
+/**
+ * The only scope this engine can HONESTLY execute. The loop is a per-asset
+ * executor (loop/session.ts §240): it never fans out across matching assets nor
+ * writes an "always" policy. Both the HTTP server and the CLI reject any other
+ * scope at their boundary so a session can never claim a cohort/policy it never
+ * acted on (#2). Fan-out and policy promotion are the caller's responsibility.
+ */
+export function isExecutableScope(scope: ActionScope): boolean {
+  return scope === "once";
+}
+
 export interface FixBudget {
   maxSteps: number;
   maxToolCalls: number;

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import * as React from "react";
 import { expect, within, userEvent, waitFor } from "storybook/test";
 import { GuidedFixPanel } from "./guided-fix-panel";
 import type {
@@ -80,6 +81,8 @@ function turn(t: Partial<FixTranscriptTurn> & { kind: FixTranscriptTurn["kind"] 
  */
 class ScriptedClient implements FixClient {
   readonly kind = "sim" as const;
+  /** Set true when the handle's abort() runs — lets a story assert teardown. */
+  aborted = false;
   constructor(
     private readonly events: FixSessionEvent[],
     private readonly opts: { pauseAtGate?: boolean } = {},
@@ -98,17 +101,27 @@ class ScriptedClient implements FixClient {
     const handle: FixSessionHandle = {
       id: "story-session",
       session,
-      async approve() {
+      approve: async () => {
         resolveGate?.();
         resolveGate = null;
       },
-      async abort() {
+      abort: async () => {
+        this.aborted = true;
         resolveGate?.();
         resolveGate = null;
       },
       async *stream(): AsyncIterable<FixSessionEvent> {
         for (const ev of events) {
-          yield ev;
+          // Stamp run identity onto the terminal so the console's P2-6 guard
+          // accepts it (a real engine sets these; the scripted fixtures omit them).
+          const out =
+            ev.type === "done"
+              ? {
+                  ...ev,
+                  session: { ...ev.session, id: "story-session", assetId: ASSET.id },
+                }
+              : ev;
+          yield out;
           if (ev.type === "approval-request" && opts.pauseAtGate) {
             await new Promise<void>((res) => {
               resolveGate = res;
@@ -391,5 +404,66 @@ export const Escalated: Story = {
         canvas.getByText(/must approve the M365 re-consent/i),
       ).toBeInTheDocument(),
     );
+  },
+};
+
+// A run that pauses at an approval gate, so we can unmount it MID-RUN.
+const unmountClient = new ScriptedClient(
+  [
+    { type: "state", state: "triaging" },
+    { type: "plan", plan: PLAN },
+    { type: "approval-request", step: PLAN.steps[1] },
+  ],
+  { pauseAtGate: true },
+);
+
+/** Harness: a toggle that unmounts the panel, so a play fn can unmount mid-run. */
+function UnmountHarness() {
+  const [mounted, setMounted] = React.useState(true);
+  return (
+    <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => setMounted(false)}
+        className="self-start rounded-md border border-border px-2 py-1 text-sm"
+      >
+        Unmount panel
+      </button>
+      {mounted && (
+        <GuidedFixPanel
+          asset={ASSET}
+          issue={ISSUE}
+          client={unmountClient}
+          matchCount={9}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * UnmountAbortsMidRun — regression gate for P2-7: unmounting the panel while a
+ * run is in flight must tear the session down (call abort) and not dispatch into
+ * a dead component. Mirrors the AI console's proven lifecycle guard.
+ */
+export const UnmountAbortsMidRun: Story = {
+  args: { asset: ASSET, issue: ISSUE, matchCount: 9 },
+  render: () => <UnmountHarness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    unmountClient.aborted = false;
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /start guided/i }),
+    );
+    // The run reaches the approval gate and holds there — it is mid-run.
+    await waitFor(() =>
+      expect(canvas.getByText(/Approval needed/i)).toBeInTheDocument(),
+    );
+    // Unmounting mid-run must abort the session (and not throw).
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Unmount panel/i }),
+    );
+    await waitFor(() => expect(unmountClient.aborted).toBe(true));
+    expect(canvas.queryByText(/Approval needed/i)).not.toBeInTheDocument();
   },
 };

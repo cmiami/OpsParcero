@@ -10,6 +10,7 @@ import type {
   FixSession,
   FixTranscriptTurn,
   ToolResult,
+  RunSessionRequest,
 } from "@/lib/fix-client";
 import { getIssues, getAsset, getAssets } from "@/mock/query";
 import type { ProtectedAsset, Issue } from "@/types";
@@ -80,13 +81,17 @@ class ScriptedFixClient implements FixClient {
     return [MOCK_MODEL];
   }
 
-  async createSession(): Promise<FixSessionHandle> {
+  /** The asset id of the active run, used to stamp run identity onto `done`. */
+  private currentAssetId = "";
+
+  async createSession(req: RunSessionRequest): Promise<FixSessionHandle> {
     const id = "fix-story-scripted";
+    this.currentAssetId = req.assetId;
     const placeholder = { id, state: "triaging" } as unknown as FixSession;
     return {
       id,
       session: placeholder,
-      stream: () => this.stream(),
+      stream: () => this.stream(id),
       approve: async () => {
         this.gateOpen = false;
       },
@@ -96,9 +101,16 @@ class ScriptedFixClient implements FixClient {
     };
   }
 
-  async *stream(): AsyncIterable<FixSessionEvent> {
+  async *stream(sessionId: string): AsyncIterable<FixSessionEvent> {
+    const assetId = this.currentAssetId;
     for (const ev of this.script) {
-      yield ev;
+      // Stamp run identity onto the terminal so the console's P2-6 guard accepts
+      // it (a real engine sets these; the scripted fixtures omit assetId).
+      const out =
+        ev.type === "done"
+          ? { ...ev, session: { ...ev.session, id: sessionId, assetId } }
+          : ev;
+      yield out;
       if (ev.type === "approval-request" && this.opts.pauseAtGate) {
         this.gateOpen = true;
         // Hold here so the story stays pinned in awaiting-approval. The console

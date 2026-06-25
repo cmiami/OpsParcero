@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button";
 import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { FixTranscriptView } from "@/components/organisms/fix/fix-transcript-view";
 import { FIX_STATE_META } from "@/components/organisms/fix/fix-state-meta";
-import { getFixClientSync, TERMINAL_STATES } from "@/lib/fix-client";
+import { getFixClientSync, getFixClient, TERMINAL_STATES } from "@/lib/fix-client";
 import {
   recordAgentRun,
   buildAutomationPolicy,
+  recordPolicyCreated,
 } from "@/lib/activity-record";
 import { usePolicies } from "@/stores/automation-policies";
 import type {
@@ -280,10 +281,26 @@ export function GuidedFixPanel({
   matchCount,
   className,
 }: GuidedFixPanelProps) {
-  const fixClient = React.useMemo(
+  // Resolve the client asynchronously so the live-engine opt-in is actually
+  // reachable (P1-2): start on a synchronous Sim (first paint never blank), then
+  // upgrade to whatever getFixClient() resolves (Sim, or Live if configured +
+  // healthy). Stories pass an explicit `client`, bypassing the probe.
+  const [fixClient, setFixClient] = React.useState<FixClient>(
     () => client ?? getFixClientSync(),
-    [client],
   );
+  React.useEffect(() => {
+    if (client) {
+      setFixClient(client);
+      return;
+    }
+    let alive = true;
+    void getFixClient().then((c) => {
+      if (alive) setFixClient(c);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [client]);
   const [run, dispatch] = React.useReducer(reducer, INITIAL);
   const [scope, setScope] = React.useState<ActionScope>("once");
   // Real-with-gates by default (preview-before-execute + approval gates protect);
@@ -299,6 +316,16 @@ export function GuidedFixPanel({
   } | null>(null);
   // Guards the one-time activity record per terminal run.
   const recordedRef = React.useRef(false);
+  // Lifecycle guard (P2-7): mirror the AI console — if the panel unmounts
+  // mid-run, stop dispatching into a dead component AND tear the stream down.
+  const aliveRef = React.useRef(true);
+  React.useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      void sessionRef.current?.abort().catch(() => {});
+    };
+  }, []);
 
   // On a terminal, non-dry, healed run, persist the run + heal the asset so the
   // panel's "recorded" promise holds and the asset's state reflects the fix.
@@ -319,14 +346,14 @@ export function GuidedFixPanel({
       // surface, not just the FixModal. (The breadth sub-choice stays in the
       // modal; the guided flow always creates the precise failure-mode policy.)
       if (scope === "always" && issue) {
-        usePolicies.getState().addPolicy(
-          buildAutomationPolicy({
-            failureModeId: issue.failureModeId,
-            category: issue.category,
-            actionId: "agent-fix",
-            productBucket: issue.productBucket,
-          }),
-        );
+        const policy = buildAutomationPolicy({
+          failureModeId: issue.failureModeId,
+          category: issue.category,
+          actionId: "agent-fix",
+          productBucket: issue.productBucket,
+        });
+        usePolicies.getState().addPolicy(policy);
+        recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
       }
     }
   }, [run.phase, run.healed, run.resultSummary, dryRun, scope, asset.id, issue]);
@@ -353,6 +380,15 @@ export function GuidedFixPanel({
         abort: handle.abort,
       };
       for await (const ev of handle.stream()) {
+        if (!aliveRef.current) return; // unmounted mid-run (P2-7)
+        // Ignore a terminal that isn't for THIS run's session+asset — a
+        // buggy/hostile engine must not heal an asset that wasn't the target (P2-6).
+        if (
+          ev.type === "done" &&
+          (ev.session.id !== handle.id || ev.session.assetId !== asset.id)
+        ) {
+          continue;
+        }
         dispatch({ type: "event", ev });
       }
     } catch (err) {

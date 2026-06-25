@@ -22,7 +22,7 @@ import { AiInsightCard } from "@/components/molecules/ai-insight-card";
 import { FixTranscriptView } from "./fix-transcript-view";
 import { ModelPicker } from "./model-picker";
 import { FIX_STATE_META } from "./fix-state-meta";
-import { getFixClientSync } from "@/lib/fix-client";
+import { getFixClientSync, getFixClient } from "@/lib/fix-client";
 import type {
   FixClient,
   FixSessionEvent,
@@ -163,10 +163,25 @@ export function AiFixConsole({
   onSwitchToGuided,
   className,
 }: AiFixConsoleProps) {
-  const fixClient = React.useMemo(
+  // Resolve the client asynchronously so the live-engine opt-in is reachable
+  // (P1-2): start on a synchronous Sim, then upgrade to whatever getFixClient()
+  // resolves. Stories pass an explicit `client`, bypassing the probe.
+  const [fixClient, setFixClient] = React.useState<FixClient>(
     () => client ?? getFixClientSync(),
-    [client],
   );
+  React.useEffect(() => {
+    if (client) {
+      setFixClient(client);
+      return;
+    }
+    let alive = true;
+    void getFixClient().then((c) => {
+      if (alive) setFixClient(c);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [client]);
 
   const [model, dispatch] = React.useReducer(reduce, INITIAL_MODEL);
   const [running, setRunning] = React.useState(false);
@@ -211,6 +226,14 @@ export function AiFixConsole({
       try {
         for await (const ev of handle.stream()) {
           if (!aliveRef.current) return;
+          // Ignore a terminal that isn't for THIS run's session+asset — a
+          // buggy/hostile engine must not heal a non-target asset (P2-6).
+          if (
+            ev.type === "done" &&
+            (ev.session.id !== handle.id || ev.session.assetId !== asset.id)
+          ) {
+            continue;
+          }
           dispatch({ kind: "event", event: ev });
         }
       } catch (err) {
@@ -224,7 +247,7 @@ export function AiFixConsole({
         if (aliveRef.current) setRunning(false);
       }
     },
-    [],
+    [asset.id],
   );
 
   const handleRun = React.useCallback(async () => {

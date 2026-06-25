@@ -208,7 +208,21 @@ function indexOfFrameEnd(buffer: string): number {
   return Math.min(a, b);
 }
 
-/** Parse one SSE frame's `data:` lines into a FixSessionEvent (or null). */
+/** The FixSessionEvent discriminants this client trusts off the wire (P2-6). */
+const KNOWN_EVENT_TYPES: ReadonlySet<string> = new Set([
+  "state",
+  "plan",
+  "turn",
+  "approval-request",
+  "done",
+]);
+
+/**
+ * Parse one SSE frame's `data:` lines into a FixSessionEvent (or null). The
+ * parsed JSON is NARROWED, not blindly cast (P2-6): a frame is dropped unless it
+ * is an object with a known `type` discriminant, so a malicious/buggy engine
+ * can't stream an arbitrary shape that the consoles would then trust.
+ */
 function parseSseFrame(frame: string): FixSessionEvent | null {
   const dataLines: string[] = [];
   for (const raw of frame.split(/\r?\n/)) {
@@ -216,11 +230,21 @@ function parseSseFrame(frame: string): FixSessionEvent | null {
     if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
   }
   if (dataLines.length === 0) return null;
+  let parsed: unknown;
   try {
-    return JSON.parse(dataLines.join("\n")) as FixSessionEvent;
+    parsed = JSON.parse(dataLines.join("\n"));
   } catch {
     return null;
   }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    typeof (parsed as { type?: unknown }).type !== "string" ||
+    !KNOWN_EVENT_TYPES.has((parsed as { type: string }).type)
+  ) {
+    return null;
+  }
+  return parsed as FixSessionEvent;
 }
 
 function isAbortError(err: unknown): boolean {

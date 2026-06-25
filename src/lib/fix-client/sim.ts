@@ -81,7 +81,10 @@ export class SimFixClient implements FixClient {
     const queue = new AsyncQueue<FixSessionEvent>();
     const sim: SimSession = {
       id,
-      req,
+      // Pin the loop's session id to this handle's id so the terminal `done`
+      // event's session.id === handle.id — lets consoles verify run identity
+      // before healing (P2-6) without the id-derivation drift on re-open.
+      req: { ...req, sessionId: id },
       queue,
       pendingApproval: null,
       aborted: false,

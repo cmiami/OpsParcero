@@ -97,3 +97,43 @@ export const ToggleKillSwitch: Story = {
     await expect(killSwitch).toBeChecked();
   },
 };
+
+/**
+ * KillSwitchPersistsAndAudits — regression gate for #16: on a SAVED policy the
+ * kill-switch persists to the Policies store (not just local component state) and
+ * leaves an audit entry, so the flip survives a remount, reaches the grid badge,
+ * and is trailed — not a toast-only no-op.
+ */
+export const KillSwitchPersistsAndAudits: Story = {
+  args: { policy: disabledPolicy, matchCount: 22 },
+  play: async ({ canvasElement }) => {
+    const policy = disabledPolicy!;
+    // The toggle mutates the STORE entry by id, so the policy must live there.
+    usePolicies.setState({ policies: [policy] });
+    useActivity.setState({
+      runs: [],
+      audit: [],
+      assetOverrides: {},
+      alertOverrides: {},
+    });
+    const canvas = within(canvasElement);
+    const killSwitch = canvas.getByRole("switch", { name: /Kill-switch/i });
+    const expectedEnabled = !policy.enabled;
+    await userEvent.click(killSwitch);
+    // Persisted to the store, not just local state.
+    await waitFor(() =>
+      expect(
+        usePolicies.getState().policies.find((p) => p.id === policy.id)?.enabled,
+      ).toBe(expectedEnabled),
+    );
+    // Audited with the verb matching the new state, against this policy.
+    const expectedVerb = expectedEnabled ? "enabled-policy" : "disabled-policy";
+    expect(
+      useActivity
+        .getState()
+        .audit.some(
+          (a) => a.verb === expectedVerb && a.subjectRef.id === policy.id,
+        ),
+    ).toBe(true);
+  },
+};

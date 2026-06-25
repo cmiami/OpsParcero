@@ -30,7 +30,7 @@ import {
 import { getPlaybooks, getAssets, getOrg } from "@/mock/query";
 import { relativeTime } from "@/lib/format";
 import { usePolicies } from "@/stores/automation-policies";
-import { recordPolicyCreated } from "@/lib/activity-record";
+import { recordPolicyCreated, recordPolicyToggled } from "@/lib/activity-record";
 import { makeUid } from "@/stores/uid";
 import type { AutomationPolicy, AutomationPolicyId } from "@/types";
 import { toast } from "sonner";
@@ -351,6 +351,18 @@ export function AutomationPolicyEditor({
             checked={enabled}
             onCheckedChange={(v) => {
               setEnabled(v);
+              // Persist to the store + audit the flip (#16) — a kill-switch that
+              // only set local state reverted on remount, never reached the
+              // Policies grid badge, and left no trail. Only for a saved policy;
+              // a draft's switch is just the initial-state control.
+              if (policy?.id) {
+                usePolicies.getState().togglePolicy(policy.id, v);
+                recordPolicyToggled({
+                  policyId: policy.id,
+                  policyName: policy.name,
+                  enabled: v,
+                });
+              }
               toast(v ? "Policy enabled" : "Policy paused", {
                 description: v
                   ? "Will fire on matching events going forward."

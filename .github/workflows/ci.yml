@@ -19,10 +19,21 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+      # Install Node 24 FIRST, so corepack (next) pins pnpm under the SAME Node
+      # the build runs on. Enabling corepack before setup-node bound the pnpm
+      # shim to the runner's pre-installed Node, then setup-node switched away
+      # from it — fragile, and the cache:pnpm resolution could miss (#17). No
+      # cache here yet: pnpm doesn't exist until corepack enables it.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: ".nvmrc" # Node 24 LTS
       # corepack pins the package manager to package.json's `packageManager`
       # field (pnpm@11.9.0) — the runner can't silently use a different pnpm.
       - name: Enable corepack
         run: corepack enable
+      # Re-run setup-node now that pnpm exists on Node 24, to wire the pnpm store
+      # cache (the documented corepack + cache:pnpm ordering). Node is already
+      # installed, so this only sets up caching.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: ".nvmrc" # Node 24 LTS

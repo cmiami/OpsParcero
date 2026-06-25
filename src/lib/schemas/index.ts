@@ -207,6 +207,7 @@ export const auditLogEntrySchema = z
       "rejected",
       "created-playbook",
       "enabled-policy",
+      "disabled-policy",
       "suppressed-alert",
       "overrode",
       "rolled-back",

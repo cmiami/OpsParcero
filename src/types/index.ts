@@ -206,6 +206,7 @@ export type AuditVerb =
   | "rejected"
   | "created-playbook"
   | "enabled-policy"
+  | "disabled-policy"
   | "suppressed-alert"
   | "overrode"
   | "rolled-back";

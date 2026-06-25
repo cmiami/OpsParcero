@@ -235,6 +235,34 @@ export function recordPolicyCreated(input: {
 }
 
 /**
+ * Audit a kill-switch flip on a standing policy (#16) — enabling or pausing
+ * unattended auto-remediation is a security-relevant change, so it leaves a
+ * durable trail like every other policy action, not just a toast.
+ */
+export function recordPolicyToggled(input: {
+  policyId: string;
+  policyName: string;
+  enabled: boolean;
+}): void {
+  const now = new Date().toISOString();
+  useActivity.getState().record({
+    runs: [],
+    audit: [
+      {
+        id: makeUid("aud") as AuditLogEntry["id"],
+        at: now,
+        actor: { kind: "user", refId: currentUserRef() },
+        verb: input.enabled ? "enabled-policy" : "disabled-policy",
+        subjectRef: { kind: "policy", id: input.policyId },
+        detail: input.enabled
+          ? `Enabled standing policy "${input.policyName}" — will fire on matching events.`
+          : `Paused standing policy "${input.policyName}" — firing stopped, config retained.`,
+      },
+    ],
+  });
+}
+
+/**
  * Arm the standing policy for an "always"-scoped apply: build it (paused),
  * persist it to the Policies store, and audit its creation. The single place
  * these three steps stay together — shared by the fresh dispatch (FixModal) and

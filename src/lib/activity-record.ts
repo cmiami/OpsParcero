@@ -10,12 +10,14 @@
 
 import { makeUid } from "@/stores/uid";
 import { useActivity } from "@/stores/activity";
-import { getUsers, getOrg } from "@/mock/query";
+import { getUsers, getOrg, getAsset } from "@/mock/query";
+import { ACTION_BY_ID } from "@/mock/reference";
 import type {
   ActionRun,
   AuditLogEntry,
   ActionScope,
   ActionRunState,
+  ApprovalPayload,
   EntityRef,
   AssetId,
   AssetStatus,
@@ -24,7 +26,7 @@ import type {
   FailureModeId,
   ProductBucket,
 } from "@/types";
-import type { RunnerOutcome } from "@/mock/runner";
+import { simulateRun, runChain, type RunnerOutcome, type ChainStepInput } from "@/mock/runner";
 
 export type TriggeredBy = {
   kind: "user" | "playbook" | "policy" | "ai";
@@ -120,7 +122,15 @@ export function recordSimulatedRun(
   },
 ): ActionRun {
   const { run, audit } = buildActivityRecords(input);
-  useActivity.getState().record({ runs: [run], audit: [audit], heal: input.heal });
+  // A heal also closes the healed assets' open alerts (P2-4) — so a fix that
+  // turns an asset green doesn't leave that asset's alerts sitting open on the
+  // Alerts page / asset-detail Alerts tab.
+  const resolveAlertIds = input.heal
+    ? input.heal.assetIds.flatMap((id) => getAsset(id)?.openAlertIds ?? [])
+    : undefined;
+  useActivity
+    .getState()
+    .record({ runs: [run], audit: [audit], heal: input.heal, resolveAlertIds });
   return run;
 }
 
@@ -190,4 +200,127 @@ export function buildAutomationPolicy(input: {
     dryRunFirst: true,
     stats: { triggered: 0, succeeded: 0 },
   };
+}
+
+/**
+ * Record an audit entry for a standing policy the user just created (P1-6) — so
+ * arming auto-remediation always leaves a trail, never a silent one-click. The
+ * policy is created paused; this entry records that creation.
+ */
+export function recordPolicyCreated(input: {
+  policyId: string;
+  policyName: string;
+}): void {
+  const now = new Date().toISOString();
+  useActivity.getState().record({
+    runs: [],
+    audit: [
+      {
+        id: makeUid("aud") as AuditLogEntry["id"],
+        at: now,
+        actor: { kind: "user", refId: currentUserRef() },
+        verb: "enabled-policy",
+        subjectRef: { kind: "policy", id: input.policyId },
+        detail: `Created standing policy "${input.policyName}" — paused pending approval.`,
+      },
+    ],
+  });
+}
+
+/**
+ * Resume an approval-gated dispatch once it is APPROVED (P1-3): run the held
+ * action/chain for real (approved:true) and persist the run(s) + heal, so
+ * approving in the queue actually executes — not merely flips the card state.
+ * Reuses simulateRun / runChain + recordSimulatedRun; no new run path.
+ */
+export function resumeApprovedRun(payload: ApprovalPayload): void {
+  if (payload.kind === "action") {
+    const action = ACTION_BY_ID[payload.actionId];
+    if (!action) return;
+    const outcome = simulateRun(
+      action,
+      payload.targetRefs,
+      payload.scope,
+      payload.params,
+      { approved: true },
+    );
+    const healed = healedAssetIds(outcome);
+    recordSimulatedRun({
+      actionId: action.id,
+      actionLabel: action.label,
+      targets: payload.targetRefs,
+      scope: payload.scope,
+      params: payload.params,
+      outcome,
+      heal:
+        outcome.healsAsset && healed.length
+          ? { assetIds: healed, status: outcome.healedStatus ?? "protected" }
+          : undefined,
+    });
+    return;
+  }
+
+  // chain
+  const resolved: ChainStepInput[] = payload.steps.flatMap((s) => {
+    const action = ACTION_BY_ID[s.actionId];
+    return action ? [{ action, params: s.params, scope: s.scope }] : [];
+  });
+  const chain = runChain(resolved, payload.targetRefs, payload.scope, {
+    approved: true,
+  });
+  chain.steps.forEach((stepResult, i) => {
+    const step = resolved[i];
+    if (!stepResult.ran || !step) return;
+    const healed = healedAssetIds(stepResult.outcome);
+    recordSimulatedRun({
+      actionId: step.action.id,
+      actionLabel: step.action.label,
+      targets: payload.targetRefs,
+      scope: step.scope ?? payload.scope,
+      params: step.params,
+      outcome: stepResult.outcome,
+      heal:
+        stepResult.outcome.healsAsset && healed.length
+          ? {
+              assetIds: healed,
+              status: stepResult.outcome.healedStatus ?? "protected",
+            }
+          : undefined,
+    });
+  });
+}
+
+/**
+ * Record a REJECTED approval decision (P1-3) as an audit entry — so a refusal is
+ * trailed too, and the held dispatch is provably not executed.
+ */
+export function recordApprovalRejected(
+  payload: ApprovalPayload,
+  note?: string,
+): void {
+  const actionId =
+    payload.kind === "action"
+      ? payload.actionId
+      : (payload.steps[0]?.actionId ?? "chain");
+  const action = ACTION_BY_ID[actionId];
+  const subject: EntityRef = payload.targetRefs[0] ?? {
+    kind: "asset",
+    id: "unknown",
+  };
+  const now = new Date().toISOString();
+  useActivity.getState().record({
+    runs: [],
+    audit: [
+      {
+        id: makeUid("aud") as AuditLogEntry["id"],
+        at: now,
+        actor: { kind: "user", refId: currentUserRef() },
+        verb: "rejected",
+        subjectRef: subject,
+        scope: payload.scope,
+        outcome: "failed",
+        detail: `Rejected ${action?.label ?? actionId}${note ? ` — ${note}` : ""}. Not executed.`,
+      },
+    ],
+  });
 }

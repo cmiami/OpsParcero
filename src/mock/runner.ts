@@ -71,6 +71,15 @@ function runRng(actionId: string, targets: EntityRef[], scope: ActionScope): Rng
 
 /** Whether the action needs an approval short-circuit before running. */
 function needsApproval(action: RemediationAction, targetCount: number): boolean {
+  // An irreversible or destructive MUTATION always gates — you cannot undo it, so
+  // a human must confirm, regardless of the action's declared requiresApproval /
+  // threshold. (The catalog has self-heal actions that are reversible:false yet
+  // requiresApproval:'never' — force-merge, unseal-encrypted-agent,
+  // reset-sync-state full re-sync — which previously ran straight through.)
+  // Ticket-opening / guidance-only actions make no change to the asset, so their
+  // irreversibility is benign and is not gated here.
+  const mutates = action.outcome === "self-heal";
+  if (mutates && (!action.reversible || action.destructive)) return true;
   if (action.requiresApproval === "always") return true;
   if (action.requiresApproval === "over-threshold") return targetCount >= 5 || action.destructive;
   return false;

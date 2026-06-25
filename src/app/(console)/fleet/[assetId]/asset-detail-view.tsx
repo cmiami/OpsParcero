@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryState, parseAsStringEnum } from "nuqs";
-import { ArrowLeft, Wrench, Sparkles } from "lucide-react";
+import { ArrowLeft, Wrench, Sparkles, CheckCircle2 } from "lucide-react";
 import type { AssetId } from "@/types";
 import { productTypeToBucket } from "@/types";
 import {
@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { GuidedFixPanel } from "@/components/organisms/fix/guided-fix-panel";
 import { AiFixConsole } from "@/components/organisms/fix/ai-fix-console";
-import { useActivity } from "@/stores/activity";
+import { useActivity, applyAlertOverrides } from "@/stores/activity";
 import { useHasHydrated } from "@/stores/use-has-hydrated";
 
 export function AssetDetailView() {
@@ -62,6 +62,7 @@ export function AssetDetailView() {
   // A fix applied this session may have healed this asset — reflect it.
   const hydrated = useHasHydrated(useActivity);
   const override = useActivity((s) => s.assetOverrides[id]);
+  const alertOverrides = useActivity((s) => s.alertOverrides);
 
   if (!asset) {
     return (
@@ -82,12 +83,22 @@ export function AssetDetailView() {
     );
   }
 
-  const status = hydrated && override ? override.status : asset.status;
+  const healed = hydrated && Boolean(override);
+  const status = healed && override ? override.status : asset.status;
   const client = getClient(asset.clientId);
-  const alerts = getAlertsForAsset(id);
+  // Overlay this session's alert resolutions, then show only actionable alerts —
+  // so a fix that healed this asset also clears its open alerts here, not just
+  // the status badge (P2-4). A healed asset's issue is resolved too.
+  const alerts = (
+    hydrated
+      ? applyAlertOverrides(getAlertsForAsset(id), alertOverrides)
+      : getAlertsForAsset(id)
+  ).filter((a) => a.state === "open" || a.state === "acknowledged");
   const points = getRecoveryPoints(id);
   const runs = getBackupRuns(id);
-  const issue = getIssues().find((i) => i.impactedAssetIds.includes(id));
+  const issue = healed
+    ? undefined
+    : getIssues().find((i) => i.impactedAssetIds.includes(id));
 
   // The Alerts-tab rows all target THIS asset, so "Fix" reuses the guided dialog
   // already mounted on this page; the other triage verbs give honest mock feedback
@@ -159,26 +170,51 @@ export function AssetDetailView() {
           </TabsList>
 
           <TabsContent value="overview">
-            <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-4 py-3">
-              <span className="mr-1 text-sm font-bold text-foreground">
-                Resolve this asset
-              </span>
-              <Button size="sm" onClick={() => setFixOpen("guided")}>
-                <Wrench className="size-4" aria-hidden /> Guided fix
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setFixOpen("ai")}
-                className="border-ai-accent bg-ai-tint text-ai hover:bg-ai-tint hover:text-ai"
+            {healed ? (
+              <div
+                role="status"
+                className="mb-4 flex items-start gap-2 rounded-lg border border-success bg-success-tint px-4 py-3"
               >
-                <Sparkles className="size-4" aria-hidden /> Fix with AI
-              </Button>
-            </div>
-            <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-              <RemediationPanel asset={asset} issue={issue} />
+                <CheckCircle2
+                  aria-hidden
+                  className="mt-0.5 size-4 shrink-0 text-success"
+                />
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-bold text-success">
+                    Resolved this session
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    A fix moved this asset to {status}; its open alerts were
+                    cleared. Recorded in Run history and Audit.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-4 py-3">
+                <span className="mr-1 text-sm font-bold text-foreground">
+                  Resolve this asset
+                </span>
+                <Button size="sm" onClick={() => setFixOpen("guided")}>
+                  <Wrench className="size-4" aria-hidden /> Guided fix
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setFixOpen("ai")}
+                  className="border-ai-accent bg-ai-tint text-ai hover:bg-ai-tint hover:text-ai"
+                >
+                  <Sparkles className="size-4" aria-hidden /> Fix with AI
+                </Button>
+              </div>
+            )}
+            {healed ? (
               <AssetTimeline />
-            </div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+                <RemediationPanel asset={asset} issue={issue} />
+                <AssetTimeline />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="points">

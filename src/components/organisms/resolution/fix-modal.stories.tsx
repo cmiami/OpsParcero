@@ -8,12 +8,30 @@ import {
   getActionsForFailureMode,
   getPrimaryAction,
 } from "@/mock/query";
+import { simulateRun } from "@/mock/runner";
 import { useApprovals } from "@/stores/approvals";
 import { useActivity } from "@/stores/activity";
 import { usePolicies } from "@/stores/automation-policies";
 
 const issues = getIssues();
-const full = issues.find((i) => i.fixType === "full") ?? issues[0];
+// A `full` issue whose self-heal apply will NOT hit the approval gate — reversible,
+// non-destructive, not always-approval, < 5 impacted — so ConfirmsFix applies
+// deterministically (irreversible/destructive mutations now gate, P1-7).
+const full =
+  issues.find((i) => {
+    if (i.fixType !== "full" || !i.failureModeId) return false;
+    if (i.impactedAssetIds.length >= 5) return false;
+    const a = getPrimaryAction(i.failureModeId);
+    return Boolean(
+      a &&
+        a.outcome === "self-heal" &&
+        a.reversible &&
+        !a.destructive &&
+        a.requiresApproval !== "always",
+    );
+  }) ??
+  issues.find((i) => i.fixType === "full") ??
+  issues[0];
 const partial = issues.find((i) => i.fixType === "partial") ?? issues[0];
 const insights =
   issues.find((i) => i.fixType === "manual" || i.fixType === "external") ??
@@ -26,14 +44,17 @@ const approvalIssue =
     return a && (a.destructive || a.requiresApproval === "always");
   }) ?? full;
 // A full issue whose "always" apply WON'T hit the approval gate (< 5 impacted,
-// non-destructive, not always-approval) — so confirming "always" creates a
-// policy deterministically.
+// non-destructive, reversible, not always-approval) — so confirming "always"
+// creates a policy deterministically. (Irreversible mutations now gate — P1-7 —
+// so `reversible` is required here, else this would enqueue an approval instead.)
 const policyIssue =
   issues.find((i) => {
     if (i.fixType !== "full" || !i.failureModeId) return false;
     if (i.impactedAssetIds.length >= 5) return false;
     const a = getPrimaryAction(i.failureModeId);
-    return Boolean(a && !a.destructive && a.requiresApproval !== "always");
+    return Boolean(
+      a && !a.destructive && a.reversible && a.requiresApproval !== "always",
+    );
   }) ?? full;
 
 const meta = {
@@ -109,6 +130,7 @@ export const CreatesTypePolicy: Story = {
   args: { issue: policyIssue },
   play: async () => {
     usePolicies.setState({ policies: [] });
+    useActivity.setState({ runs: [], audit: [] });
     const body = within(document.body);
     await userEvent.click(
       await body.findByRole("radio", { name: /Always auto-fix/i }),
@@ -126,6 +148,10 @@ export const CreatesTypePolicy: Story = {
     }
     // Standing automation is created paused (opt-in), never auto-armed.
     expect(usePolicies.getState().policies[0].enabled).toBe(false);
+    // Creating a standing policy is audited (P1-6) — never a silent one-click.
+    expect(
+      useActivity.getState().audit.some((a) => a.verb === "enabled-policy"),
+    ).toBe(true);
   },
 };
 
@@ -184,6 +210,36 @@ export const EnqueuesApproval: Story = {
     // A gated dispatch records NO run (nothing applied yet).
     expect(useActivity.getState().runs.length).toBe(0);
     await expect(body.findByText(/Approval required/i)).resolves.toBeDefined();
+  },
+};
+
+/**
+ * IrreversibleMutationGates — regression gate for P1-7: an irreversible OR
+ * destructive self-heal MUTATION must always require approval, even when its
+ * catalog entry says requiresApproval:'never' and only ONE asset is targeted
+ * (so neither the over-threshold nor the always-approval branch would fire).
+ * Asserts the invariant directly against the runner across the whole catalog.
+ */
+export const IrreversibleMutationGates: Story = {
+  args: { issue: full },
+  play: async () => {
+    const modes = getFailureModes();
+    let checked = 0;
+    for (const mode of modes) {
+      const action = getPrimaryAction(mode.id);
+      if (!action || action.outcome !== "self-heal") continue;
+      // Only the risky ones — a reversible, non-destructive heal should NOT gate.
+      if (action.reversible && !action.destructive) continue;
+      const out = simulateRun(
+        action,
+        [{ kind: "asset" as const, id: "AST-TEST-0001" }],
+        "once",
+      );
+      expect(out.awaitingApproval).toBe(true);
+      checked++;
+    }
+    // Prove the catalog actually contains irreversible/destructive self-heals.
+    expect(checked).toBeGreaterThan(0);
   },
 };
 

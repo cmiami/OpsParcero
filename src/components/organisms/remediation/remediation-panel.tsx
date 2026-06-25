@@ -31,6 +31,7 @@ import { makeUid } from "@/stores/uid";
 import {
   recordSimulatedRun,
   buildAutomationPolicy,
+  recordPolicyCreated,
   healedAssetIds,
 } from "@/lib/activity-record";
 import type {
@@ -193,10 +194,22 @@ export function RemediationPanel({
             id: makeUid("apr") as ApprovalRequestId,
             requestedFor: { kind: "action-run", refId: primaryAction.id },
             requestedBy: getUsers()[0]?.id ?? "u-current",
-            reason: primaryAction.destructive ? "destructive" : "over-threshold",
+            reason: !primaryAction.reversible
+              ? "irreversible"
+              : primaryAction.destructive
+                ? "destructive"
+                : "over-threshold",
             blastRadius: result.blastRadius ?? {
               assetCount: runTargets.length,
               preview: primaryAction.label,
+            },
+            // Resumable: the Approval queue can run this exact dispatch.
+            payload: {
+              kind: "action",
+              actionId: primaryAction.id,
+              targetRefs: runTargets,
+              scope,
+              params: {},
             },
             state: "pending",
           });
@@ -223,17 +236,17 @@ export function RemediationPanel({
     if (!primaryAction) return;
     setScope("always");
     setDefaultScope("always");
-    // Create a standing policy the Policies page reads from the store.
-    usePolicies.getState().addPolicy(
-      buildAutomationPolicy({
-        failureModeId: issue.failureModeId,
-        category: issue.category,
-        actionId: primaryAction.id,
-        productBucket: issue.productBucket,
-      }),
-    );
-    toast.success("Auto-remediation policy created", {
-      description: `"${issue.title}" will now be fixed automatically. See Automation → Policies.`,
+    // Create a standing policy (paused) the Policies page reads, and audit it.
+    const policy = buildAutomationPolicy({
+      failureModeId: issue.failureModeId,
+      category: issue.category,
+      actionId: primaryAction.id,
+      productBucket: issue.productBucket,
+    });
+    usePolicies.getState().addPolicy(policy);
+    recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
+    toast.success("Policy created (paused)", {
+      description: `A standing rule for "${issue.title}" was created — paused pending approval. Enable it in Automation → Policies.`,
     });
   }
 

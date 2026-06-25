@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriageRow, type TriageAction } from "./alert-triage-row";
 import { getOpenAlerts } from "@/mock/query";
 import { useActiveClientId } from "@/stores/use-active-client";
+import { useActivity, applyAlertOverrides } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 import type { Alert } from "@/types";
 
 export interface AlertTriageListProps {
@@ -51,16 +53,23 @@ export function AlertTriageList({
   className,
 }: AlertTriageListProps) {
   const activeClientId = useActiveClientId();
-  const alerts = React.useMemo(
-    () =>
-      sortAlerts(
-        alertsProp ??
-          getOpenAlerts({
-            clientIds: activeClientId ? [activeClientId] : undefined,
-          }),
-      ),
-    [alertsProp, activeClientId],
-  );
+  // Reflect this session's alert resolutions (a fix that healed an asset closed
+  // its alerts) when the list owns its data — but NOT when given an explicit
+  // `alerts` prop, so stories stay deterministic. (P2-4)
+  const hydrated = useHasHydrated(useActivity);
+  const alertOverrides = useActivity((s) => s.alertOverrides);
+  const alerts = React.useMemo(() => {
+    if (alertsProp) return sortAlerts(alertsProp);
+    const queried = getOpenAlerts({
+      clientIds: activeClientId ? [activeClientId] : undefined,
+    });
+    const overlaid = hydrated
+      ? applyAlertOverrides(queried, alertOverrides).filter(
+          (a) => a.state !== "resolved",
+        )
+      : queried;
+    return sortAlerts(overlaid);
+  }, [alertsProp, activeClientId, hydrated, alertOverrides]);
 
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
 

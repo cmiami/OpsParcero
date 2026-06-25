@@ -22,14 +22,23 @@ import { persist } from "zustand/middleware";
 import type {
   ActionRun,
   AuditLogEntry,
+  Alert,
+  AlertId,
   AssetId,
   AssetStatus,
+  Issue,
   ProtectedAsset,
 } from "@/types";
 
 /** A runtime override of a seeded asset's health after a fix heals it. */
 export interface AssetOverride {
   status: AssetStatus;
+  resolvedAt: string;
+}
+
+/** A runtime override of a seeded alert's state after a fix resolves it. */
+export interface AlertOverride {
+  state: "resolved";
   resolvedAt: string;
 }
 
@@ -48,6 +57,38 @@ export function applyOverrides(
   );
 }
 
+/**
+ * Overlay runtime alert-resolution onto a seeded alert list, so a fix that heals
+ * an asset also closes that asset's open alerts everywhere they are listed (the
+ * Alerts page, the asset-detail Alerts tab + count) — not just the asset's
+ * status badge. Pure; hydration-gate like {@link applyOverrides}.
+ */
+export function applyAlertOverrides(
+  alerts: Alert[],
+  overrides: Record<string, AlertOverride>,
+): Alert[] {
+  return alerts.map((a) =>
+    overrides[a.id] ? { ...a, state: overrides[a.id].state } : a,
+  );
+}
+
+/**
+ * Drop issues whose every impacted asset has been healed this session — so a
+ * resolved issue stops showing in the Resolution Center after its fix lands
+ * (the seeded ISSUES list is frozen; this overlays the heal on read). Pure;
+ * hydration-gate like {@link applyOverrides}.
+ */
+export function applyIssueResolution(
+  issues: Issue[],
+  overrides: Record<string, AssetOverride>,
+): Issue[] {
+  return issues.filter(
+    (i) =>
+      i.impactedAssetIds.length === 0 ||
+      !i.impactedAssetIds.every((id) => overrides[id]),
+  );
+}
+
 export interface ActivityState {
   /** User/agent-created runs, newest first. Merged ON TOP of getActionRuns(). */
   runs: ActionRun[];
@@ -55,15 +96,19 @@ export interface ActivityState {
   audit: AuditLogEntry[];
   /** assetId → new health, applied over the seeded asset's status. */
   assetOverrides: Record<string, AssetOverride>;
+  /** alertId → resolved, applied over the seeded alert's state. */
+  alertOverrides: Record<string, AlertOverride>;
 
   /**
-   * Append one apply's records (and optionally heal the targeted assets).
-   * Runtime-only (called from an onClick / stream handler).
+   * Append one apply's records (and optionally heal the targeted assets +
+   * resolve their alerts). Runtime-only (called from an onClick / stream handler).
    */
   record: (input: {
     runs: ActionRun[];
     audit: AuditLogEntry[];
     heal?: { assetIds: AssetId[]; status: AssetStatus };
+    /** Alert ids to mark resolved (typically the healed assets' open alerts). */
+    resolveAlertIds?: AlertId[];
   }) => void;
 
   /** Clear all runtime activity (demo reset). */
@@ -76,29 +121,42 @@ export const useActivity = create<ActivityState>()(
       runs: [],
       audit: [],
       assetOverrides: {},
+      alertOverrides: {},
 
-      record: ({ runs, audit, heal }) =>
-        set((s) => ({
-          // Cap the runtime log so a long demo can't grow localStorage unbounded.
-          runs: [...runs, ...s.runs].slice(0, 200),
-          audit: [...audit, ...s.audit].slice(0, 200),
-          assetOverrides: heal
-            ? {
-                ...s.assetOverrides,
-                ...Object.fromEntries(
-                  heal.assetIds.map((id) => [
-                    id,
-                    {
-                      status: heal.status,
-                      resolvedAt: new Date().toISOString(),
-                    },
-                  ]),
-                ),
-              }
-            : s.assetOverrides,
-        })),
+      record: ({ runs, audit, heal, resolveAlertIds }) =>
+        set((s) => {
+          const now = new Date().toISOString();
+          return {
+            // Cap the runtime log so a long demo can't grow localStorage unbounded.
+            runs: [...runs, ...s.runs].slice(0, 200),
+            audit: [...audit, ...s.audit].slice(0, 200),
+            assetOverrides: heal
+              ? {
+                  ...s.assetOverrides,
+                  ...Object.fromEntries(
+                    heal.assetIds.map((id) => [
+                      id,
+                      { status: heal.status, resolvedAt: now },
+                    ]),
+                  ),
+                }
+              : s.assetOverrides,
+            alertOverrides: resolveAlertIds?.length
+              ? {
+                  ...s.alertOverrides,
+                  ...Object.fromEntries(
+                    resolveAlertIds.map((id) => [
+                      id,
+                      { state: "resolved" as const, resolvedAt: now },
+                    ]),
+                  ),
+                }
+              : s.alertOverrides,
+          };
+        }),
 
-      reset: () => set({ runs: [], audit: [], assetOverrides: {} }),
+      reset: () =>
+        set({ runs: [], audit: [], assetOverrides: {}, alertOverrides: {} }),
     }),
     {
       name: "dcc-activity",
@@ -107,6 +165,7 @@ export const useActivity = create<ActivityState>()(
         runs: s.runs,
         audit: s.audit,
         assetOverrides: s.assetOverrides,
+        alertOverrides: s.alertOverrides,
       }),
       // Don't trust localStorage verbatim: drop malformed/stale entries so a
       // corrupt payload can't distort Run history / Audit / asset state.
@@ -125,6 +184,10 @@ export const useActivity = create<ActivityState>()(
           assetOverrides:
             p?.assetOverrides && typeof p.assetOverrides === "object"
               ? p.assetOverrides
+              : {},
+          alertOverrides:
+            p?.alertOverrides && typeof p.alertOverrides === "object"
+              ? p.alertOverrides
               : {},
         };
       },

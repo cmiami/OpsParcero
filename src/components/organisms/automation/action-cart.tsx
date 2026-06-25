@@ -32,6 +32,7 @@ import { useApprovals } from "@/stores/approvals";
 import {
   recordSimulatedRun,
   buildAutomationPolicy,
+  recordPolicyCreated,
   healedAssetIds,
 } from "@/lib/activity-record";
 import { ACTION_BY_ID } from "@/mock/reference";
@@ -135,15 +136,15 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       // Policies page reads (R4 — once/all-matching/always semantics are real).
       for (const { action, cartStep } of pairs) {
         if (cartStep.scope !== "always") continue;
-        usePolicies.getState().addPolicy(
-          buildAutomationPolicy({
-            category: action.label,
-            actionId: action.id,
-            productBucket: action.productTypes[0]
-              ? productTypeToBucket(action.productTypes[0])
-              : undefined,
-          }),
-        );
+        const policy = buildAutomationPolicy({
+          category: action.label,
+          actionId: action.id,
+          productBucket: action.productTypes[0]
+            ? productTypeToBucket(action.productTypes[0])
+            : undefined,
+        });
+        usePolicies.getState().addPolicy(policy);
+        recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
       }
 
       setDispatching(false);
@@ -157,12 +158,25 @@ export function ActionCart({ inline, className }: ActionCartProps) {
             refId: pairs[0]?.action.id ?? "chain",
           },
           requestedBy: getUsers()[0]?.id ?? "u-current",
-          reason: pairs.some(({ action }) => action.destructive)
-            ? "destructive"
-            : "over-threshold",
+          reason: pairs.some(({ action }) => !action.reversible)
+            ? "irreversible"
+            : pairs.some(({ action }) => action.destructive)
+              ? "destructive"
+              : "over-threshold",
           blastRadius: {
             assetCount,
             preview: `${pairs.length}-step chain across ${assetCount} asset${assetCount === 1 ? "" : "s"}`,
+          },
+          // Resumable: the Approval queue can run this exact chain on approval.
+          payload: {
+            kind: "chain",
+            steps: pairs.map(({ action, cartStep }) => ({
+              actionId: action.id,
+              scope: (cartStep.scope ?? defaultScope) as ActionScope,
+              params: cartStep.params ?? {},
+            })),
+            targetRefs: refs,
+            scope: defaultScope as ActionScope,
           },
           state: "pending",
         });

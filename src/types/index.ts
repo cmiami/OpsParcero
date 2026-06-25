@@ -694,6 +694,30 @@ export interface AutomationPolicy {
   stats: { triggered: number; succeeded: number; lastFiredAt?: ISODateTime };
 }
 
+/**
+ * Everything needed to actually RUN an approval-gated dispatch once it is
+ * approved — so approving executes the held action/chain (heals + records) rather
+ * than just flipping a flag. Carried on the ApprovalRequest the gate enqueues.
+ */
+export type ApprovalPayload =
+  | {
+      kind: "action";
+      actionId: string;
+      targetRefs: EntityRef[];
+      scope: ActionScope;
+      params: Record<string, unknown>;
+    }
+  | {
+      kind: "chain";
+      steps: Array<{
+        actionId: string;
+        scope: ActionScope;
+        params: Record<string, unknown>;
+      }>;
+      targetRefs: EntityRef[];
+      scope: ActionScope;
+    };
+
 export interface ApprovalRequest {
   id: ApprovalRequestId;
   requestedFor: { kind: "action-run" | "policy-fire"; refId: string };
@@ -701,6 +725,12 @@ export interface ApprovalRequest {
   reason: "destructive" | "irreversible" | "over-threshold" | "policy-default";
   blastRadius: { assetCount: number; preview: string };
   state: "pending" | "approved" | "rejected" | "expired";
+  /**
+   * The held dispatch to resume on approval. Present on requests the in-app
+   * fix surfaces enqueue; absent on seeded/historical requests (which only flip
+   * state when decided).
+   */
+  payload?: ApprovalPayload;
   decidedBy?: UserId;
   decidedAt?: ISODateTime;
   note?: string;

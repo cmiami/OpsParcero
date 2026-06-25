@@ -22,6 +22,7 @@ import { simulateRun } from "@/mock/runner";
 import {
   recordSimulatedRun,
   buildAutomationPolicy,
+  recordPolicyCreated,
   healedAssetIds,
 } from "@/lib/activity-record";
 import { usePolicies } from "@/stores/automation-policies";
@@ -144,10 +145,22 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         id: makeUid("apr") as ApprovalRequestId,
         requestedFor: { kind: "action-run", refId: action.id },
         requestedBy: getUsers()[0]?.id ?? "u-current",
-        reason: action.destructive ? "destructive" : "over-threshold",
+        reason: !action.reversible
+          ? "irreversible"
+          : action.destructive
+            ? "destructive"
+            : "over-threshold",
         blastRadius: outcome.blastRadius ?? {
           assetCount: targetIds.length,
           preview: action.label,
+        },
+        // Resumable: the Approval queue can run this exact dispatch on approval.
+        payload: {
+          kind: "action",
+          actionId: action.id,
+          targetRefs: targets,
+          scope,
+          params: {},
         },
         state: "pending",
       });
@@ -192,14 +205,14 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
       // failure mode; "category" → every failure in the category (failureModeId
       // omitted). One control, one meaning — no separate category toggle.
       const wholeCategory = policyBreadth === "category";
-      usePolicies.getState().addPolicy(
-        buildAutomationPolicy({
-          failureModeId: wholeCategory ? undefined : issue.failureModeId,
-          category: issue.category,
-          actionId: action.id,
-          productBucket: issue.productBucket,
-        }),
-      );
+      const policy = buildAutomationPolicy({
+        failureModeId: wholeCategory ? undefined : issue.failureModeId,
+        category: issue.category,
+        actionId: action.id,
+        productBucket: issue.productBucket,
+      });
+      usePolicies.getState().addPolicy(policy);
+      recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
       setResult({
         tone: "warning",
         title: "Policy created (paused)",

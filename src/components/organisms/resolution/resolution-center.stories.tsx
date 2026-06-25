@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within, userEvent, waitFor } from "storybook/test";
 import { ResolutionCenter } from "./resolution-center";
 import { Toaster } from "@/components/ui/sonner";
+import { getIssues } from "@/mock/query";
+import { applyIssueResolution } from "@/stores/activity";
 
 const meta = {
   title: "Organisms/ResolutionCenter",
@@ -64,5 +66,47 @@ export const FiltersBySeverity: Story = {
     // Clearing the filter restores the full list.
     await userEvent.click(crit);
     await waitFor(() => expect(countGroups()).toBe(before));
+  },
+};
+
+/**
+ * HealedIssueDrops — regression gate for P2-4: an issue whose every impacted
+ * asset was healed this session must drop from the Resolution Center, while a
+ * partially-healed issue (one asset still failing) must REMAIN. Tests the pure
+ * overlay the center applies on read (hydration-gated), directly.
+ */
+export const HealedIssueDrops: Story = {
+  play: async () => {
+    const all = getIssues();
+    const issue = all.find((i) => i.impactedAssetIds.length > 0);
+    expect(issue).toBeDefined();
+    const heal = () => ({
+      status: "protected" as const,
+      resolvedAt: "2026-06-24T00:00:00Z",
+    });
+
+    // Every impacted asset healed → the issue drops.
+    const fullyHealed = Object.fromEntries(
+      issue!.impactedAssetIds.map((id) => [id, heal()]),
+    );
+    expect(
+      applyIssueResolution(all, fullyHealed).some((i) => i.id === issue!.id),
+    ).toBe(false);
+
+    // No relevant override → the issue stays.
+    expect(
+      applyIssueResolution(all, {}).some((i) => i.id === issue!.id),
+    ).toBe(true);
+
+    // Partial heal (a synthetic issue with one still-failing asset) → stays.
+    const synthetic = {
+      ...issue!,
+      impactedAssetIds: [...issue!.impactedAssetIds, "AST-NEVER-HEALED"],
+    };
+    expect(
+      applyIssueResolution([synthetic], fullyHealed).some(
+        (i) => i.id === synthetic.id,
+      ),
+    ).toBe(true);
   },
 };

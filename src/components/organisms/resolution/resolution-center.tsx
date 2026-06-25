@@ -18,6 +18,8 @@ import {
 } from "@/mock/query";
 import { SEVERITY_META } from "@/lib/status";
 import { useActiveClientId } from "@/stores/use-active-client";
+import { useActivity, applyIssueResolution } from "@/stores/activity";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 import type { Incident, Issue, Severity } from "@/types";
 import { groupIssuesByCategory, type IssueCategoryGroup } from "@/mock/issues";
 import { StatBar } from "./stat-bar";
@@ -48,16 +50,20 @@ export function ResolutionCenter({ className }: ResolutionCenterProps) {
   // Severity filter (local state — drives the canonical getIssues severities
   // filter; kept off nuqs so this storied surface needs no URL adapter).
   const [severities, setSeverities] = React.useState<Severity[]>([]);
-  const groups: IssueCategoryGroup[] = React.useMemo(
-    () =>
-      groupIssuesByCategory(
-        getIssues({
-          clientIds: activeClientId ? [activeClientId] : undefined,
-          severities: severities.length ? severities : undefined,
-        }),
-      ),
-    [activeClientId, severities],
-  );
+  // Drop issues whose every impacted asset was healed this session (P2-4) — so a
+  // resolved issue stops showing here once its fix lands. Hydration-gated.
+  const hydrated = useHasHydrated(useActivity);
+  const assetOverrides = useActivity((s) => s.assetOverrides);
+  const groups: IssueCategoryGroup[] = React.useMemo(() => {
+    const issues = getIssues({
+      clientIds: activeClientId ? [activeClientId] : undefined,
+      severities: severities.length ? severities : undefined,
+    });
+    const live = hydrated
+      ? applyIssueResolution(issues, assetOverrides)
+      : issues;
+    return groupIssuesByCategory(live);
+  }, [activeClientId, severities, hydrated, assetOverrides]);
   // Only offer toggles for severities that actually occur (no dead options).
   const presentSeverities = React.useMemo<Severity[]>(() => {
     const base = getIssues({

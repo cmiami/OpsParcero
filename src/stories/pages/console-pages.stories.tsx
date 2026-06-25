@@ -7,6 +7,7 @@ import { RunHistoryTable } from "@/components/organisms/data-table/run-history-t
 import { AuditLog } from "@/components/organisms/audit-log";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
+import { useActivity } from "@/stores/activity";
 
 /**
  * Pages — full route compositions (the PageShell TEMPLATE filled with organisms +
@@ -19,12 +20,22 @@ const meta = {
   title: "Pages/Console",
   parameters: { layout: "fullscreen" },
   decorators: [
-    (Story) => (
-      <div className="h-screen bg-background">
-        <Story />
-        <Toaster />
-      </div>
-    ),
+    (Story) => {
+      // Hermetic: clear any runtime overlays a sibling story left in the shared
+      // activity store, so the default-query surfaces here read the seed.
+      useActivity.setState({
+        runs: [],
+        audit: [],
+        assetOverrides: {},
+        alertOverrides: {},
+      });
+      return (
+        <div className="h-screen bg-background">
+          <Story />
+          <Toaster />
+        </div>
+      );
+    },
   ],
 } satisfies Meta;
 export default meta;

@@ -6,6 +6,7 @@ import {
   getAsset,
   getActionsForFailureMode,
 } from "@/mock/query";
+import { applyAlertOverrides } from "@/stores/activity";
 
 const alerts = getOpenAlerts();
 
@@ -90,6 +91,33 @@ export const NoImpossibleTargets: Story = {
       ).toBe(true);
     }
     expect(checked).toBeGreaterThan(0);
+  },
+};
+
+/**
+ * AlertOverlayResolves — regression gate for P2-4: a heal that resolves an
+ * asset's alerts must drop those alerts from the triage queue. Tests the pure
+ * overlay the list/asset-detail/alerts surfaces apply on read (hydration-gated),
+ * directly — no global store mutation, so it can't leak into other stories.
+ */
+export const AlertOverlayResolves: Story = {
+  args: { alerts: alerts.slice(0, 1) },
+  play: async () => {
+    const sample = getOpenAlerts().slice(0, 4);
+    expect(sample.length).toBeGreaterThan(0);
+    const overrides = {
+      [sample[0].id]: {
+        state: "resolved" as const,
+        resolvedAt: "2026-06-24T00:00:00Z",
+      },
+    };
+    const overlaid = applyAlertOverrides(sample, overrides);
+    // The targeted alert flips to resolved…
+    expect(overlaid.find((a) => a.id === sample[0].id)?.state).toBe("resolved");
+    // …and the consumers' "drop resolved" filter removes exactly it.
+    const open = overlaid.filter((a) => a.state !== "resolved");
+    expect(open).toHaveLength(sample.length - 1);
+    expect(open.some((a) => a.id === sample[0].id)).toBe(false);
   },
 };
 

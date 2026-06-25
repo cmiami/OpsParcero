@@ -5,6 +5,10 @@ import { ShieldCheck, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ApprovalRequestCard } from "@/components/molecules/approval-request-card";
 import { useApprovals } from "@/stores/approvals";
+import {
+  resumeApprovedRun,
+  recordApprovalRejected,
+} from "@/lib/activity-record";
 import { getPendingApprovals, getUsers } from "@/mock/query";
 import type { ApprovalRequest } from "@/types";
 
@@ -85,7 +89,18 @@ export function ApprovalQueue({
             onDecide={
               controlled
                 ? undefined
-                : (id, decision) => decide(id, decision)
+                : (id, decision) => {
+                    // Approving actually RUNS the held dispatch (heals + records);
+                    // rejecting audits the refusal. Seeded requests carry no
+                    // payload, so they only flip state. (P1-3)
+                    const target = storeRequests.find((r) => r.id === id);
+                    if (target?.payload) {
+                      if (decision === "approved")
+                        resumeApprovedRun(target.payload);
+                      else recordApprovalRejected(target.payload);
+                    }
+                    decide(id, decision);
+                  }
             }
           />
         ))}

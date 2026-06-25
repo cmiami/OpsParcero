@@ -10,6 +10,7 @@
 
 import { makeUid } from "@/stores/uid";
 import { useActivity } from "@/stores/activity";
+import { useApprovals } from "@/stores/approvals";
 import { getUsers, getOrg, getAsset } from "@/mock/query";
 import { ACTION_BY_ID } from "@/mock/reference";
 import type {
@@ -18,6 +19,8 @@ import type {
   ActionScope,
   ActionRunState,
   ApprovalPayload,
+  ApprovalRequest,
+  ApprovalRequestId,
   AlertId,
   EntityRef,
   AssetId,
@@ -26,6 +29,7 @@ import type {
   AutomationPolicyId,
   FailureModeId,
   ProductBucket,
+  RemediationAction,
 } from "@/types";
 import { simulateRun, runChain, type RunnerOutcome, type ChainStepInput } from "@/mock/runner";
 
@@ -357,4 +361,200 @@ export function recordApprovalRejected(
       },
     ],
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// executeRemediation — the ONE dispatch command (#10).
+//
+// Every "apply a fix" CTA (FixModal, RemediationPanel, ActionCart, playbook
+// Run-now, top-bar Fix-all) flows through here so the run → (gate? enqueue a
+// resumable approval : record + heal) decision, the approval-reason ladder, and
+// the payload assembly can't diverge across sites. Callers keep their own UI
+// (result banner / toast) and policy-on-"always" creation; this owns the
+// run/record/heal/enqueue core.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The approval reason for a dispatch — ONE place for the irreversible →
+ *  destructive → over-threshold ladder (was copy-pasted at every enqueue site). */
+function approvalReason(actions: RemediationAction[]): ApprovalRequest["reason"] {
+  if (actions.some((a) => !a.reversible)) return "irreversible";
+  if (actions.some((a) => a.destructive)) return "destructive";
+  return "over-threshold";
+}
+
+function enqueueApproval(input: {
+  actions: RemediationAction[];
+  blastRadius: { assetCount: number; preview: string };
+  payload: ApprovalPayload;
+}): void {
+  const refId =
+    input.payload.kind === "action"
+      ? input.payload.actionId
+      : (input.actions[0]?.id ?? "chain");
+  useApprovals.getState().enqueue({
+    id: makeUid("apr") as ApprovalRequestId,
+    requestedFor: { kind: "action-run", refId },
+    requestedBy: currentUserRef(),
+    reason: approvalReason(input.actions),
+    blastRadius: input.blastRadius,
+    payload: input.payload,
+    state: "pending",
+  });
+}
+
+export type ExecuteRemediationInput =
+  | {
+      kind: "action";
+      action: RemediationAction;
+      targets: EntityRef[];
+      scope: ActionScope;
+      params?: Record<string, unknown>;
+      by?: TriggeredBy;
+    }
+  | {
+      kind: "chain";
+      steps: Array<{
+        action: RemediationAction;
+        scope?: ActionScope;
+        params?: Record<string, unknown>;
+      }>;
+      targets: EntityRef[];
+      scope: ActionScope;
+      by?: TriggeredBy;
+    };
+
+export interface ExecuteRemediationResult {
+  /** True when the dispatch paused at the approval gate (nothing recorded/healed). */
+  awaitingApproval: boolean;
+  /** The runner's summary line for the caller's banner/toast. */
+  summary: string;
+  /** Asset ids actually healed (empty when gated). */
+  healed: AssetId[];
+  /** Terminal run/chain state. */
+  state: ActionRunState;
+}
+
+/**
+ * Run a remediation (single action or chain) and either enqueue a resumable
+ * approval (when the runner gates) or persist the run(s) + heal. Returns what the
+ * caller needs to render its result. The sole writer for a fresh dispatch; the
+ * approval-queue's resumeApprovedRun is the sole writer on approval.
+ */
+export function executeRemediation(
+  input: ExecuteRemediationInput,
+): ExecuteRemediationResult {
+  const targetAssetIds = input.targets
+    .filter((t) => t.kind === "asset")
+    .map((t) => t.id as AssetId);
+
+  if (input.kind === "action") {
+    const params = input.params ?? {};
+    const outcome = simulateRun(input.action, input.targets, input.scope, params);
+    if (outcome.awaitingApproval) {
+      enqueueApproval({
+        actions: [input.action],
+        blastRadius: outcome.blastRadius ?? {
+          assetCount: input.targets.length,
+          preview: input.action.label,
+        },
+        payload: {
+          kind: "action",
+          actionId: input.action.id,
+          targetRefs: input.targets,
+          scope: input.scope,
+          params,
+        },
+      });
+      return {
+        awaitingApproval: true,
+        summary: outcome.resultSummary,
+        healed: [],
+        state: outcome.state,
+      };
+    }
+    const healed = healedAssetIds(outcome);
+    recordSimulatedRun({
+      actionId: input.action.id,
+      actionLabel: input.action.label,
+      targets: input.targets,
+      scope: input.scope,
+      params,
+      outcome,
+      by: input.by,
+      heal:
+        outcome.healsAsset && healed.length
+          ? { assetIds: healed, status: outcome.healedStatus ?? "protected" }
+          : undefined,
+    });
+    return {
+      awaitingApproval: false,
+      summary: outcome.resultSummary,
+      healed,
+      state: outcome.state,
+    };
+  }
+
+  // chain
+  const resolved: ChainStepInput[] = input.steps.map((s) => ({
+    action: s.action,
+    scope: s.scope,
+    params: s.params,
+  }));
+  const chain = runChain(resolved, input.targets, input.scope);
+  if (chain.state === "awaiting-approval") {
+    enqueueApproval({
+      actions: input.steps.map((s) => s.action),
+      blastRadius: {
+        assetCount: targetAssetIds.length || input.targets.length,
+        preview: `${input.steps.length}-step chain across ${targetAssetIds.length || input.targets.length} asset${(targetAssetIds.length || input.targets.length) === 1 ? "" : "s"}`,
+      },
+      payload: {
+        kind: "chain",
+        steps: input.steps.map((s) => ({
+          actionId: s.action.id,
+          scope: (s.scope ?? input.scope) as ActionScope,
+          params: s.params ?? {},
+        })),
+        targetRefs: input.targets,
+        scope: input.scope,
+      },
+    });
+    return {
+      awaitingApproval: true,
+      summary: chain.resultSummary,
+      healed: [],
+      state: chain.state,
+    };
+  }
+  const allHealed: AssetId[] = [];
+  chain.steps.forEach((stepResult, i) => {
+    const step = resolved[i];
+    if (!stepResult.ran || !step) return;
+    const healed = healedAssetIds(stepResult.outcome).filter((id) =>
+      targetAssetIds.includes(id),
+    );
+    allHealed.push(...healed);
+    recordSimulatedRun({
+      actionId: step.action.id,
+      actionLabel: step.action.label,
+      targets: input.targets,
+      scope: step.scope ?? input.scope,
+      params: step.params,
+      outcome: stepResult.outcome,
+      by: input.by,
+      heal:
+        stepResult.outcome.healsAsset && healed.length
+          ? {
+              assetIds: healed,
+              status: stepResult.outcome.healedStatus ?? "protected",
+            }
+          : undefined,
+    });
+  });
+  return {
+    awaitingApproval: false,
+    summary: chain.resultSummary,
+    healed: allHealed,
+    state: chain.state,
+  };
 }

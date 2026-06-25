@@ -16,6 +16,9 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui";
+import { getIssues, getPrimaryAction } from "@/mock/query";
+import { executeRemediation } from "@/lib/activity-record";
+import type { EntityRef } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -110,12 +113,43 @@ export function TopBar({
       toast("Scan started", {
         description: "Re-checking the fleet for new failures…",
       }));
+  // "End-to-end fix all" REALLY runs every end-to-end-fixable issue's self-heal
+  // through the shared dispatch command — recording runs + healing (or queueing
+  // the gated ones for approval), not just a toast (#5).
   const handleFixAll =
     onFixAll ??
-    (() =>
-      toast("End-to-end fix queued", {
-        description: "Auto-fixing every end-to-end-fixable issue across the fleet.",
-      }));
+    (() => {
+      const fixable = getIssues({ fixTypes: ["full"] });
+      let fixed = 0;
+      let queued = 0;
+      for (const issue of fixable) {
+        const action = issue.failureModeId
+          ? getPrimaryAction(issue.failureModeId)
+          : undefined;
+        const refs: EntityRef[] = issue.impactedAssetIds.map((id) => ({
+          kind: "asset",
+          id,
+        }));
+        if (!action || !refs.length) continue;
+        const r = executeRemediation({
+          kind: "action",
+          action,
+          targets: refs,
+          scope: "all-matching",
+        });
+        if (r.awaitingApproval) queued += 1;
+        else fixed += 1;
+      }
+      if (!fixed && !queued) {
+        toast("Nothing to fix", {
+          description: "No end-to-end-fixable issues right now.",
+        });
+        return;
+      }
+      toast.success("End-to-end fix run complete", {
+        description: `${fixed} issue${fixed === 1 ? "" : "s"} fixed${queued ? `, ${queued} queued for approval` : ""}. Recorded in Run history and Audit.`,
+      });
+    });
 
   return (
     <header

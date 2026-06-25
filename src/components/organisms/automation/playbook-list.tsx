@@ -2,12 +2,16 @@
 
 import * as React from "react";
 import { Library, PenLine, FolderOpen } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PlaybookCard } from "./playbook-card";
-import { getPlaybooks } from "@/mock/query";
+import { getPlaybooks, getIssues } from "@/mock/query";
 import { useUserPlaybooks } from "@/stores/playbooks";
+import { useActionCart } from "@/stores/action-cart";
 import { useHasHydrated } from "@/stores/use-has-hydrated";
-import type { Playbook } from "@/types";
+import { executeRemediation } from "@/lib/activity-record";
+import { ACTION_BY_ID } from "@/mock/reference";
+import type { Playbook, EntityRef } from "@/types";
 
 export interface PlaybookListProps {
   /** Playbooks to render; defaults to the seeded library. */
@@ -82,10 +86,70 @@ export function PlaybookList({
   // Hydration-gated to avoid an SSR/CSR mismatch on the persisted store.
   const hydrated = useHasHydrated(useUserPlaybooks);
   const userPlaybooks = useUserPlaybooks((s) => s.userPlaybooks);
+  const addAction = useActionCart((s) => s.addAction);
   const userIds = React.useMemo(
     () => new Set(userPlaybooks.map((p) => p.id)),
     [userPlaybooks],
   );
+
+  // Default CTA behaviour so the buttons are NEVER inert in real routes (#5):
+  // routes that pass explicit handlers still override these.
+  const handleLoadIntoCart = React.useCallback(
+    (pb: Playbook) => {
+      pb.steps.forEach((s) => addAction(s.actionId));
+      toast.success("Loaded into Action Cart", {
+        description: `${pb.steps.length} step${pb.steps.length === 1 ? "" : "s"} from "${pb.name}" — add targets, then dispatch.`,
+      });
+    },
+    [addAction],
+  );
+  const handleRunNow = React.useCallback((pb: Playbook) => {
+    const steps = pb.steps.flatMap((s) => {
+      const action = ACTION_BY_ID[s.actionId];
+      return action ? [{ action, params: s.params }] : [];
+    });
+    if (!steps.length) {
+      toast.info("This playbook has no runnable steps.");
+      return;
+    }
+    // Run against the assets impacted by the playbook's failure modes.
+    const modeIds = new Set(pb.forFailureModeIds ?? []);
+    const targetIds = modeIds.size
+      ? Array.from(
+          new Set(
+            getIssues()
+              .filter((i) => i.failureModeId && modeIds.has(i.failureModeId))
+              .flatMap((i) => i.impactedAssetIds),
+          ),
+        )
+      : [];
+    if (!targetIds.length) {
+      pb.steps.forEach((s) => addAction(s.actionId));
+      toast.info("No matching assets to run on", {
+        description: `Loaded "${pb.name}" into the cart — add targets, then dispatch.`,
+      });
+      return;
+    }
+    const refs: EntityRef[] = targetIds.map((id) => ({ kind: "asset", id }));
+    const result = executeRemediation({
+      kind: "chain",
+      steps,
+      targets: refs,
+      scope: "all-matching",
+      by: { kind: "playbook", refId: pb.id },
+    });
+    if (result.awaitingApproval) {
+      toast.warning("Playbook paused for approval", {
+        description: `${result.summary} Review it in Automation → Approvals.`,
+      });
+    } else {
+      toast.success(`Ran "${pb.name}"`, {
+        description: `${result.summary} Recorded in Run history and Audit.`,
+      });
+    }
+  }, [addAction]);
+  const loadIntoCart = onLoadIntoCart ?? handleLoadIntoCart;
+  const runNow = onRunNow ?? handleRunNow;
   const seeded = React.useMemo(() => getPlaybooks(), []);
   const playbooks =
     playbooksProp ?? [...(hydrated ? userPlaybooks : []), ...seeded];
@@ -130,7 +194,7 @@ export function PlaybookList({
             My playbooks
           </h2>
           {mine.length ? (
-            <Grid items={mine} sourceOf={sourceOf} onLoadIntoCart={onLoadIntoCart} onRunNow={onRunNow} />
+            <Grid items={mine} sourceOf={sourceOf} onLoadIntoCart={loadIntoCart} onRunNow={runNow} />
           ) : (
             <p className="text-xs text-muted-foreground">
               Save your first from the action cart.
@@ -142,7 +206,7 @@ export function PlaybookList({
             <Library aria-hidden className="size-4 shrink-0 text-muted-foreground" />
             Curated templates
           </h2>
-          <Grid items={curated} sourceOf={sourceOf} onLoadIntoCart={onLoadIntoCart} onRunNow={onRunNow} />
+          <Grid items={curated} sourceOf={sourceOf} onLoadIntoCart={loadIntoCart} onRunNow={runNow} />
         </section>
       </div>
     );
@@ -150,7 +214,7 @@ export function PlaybookList({
 
   return (
     <div className={className}>
-      <Grid items={playbooks} sourceOf={sourceOf} onLoadIntoCart={onLoadIntoCart} onRunNow={onRunNow} />
+      <Grid items={playbooks} sourceOf={sourceOf} onLoadIntoCart={loadIntoCart} onRunNow={runNow} />
     </div>
   );
 }

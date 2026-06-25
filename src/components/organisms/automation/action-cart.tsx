@@ -28,21 +28,16 @@ import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { useActionCart } from "@/stores/action-cart";
 import { useUserPlaybooks } from "@/stores/playbooks";
 import { usePolicies } from "@/stores/automation-policies";
-import { useApprovals } from "@/stores/approvals";
 import {
-  recordSimulatedRun,
+  executeRemediation,
   buildAutomationPolicy,
   recordPolicyCreated,
-  healedAssetIds,
 } from "@/lib/activity-record";
 import { ACTION_BY_ID } from "@/mock/reference";
-import { runChain, type ChainStepInput } from "@/mock/runner";
-import { getUsers } from "@/mock/query";
 import { makeUid } from "@/stores/uid";
 import { productTypeToBucket } from "@/types";
 import type {
   ActionScope,
-  ApprovalRequestId,
   EntityRef,
   Playbook,
   PlaybookStep,
@@ -95,57 +90,25 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       const action = ACTION_BY_ID[s.actionId];
       return action ? [{ cartStep: s, action }] : [];
     });
-    const resolved: ChainStepInput[] = pairs.map(({ cartStep, action }) => ({
-      action,
-      params: cartStep.params,
-      scope: cartStep.scope,
-    }));
     // canDispatch guarantees ≥1 real target — no placeholder asset is ever used.
     const refs: EntityRef[] = targets.map((id) => ({ kind: "asset" as const, id }));
     window.setTimeout(() => {
-      const outcome = runChain(resolved, refs, defaultScope as ActionScope);
+      // The ONE dispatch command (#10): runs the chain and either records every
+      // ran step + heals, or (when a step gates) enqueues a resumable approval and
+      // records nothing — the #11 guard lives inside executeRemediation now.
+      const result = executeRemediation({
+        kind: "chain",
+        steps: pairs.map(({ action, cartStep }) => ({
+          action,
+          scope: cartStep.scope,
+          params: cartStep.params,
+        })),
+        targets: refs,
+        scope: defaultScope as ActionScope,
+      });
 
-      // Persist every step that RAN as a durable ActionRun + AuditLogEntry the Run
-      // history / Audit surfaces read, honoring that step's own scope, and heal the
-      // real targeted assets it resolved — so a cart dispatch is as durable as the
-      // fix-modal / remediation-panel surfaces (R3).
-      //
-      // EXCEPT when the chain ends awaiting-approval (#11): a gated chain marks the
-      // already-run steps ran:true, but recording them here would (a) persist a
-      // phantom 'awaiting-approval' run and a pre-approval self-heal, and (b)
-      // double-record once resumeApprovedRun re-runs the chain on approval. So when
-      // gated, record/heal NOTHING now — only enqueue; resumeApprovedRun is the
-      // sole writer (mirrors fix-modal / remediation-panel, which skip recording on
-      // awaitingApproval).
-      if (outcome.state !== "awaiting-approval") {
-        outcome.steps.forEach((stepResult, i) => {
-          const pair = pairs[i];
-          if (!stepResult.ran || !pair) return;
-          // Heal only the targets that actually succeeded — a partial step leaves
-          // some failed.
-          const healed = healedAssetIds(stepResult.outcome).filter((id) =>
-            targets.includes(id),
-          );
-          recordSimulatedRun({
-            actionId: pair.action.id,
-            actionLabel: pair.action.label,
-            targets: refs,
-            scope: pair.cartStep.scope,
-            params: pair.cartStep.params,
-            outcome: stepResult.outcome,
-            heal:
-              stepResult.outcome.healsAsset && healed.length
-                ? {
-                    assetIds: healed,
-                    status: stepResult.outcome.healedStatus ?? "protected",
-                  }
-                : undefined,
-          });
-        });
-      }
-
-      // "always"-scoped steps become standing auto-remediation policies the
-      // Policies page reads (R4 — once/all-matching/always semantics are real).
+      // "always"-scoped steps become standing (paused) auto-remediation policies
+      // the Policies page reads (R4 — once/all-matching/always semantics are real).
       for (const { action, cartStep } of pairs) {
         if (cartStep.scope !== "always") continue;
         const policy = buildAutomationPolicy({
@@ -160,46 +123,15 @@ export function ActionCart({ inline, className }: ActionCartProps) {
       }
 
       setDispatching(false);
-      if (outcome.state === "awaiting-approval") {
-        // Surface in the Approval queue instead of dead-ending the dispatch.
-        const assetCount = targets.length;
-        useApprovals.getState().enqueue({
-          id: makeUid("apr") as ApprovalRequestId,
-          requestedFor: {
-            kind: "action-run",
-            refId: pairs[0]?.action.id ?? "chain",
-          },
-          requestedBy: getUsers()[0]?.id ?? "u-current",
-          reason: pairs.some(({ action }) => !action.reversible)
-            ? "irreversible"
-            : pairs.some(({ action }) => action.destructive)
-              ? "destructive"
-              : "over-threshold",
-          blastRadius: {
-            assetCount,
-            preview: `${pairs.length}-step chain across ${assetCount} asset${assetCount === 1 ? "" : "s"}`,
-          },
-          // Resumable: the Approval queue can run this exact chain on approval.
-          payload: {
-            kind: "chain",
-            steps: pairs.map(({ action, cartStep }) => ({
-              actionId: action.id,
-              scope: (cartStep.scope ?? defaultScope) as ActionScope,
-              params: cartStep.params ?? {},
-            })),
-            targetRefs: refs,
-            scope: defaultScope as ActionScope,
-          },
-          state: "pending",
-        });
+      if (result.awaitingApproval) {
         toast.warning("Chain paused for approval", {
-          description: `${outcome.resultSummary} Review it in Automation → Approvals.`,
+          description: `${result.summary} Review it in Automation → Approvals.`,
         });
-      } else if (outcome.state === "failed") {
-        toast.error("Chain failed", { description: outcome.resultSummary });
+      } else if (result.state === "failed") {
+        toast.error("Chain failed", { description: result.summary });
       } else {
         toast.success("Chain dispatched", {
-          description: `${outcome.resultSummary} Recorded in Run history and Audit.`,
+          description: `${result.summary} Recorded in Run history and Audit.`,
         });
         clear();
       }

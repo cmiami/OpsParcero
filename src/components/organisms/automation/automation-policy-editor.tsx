@@ -27,9 +27,12 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { getPlaybooks, getAssets } from "@/mock/query";
+import { getPlaybooks, getAssets, getOrg } from "@/mock/query";
 import { relativeTime } from "@/lib/format";
-import type { AutomationPolicy } from "@/types";
+import { usePolicies } from "@/stores/automation-policies";
+import { recordPolicyCreated } from "@/lib/activity-record";
+import { makeUid } from "@/stores/uid";
+import type { AutomationPolicy, AutomationPolicyId } from "@/types";
 import { toast } from "sonner";
 
 export interface AutomationPolicyEditorProps {
@@ -78,9 +81,27 @@ export function AutomationPolicyEditor({
 
   function save(publish: boolean) {
     if (publish) {
-      toast.warning("Publish requires approval", {
-        description:
-          "This policy runs automatically on an open-ended set of assets — a named approver must sign off.",
+      // Persist a real (PAUSED) policy + audit the creation, instead of a bare
+      // toast (#5). Paused because publishing standing automation is approval-
+      // gated — it does not arm itself.
+      const policy: AutomationPolicy = {
+        id: makeUid("pol") as AutomationPolicyId,
+        orgId: getOrg().id,
+        name: name.trim() || "Untitled policy",
+        // The editor authors a custom rule (consecutive-failures / event / cron);
+        // model it as a category-scoped trigger so the standing policy is concrete.
+        trigger: { kind: "category", category: "Custom rule" },
+        appliesTo: {},
+        action: { kind: "playbook", refId: boundPlaybookId, params: {} },
+        approvalRule: requiresApproval ? "always" : "never",
+        enabled: false,
+        dryRunFirst,
+        stats: { triggered: 0, succeeded: 0 },
+      };
+      usePolicies.getState().addPolicy(policy);
+      recordPolicyCreated({ policyId: policy.id, policyName: policy.name });
+      toast.warning("Policy published (paused, pending approval)", {
+        description: `"${policy.name}" was created and recorded in Audit — enable it in Policies once an approver signs off.`,
       });
     } else {
       toast.success("Draft saved", {

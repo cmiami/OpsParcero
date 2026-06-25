@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, within, waitFor } from "storybook/test";
+import { expect, fn, within, waitFor, userEvent } from "storybook/test";
 import { PlaybookList } from "./playbook-list";
 import { getPlaybooks } from "@/mock/query";
 import { useUserPlaybooks } from "@/stores/playbooks";
+import { useActionCart } from "@/stores/action-cart";
 import type { Playbook } from "@/types";
 
 const playbooks = getPlaybooks();
@@ -58,6 +59,27 @@ export const FilteredByProduct: Story = {
 /** Empty — no playbooks; first-class empty state. */
 export const Empty: Story = {
   args: { playbooks: [] },
+};
+
+/**
+ * DefaultLoadIntoCartFills — regression gate for #5: with NO handlers passed (as
+ * the real routes render it), "Load into cart" is no longer inert — the default
+ * handler pushes the playbook's steps into the action cart.
+ */
+export const DefaultLoadIntoCartFills: Story = {
+  args: { playbooks: [playbooks[0]], onLoadIntoCart: undefined, onRunNow: undefined },
+  play: async ({ canvasElement }) => {
+    useActionCart.setState({ targets: [], steps: [], defaultScope: "once" });
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Load into cart/i }),
+    );
+    await waitFor(() =>
+      expect(useActionCart.getState().steps.length).toBe(
+        playbooks[0].steps.length,
+      ),
+    );
+  },
 };
 
 /**

@@ -17,24 +17,14 @@ import {
   type PolicyBreadth,
 } from "@/components/molecules/apply-scope-control";
 import { FIX_META } from "@/lib/status";
-import { getPrimaryAction, getUsers } from "@/mock/query";
-import { simulateRun } from "@/mock/runner";
+import { getPrimaryAction } from "@/mock/query";
 import {
-  recordSimulatedRun,
+  executeRemediation,
   buildAutomationPolicy,
   recordPolicyCreated,
-  healedAssetIds,
 } from "@/lib/activity-record";
 import { usePolicies } from "@/stores/automation-policies";
-import { useApprovals } from "@/stores/approvals";
-import { makeUid } from "@/stores/uid";
-import type {
-  ActionScope,
-  ApprovalRequestId,
-  AssetId,
-  EntityRef,
-  Issue,
-} from "@/types";
+import type { ActionScope, AssetId, EntityRef, Issue } from "@/types";
 
 export interface FixModalProps {
   /** The issue being remediated. */
@@ -132,42 +122,17 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         ? issue.impactedAssetIds.slice(0, 1)
         : issue.impactedAssetIds;
     const targets: EntityRef[] = targetIds.map((id) => ({ kind: "asset", id }));
-    // Simulate against the deterministic runner; runtime randomness lives here,
-    // inside an event handler, never at module scope (M6). No `approved` override
-    // — the runner's gate must fire for destructive / over-threshold fixes.
-    const outcome = simulateRun(action, targets, scope, {});
+    // The ONE dispatch command (#10): runs, and on a destructive/over-threshold
+    // gate enqueues a resumable approval (records nothing), else records the run +
+    // heals. Shared with RemediationPanel / ActionCart / the playbook + fix-all
+    // CTAs so the reason ladder + payload can't diverge.
+    const result = executeRemediation({ kind: "action", action, targets, scope });
 
-    // Approval gate: a destructive / over-threshold dispatch pauses here. Enqueue
-    // a resumable ApprovalRequest the Approval queue can decide — NOT a heal — so
-    // the human-in-the-loop contract holds (same pattern as the action cart).
-    if (outcome.awaitingApproval) {
-      useApprovals.getState().enqueue({
-        id: makeUid("apr") as ApprovalRequestId,
-        requestedFor: { kind: "action-run", refId: action.id },
-        requestedBy: getUsers()[0]?.id ?? "u-current",
-        reason: !action.reversible
-          ? "irreversible"
-          : action.destructive
-            ? "destructive"
-            : "over-threshold",
-        blastRadius: outcome.blastRadius ?? {
-          assetCount: targetIds.length,
-          preview: action.label,
-        },
-        // Resumable: the Approval queue can run this exact dispatch on approval.
-        payload: {
-          kind: "action",
-          actionId: action.id,
-          targetRefs: targets,
-          scope,
-          params: {},
-        },
-        state: "pending",
-      });
+    if (result.awaitingApproval) {
       setResult({
         tone: "warning",
         title: "Approval required",
-        detail: `${outcome.resultSummary} Review it in Automation → Approvals.`,
+        detail: `${result.summary} Review it in Automation → Approvals.`,
       });
       setRunning(false);
       return;
@@ -181,24 +146,7 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         : scope === "all-matching"
           ? `${appliedCount} matching ${appliedCount === 1 ? "asset" : "assets"}`
           : "1 asset";
-
-    // Persist a durable ActionRun + AuditLogEntry for the dispatch, and heal the
-    // targeted assets when the run resolves them — so Run history, Audit, and the
-    // fleet asset-state reflect what just happened (not the frozen seed).
-    // Heal only the targets that actually succeeded — a partial outcome leaves
-    // some failed; healing the whole list would falsely mark them protected.
-    const healed = healedAssetIds(outcome);
-    recordSimulatedRun({
-      actionId: action.id,
-      actionLabel: action.label,
-      targets,
-      scope,
-      outcome,
-      heal:
-        outcome.healsAsset && healed.length
-          ? { assetIds: healed, status: outcome.healedStatus ?? "protected" }
-          : undefined,
-    });
+    const didHeal = result.healed.length > 0;
 
     if (scope === "always") {
       // Standing policy. Breadth decides what it covers: "type" → just this
@@ -217,20 +165,20 @@ export function FixModal({ issue, open, onOpenChange }: FixModalProps) {
         tone: "warning",
         title: "Policy created (paused)",
         detail: wholeCategory
-          ? `Applied now, and a standing rule for every future "${issue.category}" failure was created — paused pending approval. Enable it in Automation → Policies. ${outcome.resultSummary}`
-          : `Applied now, and a standing rule for this failure was created — paused pending approval. Enable it in Automation → Policies. ${outcome.resultSummary}`,
+          ? `Applied now, and a standing rule for every future "${issue.category}" failure was created — paused pending approval. Enable it in Automation → Policies. ${result.summary}`
+          : `Applied now, and a standing rule for this failure was created — paused pending approval. Enable it in Automation → Policies. ${result.summary}`,
       });
-    } else if (outcome.healsAsset) {
+    } else if (didHeal) {
       setResult({
         tone: "success",
         title: "Fix applied",
-        detail: `Applied to ${where}. ${outcome.resultSummary} Recorded in Run history and Audit.`,
+        detail: `Applied to ${where}. ${result.summary} Recorded in Run history and Audit.`,
       });
     } else {
       setResult({
         tone: "info",
         title: "Fix dispatched",
-        detail: `Dispatched to ${where}. ${outcome.resultSummary}`,
+        detail: `Dispatched to ${where}. ${result.summary}`,
       });
     }
 

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within, userEvent, waitFor } from "storybook/test";
 
 import { TopBar } from "./top-bar";
+import { useActivity } from "@/stores/activity";
 
 const meta = {
   title: "Organisms/TopBar",
@@ -43,5 +44,27 @@ export const MenuOpen: Story = {
     await userEvent.click(canvas.getByRole("button", { name: /account:/i }));
     const screen = within(document.body);
     await waitFor(() => expect(screen.getByText(/sign out/i)).toBeVisible());
+  },
+};
+
+/**
+ * FixAllRecordsRuns — regression gate for #5: "End-to-end fix all" REALLY runs
+ * the end-to-end-fixable issues (records durable runs + heals), not just a toast.
+ */
+export const FixAllRecordsRuns: Story = {
+  play: async ({ canvasElement }) => {
+    useActivity.setState({
+      runs: [],
+      audit: [],
+      assetOverrides: {},
+      alertOverrides: {},
+    });
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: /End-to-end fix all/i }),
+    );
+    await waitFor(() =>
+      expect(useActivity.getState().runs.length).toBeGreaterThan(0),
+    );
   },
 };

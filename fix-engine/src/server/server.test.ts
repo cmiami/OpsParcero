@@ -63,6 +63,31 @@ describe("server CSRF / origin guard (P1-1)", () => {
   });
 });
 
+describe("approve decision validation (#4)", () => {
+  it("rejects a malformed decision with 400 — never fails open to approve", async () => {
+    const r = await jsonPost("/sessions", { assetId }, { Origin: APP_ORIGIN });
+    const { id } = (await r.json()) as { id: string };
+    const bad = await jsonPost(
+      `/sessions/${id}/approve`,
+      { stepId: "p1", decision: "rejcet" },
+      { Origin: APP_ORIGIN },
+    );
+    expect(bad.status).toBe(400);
+  });
+
+  it("accepts a valid enum decision (not a 400)", async () => {
+    const r = await jsonPost("/sessions", { assetId }, { Origin: APP_ORIGIN });
+    const { id } = (await r.json()) as { id: string };
+    const ok = await jsonPost(
+      `/sessions/${id}/approve`,
+      { stepId: "p1", decision: "reject" },
+      { Origin: APP_ORIGIN },
+    );
+    // 204 (resolved) or 409 (no open gate) — both prove the enum was accepted.
+    expect([204, 409]).toContain(ok.status);
+  });
+});
+
 describe("in-flight session snapshot (#17)", () => {
   it("GET /sessions/:id returns a populated session (id + state), not {}", async () => {
     const r = await jsonPost("/sessions", { assetId }, { Origin: APP_ORIGIN });

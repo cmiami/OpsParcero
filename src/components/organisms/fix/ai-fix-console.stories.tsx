@@ -132,6 +132,26 @@ class ScriptedFixClient implements FixClient {
   }
 }
 
+/**
+ * A FixClient whose createSession REJECTS — models a live engine that's down or a
+ * transport fault on the very first call. Used to gate #11: the console must not
+ * wedge with running=true and no terminal.
+ */
+class FailingFixClient implements FixClient {
+  readonly kind = "sim" as const;
+  async listModels(): Promise<FixModelOption[]> {
+    return [MOCK_MODEL];
+  }
+  async createSession(): Promise<FixSessionHandle> {
+    throw new Error("fix engine unreachable");
+  }
+  async *stream(): AsyncIterable<FixSessionEvent> {
+    // unreachable — createSession never resolves a handle
+  }
+  async approve(): Promise<void> {}
+  async abort(): Promise<void> {}
+}
+
 // Shared opening: triage reads, then a confident plan.
 const triageScript: FixSessionEvent[] = [
   { type: "state", state: "triaging" },
@@ -518,6 +538,39 @@ export const PartialDoesNotHeal: Story = {
     expect(
       useActivity.getState().runs.some((r) => r.state === "succeeded"),
     ).toBe(false);
+  },
+};
+
+/**
+ * CreateSessionFailureRecovers — regression gate for #11: if `createSession`
+ * itself rejects (engine down / transport fault), the console must NOT stay
+ * wedged with running=true and no terminal. It flips to a halted terminal and
+ * re-offers "Run again" so the operator is never stranded.
+ */
+export const CreateSessionFailureRecovers: Story = {
+  args: {
+    asset,
+    issue,
+    client: new FailingFixClient(),
+    onSwitchToGuided: () => {},
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /Fix with AI/i }),
+    );
+    // Not stuck: a terminal appears and Run-again is offered (running flipped
+    // back to false — otherwise this control would read "Abort").
+    await waitFor(
+      () =>
+        expect(
+          canvas.getByRole("button", { name: /Run again/i }),
+        ).toBeInTheDocument(),
+      { timeout: 4000 },
+    );
+    expect(
+      canvas.queryByRole("button", { name: /^Abort$/i }),
+    ).not.toBeInTheDocument();
   },
 };
 

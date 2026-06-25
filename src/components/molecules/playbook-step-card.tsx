@@ -104,7 +104,7 @@ export function PlaybookStepCard({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7"
+          className="size-7 touch-target"
           aria-label="Move step up"
           disabled={!onMoveUp}
           onClick={onMoveUp}
@@ -114,7 +114,7 @@ export function PlaybookStepCard({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7"
+          className="size-7 touch-target"
           aria-label="Move step down"
           disabled={!onMoveDown}
           onClick={onMoveDown}
@@ -124,7 +124,7 @@ export function PlaybookStepCard({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-muted-foreground hover:text-destructive"
+          className="size-7 text-muted-foreground hover:text-destructive touch-target"
           aria-label="Remove step"
           disabled={!onRemove}
           onClick={onRemove}

@@ -181,7 +181,7 @@ export function AlertTriageList({
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 text-primary-foreground hover:bg-primary-strong"
+            className="size-7 text-primary-foreground hover:bg-primary-strong touch-target"
             aria-label="Clear selection"
             onClick={() => setSelected(new Set())}
           >

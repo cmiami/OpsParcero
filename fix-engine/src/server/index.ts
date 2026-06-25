@@ -359,8 +359,12 @@ app.post("/sessions/:id/approve", async (c) => {
   } catch {
     return c.json({ error: "invalid JSON body" }, 400);
   }
-  const decision = body.decision === "reject" ? "reject" : "approve";
-  const matched = store.resolveApproval(id, body.stepId ?? "", decision);
+  // Fail-CLOSED on a malformed decision (#4): never let a typo / missing /
+  // garbage value collapse into "approve" on a security-relevant gate.
+  if (body.decision !== "approve" && body.decision !== "reject") {
+    return c.json({ error: "decision must be 'approve' or 'reject'" }, 400);
+  }
+  const matched = store.resolveApproval(id, body.stepId ?? "", body.decision);
   if (!matched) return c.json({ error: "no pending approval for that step" }, 409);
   return c.body(null, 204);
 });

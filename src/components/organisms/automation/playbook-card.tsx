@@ -117,7 +117,7 @@ export function PlaybookCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 shrink-0"
+                  className="size-7 shrink-0 touch-target"
                   aria-label="Playbook actions"
                 >
                   <MoreHorizontal aria-hidden className="size-4" />

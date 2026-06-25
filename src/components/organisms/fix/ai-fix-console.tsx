@@ -283,13 +283,28 @@ export function AiFixConsole({
     dispatch({ kind: "reset" });
     recordedRef.current = false;
     setRunning(true);
-    const handle = await fixClient.createSession({
-      assetId: asset.id,
-      issueId: issue?.id,
-      mode: "ai",
-      model: selectedModel,
-      scope: "once",
-    });
+    let handle: FixSessionHandle;
+    try {
+      handle = await fixClient.createSession({
+        assetId: asset.id,
+        issueId: issue?.id,
+        mode: "ai",
+        model: selectedModel,
+        scope: "once",
+      });
+    } catch {
+      // createSession itself failed (e.g. live engine down). Don't leave the
+      // console wedged with running=true / no terminal — surface a halted state
+      // + error and re-enable Run again (#11). (Unmount is handled below.)
+      if (aliveRef.current) {
+        dispatch({ kind: "aborted" });
+        setRunning(false);
+        toast.error("Couldn't start the fix run", {
+          description: "The fix engine didn't respond — try again.",
+        });
+      }
+      return;
+    }
     // If the console unmounted while createSession was pending, the unmount
     // effect aborted a still-null ref — so abort this late handle ourselves and
     // never start its stream (which would run the loop with no UI owner). (#6)

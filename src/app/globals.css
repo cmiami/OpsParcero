@@ -348,11 +348,14 @@
 }
 
 /* Coarse-pointer min hit area (WCAG 2.2 target size, M5): keeps the dense visual
-   size on a mouse, but expands the touchable box to 44px on touch (#15). */
+   size on a mouse, but expands the touchable box to 44px on touch. The @utility IS
+   the design token of record for this fixed hit area, so an absolute px value is
+   the correct unit — rem would resolve against the intentional 13px root
+   (2.75rem = ~35.75px, not 44px), silently missing the AA target. */
 @utility touch-target {
   @media (pointer: coarse) {
-    min-block-size: 2.75rem;
-    min-inline-size: 2.75rem;
+    min-block-size: 44px;
+    min-inline-size: 44px;
   }
 }
 

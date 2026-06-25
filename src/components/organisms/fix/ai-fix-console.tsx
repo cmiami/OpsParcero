@@ -20,9 +20,11 @@ import { Separator } from "@/components/ui/separator";
 import { MonoLabel } from "@/components/atoms/mono-label";
 import { AiInsightCard } from "@/components/molecules/ai-insight-card";
 import { FixTranscriptView } from "./fix-transcript-view";
+import { ToolCallCard } from "./tool-call-card";
 import { ModelPicker } from "./model-picker";
 import { FIX_STATE_META } from "./fix-state-meta";
 import { getFixClientSync, getFixClient } from "@/lib/fix-client";
+import { toast } from "sonner";
 import type {
   FixClient,
   FixSessionEvent,
@@ -33,6 +35,7 @@ import type {
   FixModelOption,
   FixModelRef,
   FixPlan,
+  ToolResult,
 } from "@/lib/fix-client";
 import { FixAbortError } from "@/lib/fix-client";
 import { recordAgentRun } from "@/lib/activity-record";
@@ -62,6 +65,9 @@ interface ConsoleModel {
   plan?: FixPlan;
   /** The open approval gate, if any. */
   gate: FixPlanStep | null;
+  /** The dry-run preview (diff / blast-radius) carried with the gate, so the
+   *  human sees WHAT they're approving — not just the tool name (#8). */
+  gatePreview: ToolResult | null;
   /** True once a terminal `done` (or abort) has landed. */
   finished: boolean;
   /** Set when the run was aborted by the user. */
@@ -79,6 +85,7 @@ const INITIAL_MODEL: ConsoleModel = {
   turns: [],
   plan: undefined,
   gate: null,
+  gatePreview: null,
   finished: false,
   aborted: false,
   healed: false,
@@ -95,9 +102,16 @@ function reduce(model: ConsoleModel, action: ConsoleEvent): ConsoleModel {
     case "reset":
       return INITIAL_MODEL;
     case "aborted":
-      return { ...model, finished: true, aborted: true, gate: null, state: "halted" };
+      return {
+        ...model,
+        finished: true,
+        aborted: true,
+        gate: null,
+        gatePreview: null,
+        state: "halted",
+      };
     case "approval-cleared":
-      return { ...model, gate: null };
+      return { ...model, gate: null, gatePreview: null };
     case "event": {
       const ev = action.event;
       switch (ev.type) {
@@ -108,7 +122,12 @@ function reduce(model: ConsoleModel, action: ConsoleEvent): ConsoleModel {
         case "turn":
           return { ...model, turns: [...model.turns, ev.turn] };
         case "approval-request":
-          return { ...model, gate: ev.step, state: "awaiting-approval" };
+          return {
+            ...model,
+            gate: ev.step,
+            gatePreview: ev.preview ?? null,
+            state: "awaiting-approval",
+          };
         case "done":
           return {
             ...model,
@@ -118,6 +137,7 @@ function reduce(model: ConsoleModel, action: ConsoleEvent): ConsoleModel {
               ? ev.session.transcript
               : model.turns,
             gate: null,
+            gatePreview: null,
             finished: true,
             healed: ev.session.result?.healed === true,
           };
@@ -286,8 +306,19 @@ export function AiFixConsole({
       const handle = handleRef.current;
       const gate = model.gate;
       if (!handle || !gate) return;
-      dispatch({ kind: "approval-cleared" });
-      await handle.approve(gate.id, decision);
+      // Confirm with the engine BEFORE clearing the gate (#9): on the Sim this
+      // resolves locally and never throws; on a live engine a non-409 failure
+      // must keep the gate visible + retryable instead of vanishing as a no-op.
+      try {
+        await handle.approve(gate.id, decision);
+        if (aliveRef.current) dispatch({ kind: "approval-cleared" });
+      } catch {
+        if (aliveRef.current) {
+          toast.error("Approval didn't go through", {
+            description: "The engine didn't confirm the decision — try again.",
+          });
+        }
+      }
     },
     [model.gate],
   );
@@ -466,6 +497,22 @@ export function AiFixConsole({
                     </span>
                   </div>
                 </div>
+
+                {/* The dry-run preview (diff / blast-radius) the engine carried
+                    with the gate — so the decision is informed, not blind (#8). */}
+                {model.gatePreview && (
+                  <ToolCallCard
+                    call={{
+                      id: model.gate.id,
+                      name: model.gate.toolName,
+                      input: model.gate.input,
+                    }}
+                    result={model.gatePreview}
+                    risk={model.gate.risk}
+                    dryRun
+                    defaultOpen
+                  />
+                )}
                 <div className="flex gap-2">
                   <Button
                     type="button"

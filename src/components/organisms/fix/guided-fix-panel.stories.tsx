@@ -86,7 +86,7 @@ class ScriptedClient implements FixClient {
   aborted = false;
   constructor(
     private readonly events: FixSessionEvent[],
-    private readonly opts: { pauseAtGate?: boolean } = {},
+    private readonly opts: { pauseAtGate?: boolean; failApprove?: boolean } = {},
   ) {}
 
   async listModels(): Promise<FixModelOption[]> {
@@ -103,6 +103,8 @@ class ScriptedClient implements FixClient {
       id: "story-session",
       session,
       approve: async () => {
+        // Simulate a live-engine failure that must NOT clear the gate (#9).
+        if (opts.failApprove) throw new Error("approve failed");
         resolveGate?.();
         resolveGate = null;
       },
@@ -250,7 +252,20 @@ export const AwaitingApproval: Story = {
                 toolResult: okResult("Grant expired", "status: expired"),
               }),
             },
-            { type: "approval-request", step: PLAN.steps[1] },
+            {
+              type: "approval-request",
+              step: PLAN.steps[1],
+              // The dry-run preview the gate must surface (#8).
+              preview: {
+                ok: true,
+                summary: "Reauthorize the backup OAuth grant",
+                output: "dry-run: would reauthorize OAuth grant",
+                diff: {
+                  before: { authStatus: "expired" },
+                  after: { authStatus: "active" },
+                },
+              } as ToolResult,
+            },
           ],
           { pauseAtGate: true },
         )
@@ -267,6 +282,48 @@ export const AwaitingApproval: Story = {
     await expect(
       canvas.getByRole("button", { name: /approve/i }),
     ).toBeEnabled();
+    // #8: the gate shows the preview diff (the changed facet), not just the tool.
+    await waitFor(() =>
+      expect(canvas.getByText(/authStatus/i)).toBeInTheDocument(),
+    );
+  },
+};
+
+/**
+ * ApproveFailureKeepsGate — regression gate for #9: when the engine fails to
+ * confirm the decision, the gate must STAY (the run isn't cleared optimistically)
+ * so the user can retry — it doesn't vanish as a silent no-op.
+ */
+export const ApproveFailureKeepsGate: Story = {
+  args: { asset: ASSET, issue: ISSUE, matchCount: 9 },
+  render: (args) => (
+    <GuidedFixPanel
+      {...args}
+      client={
+        new ScriptedClient(
+          [
+            { type: "plan", plan: PLAN },
+            { type: "state", state: "executing" },
+            { type: "approval-request", step: PLAN.steps[1] },
+          ],
+          { pauseAtGate: true, failApprove: true },
+        )
+      }
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /start guided/i }),
+    );
+    await waitFor(() =>
+      expect(canvas.getByText(/Approval needed/i)).toBeInTheDocument(),
+    );
+    await userEvent.click(canvas.getByRole("button", { name: /approve/i }));
+    // Let the rejected approve settle, then assert the gate is STILL open.
+    await new Promise((r) => setTimeout(r, 60));
+    expect(canvas.getByText(/Approval needed/i)).toBeInTheDocument();
+    expect(canvas.getByRole("button", { name: /approve/i })).toBeEnabled();
   },
 };
 

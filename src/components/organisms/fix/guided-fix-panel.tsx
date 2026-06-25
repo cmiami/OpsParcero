@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ApplyScopeControl } from "@/components/molecules/apply-scope-control";
 import { FixTranscriptView } from "@/components/organisms/fix/fix-transcript-view";
+import { ToolCallCard } from "@/components/organisms/fix/tool-call-card";
 import { FIX_STATE_META } from "@/components/organisms/fix/fix-state-meta";
 import { getFixClientSync, getFixClient, TERMINAL_STATES } from "@/lib/fix-client";
 import {
@@ -23,6 +24,7 @@ import {
   recordPolicyCreated,
 } from "@/lib/activity-record";
 import { usePolicies } from "@/stores/automation-policies";
+import { toast } from "sonner";
 import type {
   FixClient,
   FixSessionEvent,
@@ -30,6 +32,7 @@ import type {
   FixPlan,
   FixPlanStep,
   FixTranscriptTurn,
+  ToolResult,
 } from "@/lib/fix-client";
 import type { ProtectedAsset, Issue, ActionScope } from "@/types";
 
@@ -138,10 +141,12 @@ function PlanStepGroup({
 
 function ApprovalGate({
   step,
+  preview,
   busy,
   onDecide,
 }: {
   step: FixPlanStep;
+  preview?: ToolResult;
   busy: boolean;
   onDecide: (decision: "approve" | "reject") => void;
 }) {
@@ -158,6 +163,16 @@ function ApprovalGate({
           {step.risk}
         </p>
       </div>
+      {/* The dry-run preview (diff/blast-radius) so the decision is informed (#8). */}
+      {preview && (
+        <ToolCallCard
+          call={{ id: step.id, name: step.toolName, input: step.input }}
+          result={preview}
+          risk={step.risk}
+          dryRun
+          defaultOpen
+        />
+      )}
       <div className="flex items-center gap-2">
         <Button
           size="sm"
@@ -196,6 +211,8 @@ interface RunState {
   turns: FixTranscriptTurn[];
   /** The open approval gate (set on approval-request, cleared on decide). */
   pendingStep?: FixPlanStep;
+  /** The dry-run preview (diff/blast-radius) carried with the gate (#8). */
+  pendingPreview?: ToolResult;
   healed?: boolean;
   resultSummary?: string;
 }
@@ -220,13 +237,14 @@ function reducer(prev: RunState, action: Action): RunState {
     case "reset":
       return INITIAL;
     case "clear-gate":
-      return { ...prev, pendingStep: undefined };
+      return { ...prev, pendingStep: undefined, pendingPreview: undefined };
     case "error":
       return {
         ...prev,
         phase: "done",
         state: "failed",
         pendingStep: undefined,
+        pendingPreview: undefined,
         resultSummary: action.message,
       };
     case "event": {
@@ -243,7 +261,12 @@ function reducer(prev: RunState, action: Action): RunState {
         case "turn":
           return { ...prev, turns: [...prev.turns, ev.turn] };
         case "approval-request":
-          return { ...prev, pendingStep: ev.step, state: "awaiting-approval" };
+          return {
+            ...prev,
+            pendingStep: ev.step,
+            pendingPreview: ev.preview,
+            state: "awaiting-approval",
+          };
         case "done":
           return {
             ...prev,
@@ -253,6 +276,7 @@ function reducer(prev: RunState, action: Action): RunState {
             healed: ev.session.result?.healed,
             resultSummary: ev.session.result?.summary,
             pendingStep: undefined,
+            pendingPreview: undefined,
           };
         default:
           return prev;
@@ -410,9 +434,16 @@ export function GuidedFixPanel({
       const step = run.pendingStep;
       if (!session || !step) return;
       setDeciding(true);
-      dispatch({ type: "clear-gate" });
+      // Confirm with the engine BEFORE clearing the gate (#9): the Sim resolves
+      // locally and never throws; a live-engine failure keeps the gate + lets the
+      // user retry, instead of the gate vanishing with the decision unconfirmed.
       try {
         await session.approve(step.id, decision);
+        dispatch({ type: "clear-gate" });
+      } catch {
+        toast.error("Approval didn't go through", {
+          description: "The engine didn't confirm the decision — try again.",
+        });
       } finally {
         setDeciding(false);
       }
@@ -492,6 +523,7 @@ export function GuidedFixPanel({
       {run.pendingStep && (
         <ApprovalGate
           step={run.pendingStep}
+          preview={run.pendingPreview}
           busy={deciding}
           onDecide={decide}
         />

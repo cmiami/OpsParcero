@@ -15,6 +15,9 @@ const eslintConfig = [
       "out/**",
       "coverage/**",
       "storybook-static/**",
+      // Stray nested repo-name tree that agent/skill tooling recreates from the
+      // review's `OpsParcero/<path>` prefixes — never our source (also gitignored).
+      "OpsParcero/**",
       "fix-engine/**", // separate Node package — covered by its own tsc + tests
       // Vendored agent/skill script mirrors — not our source.
       ".agents/**",

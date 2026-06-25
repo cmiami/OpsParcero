@@ -72,3 +72,22 @@ export const OpenAndType: Story = {
     await waitFor(() => expect(input).toHaveValue("back"));
   },
 };
+
+/**
+ * FindsPolicy — regression gate for #13: the palette now has a Policies group
+ * (and tenant scope + heal overlay + user playbooks). A seeded policy name is
+ * only reachable through that new group, so finding it proves it renders.
+ */
+export const FindsPolicy: Story = {
+  render: () => <Harness initialOpen />,
+  play: async () => {
+    const screen = within(document.body);
+    const input = await screen.findByPlaceholderText(/search assets/i);
+    await userEvent.type(input, "Auto-repair agent comms");
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Auto-repair agent comms/i),
+      ).toBeInTheDocument(),
+    );
+  },
+};

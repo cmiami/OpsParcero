@@ -43,6 +43,7 @@
   "exclude": [
     "node_modules",
     "vitest.config.ts",
-    "fix-engine"
+    "fix-engine",
+    "OpsParcero"
   ]
 }

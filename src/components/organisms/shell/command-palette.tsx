@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Server, LifeBuoy, Workflow, ArrowRight } from "lucide-react";
+import { Server, LifeBuoy, Workflow, ArrowRight, ShieldCheck } from "lucide-react";
 
 import {
   CommandDialog,
@@ -15,7 +15,22 @@ import {
 } from "@/components/ui/command";
 import { StatusBadge } from "@/components/atoms/status-badge";
 import { SeverityBadge } from "@/components/atoms/severity-badge";
-import { getAssets, getIssues, getPlaybooks } from "@/mock/query";
+import {
+  getAssets,
+  getAssetsForClient,
+  getIssues,
+  getPlaybooks,
+  getPolicies,
+} from "@/mock/query";
+import { useActiveClientId } from "@/stores/use-active-client";
+import {
+  useActivity,
+  applyOverrides,
+  applyIssueResolution,
+} from "@/stores/activity";
+import { useUserPlaybooks } from "@/stores/playbooks";
+import { usePolicies } from "@/stores/automation-policies";
+import { useHasHydrated } from "@/stores/use-has-hydrated";
 import { NAV_ITEMS } from "@/config/nav";
 
 export interface CommandPaletteProps {
@@ -69,10 +84,36 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isOpen, setOpen]);
 
-  // Mock data is deterministic; slicing keeps the list scannable.
-  const assets = React.useMemo(() => getAssets({}, undefined, 0, 6).items, []);
-  const issues = React.useMemo(() => getIssues().slice(0, 6), []);
-  const playbooks = React.useMemo(() => getPlaybooks().slice(0, 6), []);
+  // Scope to the active tenant, overlay this session's heals, and include the
+  // user's own playbooks + policies — so the launcher matches the rest of the app
+  // instead of a frozen, all-tenant seed slice (#13). cmdk filters on each item's
+  // `value`, so the rendered set just needs to be the right corpus.
+  const clientId = useActiveClientId();
+  const activityHydrated = useHasHydrated(useActivity);
+  const assetOverrides = useActivity((s) => s.assetOverrides);
+  const pbHydrated = useHasHydrated(useUserPlaybooks);
+  const userPlaybooks = useUserPlaybooks((s) => s.userPlaybooks);
+  const polHydrated = useHasHydrated(usePolicies);
+  const userPolicies = usePolicies((s) => s.policies);
+
+  const assets = React.useMemo(() => {
+    const base = clientId
+      ? getAssetsForClient(clientId).slice(0, 8)
+      : getAssets({}, undefined, 0, 8).items;
+    return activityHydrated ? applyOverrides(base, assetOverrides) : base;
+  }, [clientId, activityHydrated, assetOverrides]);
+  const issues = React.useMemo(() => {
+    const base = getIssues(clientId ? { clientIds: [clientId] } : {});
+    return activityHydrated ? applyIssueResolution(base, assetOverrides) : base;
+  }, [clientId, activityHydrated, assetOverrides]);
+  const playbooks = React.useMemo(
+    () => [...(pbHydrated ? userPlaybooks : []), ...getPlaybooks()],
+    [pbHydrated, userPlaybooks],
+  );
+  const policies = React.useMemo(
+    () => [...(polHydrated ? userPolicies : []), ...getPolicies()],
+    [polHydrated, userPolicies],
+  );
 
   function go(href: string) {
     setOpen(false);
@@ -157,6 +198,22 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               <span className="truncate font-medium">{pb.name}</span>
               <span className="ml-auto text-xs text-muted-foreground">
                 {pb.steps.length} steps
+              </span>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+
+        <CommandGroup heading="Policies">
+          {policies.map((pol) => (
+            <CommandItem
+              key={pol.id}
+              value={`policy ${pol.name}`}
+              onSelect={() => go("/automation/policies")}
+            >
+              <ShieldCheck className="text-muted-foreground" aria-hidden />
+              <span className="truncate font-medium">{pol.name}</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                {pol.enabled ? "Enabled" : "Paused"}
               </span>
             </CommandItem>
           ))}

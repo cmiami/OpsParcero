@@ -47,3 +47,6 @@ tmp/
 /probe.mjs
 /scratch-*.mjs
 /scratch-*.mts
+
+# Guard: stray nested repo-name dir from agents misreading OpsParcero/ path prefixes
+/OpsParcero/
